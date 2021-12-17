@@ -3,6 +3,12 @@ uuid = "5edaa67e-25db-4eb9-bf81-05d793b2238d"
 authors = ["remi.vezy <VEZY@users.noreply.github.com> and contributors"]
 version = "0.1.0"
 
+[deps]
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+MeshViz = "9ecf9c4f-6e5a-4b5e-83ae-06f2c7a661d8"
+Meshes = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
+MultiScaleTreeGraph = "dd4a991b-8a45-4075-bede-262ee62d5583"
+
 [compat]
 julia = "1"
 
