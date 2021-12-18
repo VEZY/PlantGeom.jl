@@ -10,6 +10,7 @@ Meshes = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
 MultiScaleTreeGraph = "dd4a991b-8a45-4075-bede-262ee62d5583"
 
 [compat]
+Meshes = "0.19"
 julia = "1"
 
 [extras]
