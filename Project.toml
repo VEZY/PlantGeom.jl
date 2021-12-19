@@ -11,6 +11,8 @@ MultiScaleTreeGraph = "dd4a991b-8a45-4075-bede-262ee62d5583"
 
 [compat]
 Meshes = "0.19"
+MeshViz = "0.3"
+Makie = "0.15"
 julia = "1"
 
 [extras]
