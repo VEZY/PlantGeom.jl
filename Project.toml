@@ -5,6 +5,7 @@ version = "0.1.0"
 
 [deps]
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
+EzXML = "8f5d6c58-4d21-5cfd-889c-e3ad7ee6a615"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 MeshViz = "9ecf9c4f-6e5a-4b5e-83ae-06f2c7a661d8"
 Meshes = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
@@ -16,7 +17,7 @@ Makie = "0.15"
 MeshViz = "0.3"
 Meshes = "0.19"
 MultiScaleTreeGraph = "0.2"
-julia = "1"
+julia = "1.6"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
