@@ -33,7 +33,7 @@ function plot!(plot::Viz{<:Tuple{RefMeshes}})
             # Overides the default color given by MeshViz (:slategray3) with value in the ref meshes
             # see here for default value in MeshViz:
             # https://github.com/JuliaGeometry/MeshViz.jl/blob/6e37908c78c06212f09229e3e8d92483535ffa16/src/MeshViz.jl#L50
-            color = PlantGeom.ref_meshes_color(plot[:object][])
+            color = PlantGeom.get_ref_meshes_color(plot[:object][])
         else
             color = Dict(zip(keys(p), repeat([color], n_meshes)))
         end

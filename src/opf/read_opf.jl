@@ -38,7 +38,7 @@ The MTG root node.
 # Examples
 
 ```julia
-using MultiScaleTreeGraph
+using PlantGeom
 file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))),"test","files","simple_OPF_shapes.opf")
 opf = read_opf(file)
 ```
@@ -59,7 +59,7 @@ function read_opf(file, attr_type = Dict, mtg_type = MutableNodeMTG)
 
     editable = parse(Bool, xroot["editable"])
 
-    opf_attr = attr_type()
+    opf_attr = Dict{Symbol,Any}()
     # node = elements(xroot)[5]
     for node in eachelement(xroot)
         if node.name == "meshBDD"
@@ -98,7 +98,14 @@ function read_opf(file, attr_type = Dict, mtg_type = MutableNodeMTG)
                 attr_type,
                 mtg_type
             )
-            append!(mtg, opf_attr)
+
+            append!(
+                mtg,
+                MultiScaleTreeGraph.node_attributes(
+                    attr_type,
+                    Dict(:ref_meshes => parse_ref_meshes(opf_attr))
+                )
+            )
 
             return mtg
         end
@@ -125,7 +132,7 @@ end
 
 
 """
-Parse the mesh_BDD using [parse_opf_array]
+Parse the mesh_BDD using [`parse_opf_array`](@ref)
 """
 function parse_meshBDD!(node)
     # MeshBDD:
@@ -260,29 +267,34 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type)
     )
 
     if mtg !== nothing
-        node_i = Node(mtg.id + 1, mtg, MTG, attr_type())
+        node_i = Node(
+            mtg.id + 1,
+            mtg,
+            MTG,
+            MultiScaleTreeGraph.init_empty_attr(attr_type)
+        )
     else
         # First node:
-        node_i = Node(1, MTG, attr_type())
+        node_i = Node(1, MTG, MultiScaleTreeGraph.init_empty_attr(attr_type))
     end
 
-    attrs = attr_type()
+    attrs = Dict{Symbol,Any}()
 
     # Handle the children, can be attributes of children nodes:
     # elem = elements(node)[5]
     for elem in eachelement(node)
         # If an element is an attribute, add it to the attributes of the Node:
         if elem.name in keys(features)
-            push!(attrs, elem.name => parse_opf_array(elem.content, features[elem.name]))
+            push!(attrs, Symbol(elem.name) => parse_opf_array(elem.content, features[elem.name]))
         elseif elem.name == "geometry"
             # Parse the geometry (transformation matrix and dUp and dDwn):
-            push!(attrs, elem.name => parse_geometry(elem))
+            push!(attrs, Symbol(elem.name) => parse_geometry(elem))
         else
             parse_opf_topology!(elem, node_i, features, attr_type, mtg_type)
         end
     end
 
-    node_i.attributes = attrs
+    node_i.attributes = MultiScaleTreeGraph.node_attributes(attr_type, attrs)
 
     return node_i
 end

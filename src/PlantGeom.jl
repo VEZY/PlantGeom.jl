@@ -12,6 +12,7 @@ import Colors: RGBA, Colorant
 # Read OPF:
 import EzXML: readxml, root, StreamReader, attributes, expandtree # For reading OPF files
 import EzXML: eachelement, nodename, nodecontent, elements
+import StaticArrays: SMatrix
 
 include("structs.jl")
 include("helpers.jl")

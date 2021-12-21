@@ -11,20 +11,29 @@ file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))),"test","files","si
 opf = read_opf(file)
 meshes = get_ref_meshes(opf)
 
-using MeshViz
-viz(meshes[0]["mesh"])
+using MeshViz, GLMakie
 viz(meshes)
-meshes.meshes
+meshes.meshes[0].material
 ```
 """
 function get_ref_meshes(mtg)
 
-    x = mtg.attributes
+    if !isroot(mtg)
+        @warn "Node is not the root node, using `get_root(mtg)`."
+        x = get_root(mtg)
+    else
+        x = mtg
+    end
 
-    @assert isroot(mtg) "Node is not the root node."
-    @assert haskey(x, :meshBDD) "MTG does not have mesh info (`:meshBDD`)."
-    @assert haskey(x, :shapeBDD) "MTG does not have mesh info (`:shapeBDD`)."
-    @assert haskey(x, :materialBDD) "MTG does not have mesh info (`:materialBDD`)."
+    return x.attributes[:ref_meshes]
+end
+
+"""
+    parse_ref_meshes(mtg)
+
+Parse the reference meshes of an OPF into RefMeshes.
+"""
+function parse_ref_meshes(x)
 
     meshes = RefMeshes(Dict{Int,RefMesh}())
     meshBDD = meshBDD_to_meshes(x[:meshBDD])
@@ -84,10 +93,10 @@ Parse a material in opf format to a [`material`](@ref)
 """
 function materialBDD_to_material(x)
     Material(
-        x["emission"],
-        x["ambient"],
-        x["diffuse"],
-        x["specular"],
+        RGBA(x["emission"]...),
+        RGBA(x["ambient"]...),
+        RGBA(x["diffuse"]...),
+        RGBA(x["specular"]...),
         x["shininess"]
     )
 end
@@ -120,6 +129,8 @@ end
 
 
 """
+    get_ref_meshes_color(meshes::RefMeshes)
+
 Get the reference meshes colors (only the diffuse part for now).
 
 # Examples
@@ -129,14 +140,14 @@ using MultiScaleTreeGraph, PlantGeom
 file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))),"test","files","simple_OPF_shapes.opf")
 opf = read_opf(file)
 meshes = get_ref_meshes(opf)
-PlantGeom.ref_meshes_color(meshes)
+PlantGeom.get_ref_meshes_color(meshes)
 ```
 """
-function ref_meshes_color(meshes::RefMeshes)
+function get_ref_meshes_color(meshes::RefMeshes)
     mesh_cols = Dict{Int,RGBA{Float64}}()
 
     for (key, value) in meshes.meshes
-        push!(mesh_cols, key => RGBA(value.material.diffuse...))
+        push!(mesh_cols, key => value.material.diffuse)
     end
 
     return mesh_cols
