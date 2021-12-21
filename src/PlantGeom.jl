@@ -13,17 +13,23 @@ import Colors: RGBA, Colorant
 import EzXML: readxml, root, StreamReader, attributes, expandtree # For reading OPF files
 import EzXML: eachelement, nodename, nodecontent, elements
 import StaticArrays: SMatrix
+import LinearAlgebra: I # Used for geometry parsing in OPF
 
 include("structs.jl")
 include("helpers.jl")
 include("opf/read_opf.jl")
 include("opf/reference_meshes.jl")
-include("makie_recipes.jl")
+include("tapering.jl")
+include("opf/refmesh_to_mesh.jl")
+include("makie_recipes/RefMeshes_recipes.jl")
+include("makie_recipes/opf_recipe.jl")
 
 # 3D Plotting (OPF):
 export get_ref_meshes
 export viz
 export nvertices, nelements
 export read_opf
+export taper
+export refmesh_to_mesh
 
 end

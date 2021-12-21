@@ -44,7 +44,8 @@ function parse_ref_meshes(x)
             id => RefMesh(
                 value["name"],
                 meshBDD[value["meshIndex"]]["normals"],
-                meshBDD[value["meshIndex"]]["textureCoords"],
+                haskey(meshBDD[value["meshIndex"]], "textureCoords") ?
+                meshBDD[value["meshIndex"]]["textureCoords"] : nothing,
                 materialBDD_to_material(x[:materialBDD][value["materialIndex"]]),
                 meshBDD[value["meshIndex"]]["mesh"]
             )

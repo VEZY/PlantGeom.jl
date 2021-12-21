@@ -39,7 +39,7 @@ The MTG root node.
 
 ```julia
 using PlantGeom
-file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))),"test","files","simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
 opf = read_opf(file)
 ```
 """
@@ -149,6 +149,10 @@ function parse_meshBDD!(node)
                 push!(mesh, i.name => parse_opf_array(i.content))
             end
         end
+        # textureCoords is optional, adding empty vector if not available.
+        if !haskey(mesh, "textureCoords")
+            push!(mesh, "textureCoords" => Float64[])
+        end
         push!(meshes, parse(Int, m["Id"]) => mesh)
     end
 
@@ -224,14 +228,16 @@ The transformation matrix is 3*4.
 elem = elem.content
 """
 function parse_geometry(elem)
-    geom = Dict()
+    geom = Dict{Symbol,Union{Int,Float64,SMatrix{4,4}}}()
     for i in eachelement(elem)
-        if i.name == "mat"
-            push!(geom, "mat" => SMatrix{3,4}(transpose(reshape(parse_opf_array(i.content), 4, 3))))
+        if i.name == "shapeIndex"
+            push!(geom, :shapeIndex => parse(Int, i.content))
+        elseif i.name == "mat"
+            push!(geom, :mat => SMatrix{4,4}(transpose(reshape(append!(parse_opf_array(i.content), [0 0 0 1]), 4, 4))))
         elseif i.name == "dUp"
-            push!(geom, "dUp" => parse_opf_array(i.content))
+            push!(geom, :dUp => parse(Float64, i.content))
         elseif i.name == "dDwn"
-            push!(geom, "dDwn" => parse_opf_array(i.content))
+            push!(geom, :dDwn => parse(Float64, i.content))
         end
     end
     return geom
