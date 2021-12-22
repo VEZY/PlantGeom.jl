@@ -19,6 +19,7 @@ Makie = "0.15"
 MeshViz = "0.3"
 Meshes = "0.19"
 MultiScaleTreeGraph = "0.2"
+StaticArrays = "1"
 julia = "1.6"
 
 [extras]
