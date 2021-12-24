@@ -1,27 +1,29 @@
 plottype(::MultiScaleTreeGraph.Node) = Viz{<:Tuple{MultiScaleTreeGraph.Node}}
 
 """
-using MultiScaleTreeGraph, PlantGeom, WGLMakie
+using MultiScaleTreeGraph, PlantGeom, GLMakie
 
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
-# file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
+# file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
 # file = "D:/OneDrive - cirad.fr/Travail_AMAP/Processes/Light_interception_GPU/Julia_3D/P6_Ru_ii_L2P02.opf"
 opf = read_opf(file)
 ref_meshes = get_ref_meshes(opf)
 # viz(ref_meshes)
 transform!(opf, (node -> refmesh_to_mesh(node, ref_meshes)) => :mesh)
 
-viz(opf, color = Dict(0 => :burlywood4, 1 => :springgreen4))
-
 # With one shared color:
-viz(meshes, color = :green)
+viz(opf, color = :green)
 # One color per reference mesh:
-viz(meshes, color = Dict(0 => :burlywood4, 1 => :springgreen4, 2 => :burlywood4))
+viz(opf, color = Dict(0 => :burlywood4, 1 => :springgreen4))
 # Or just changing the color of some:
-viz(meshes, color = Dict(0 => :burlywood4, 2 => :burlywood4))
+viz(opf, color = Dict(0 => :burlywood4))
 # One color for each vertex of the refmesh 0:
-nvertices(meshes)[1]
-viz(meshes, color = Dict(0 => 1:nvertices(meshes)[0]))
+viz(opf, color = Dict(0 => 1:nvertices(ref_meshes)[0]))
+
+transform!(opf, :mesh => (x -> maximum([i.coords[3] for i in x.points])) => :z_max, ignore_nothing = true)
+
+viz(opf, color = :z_max)
+
 """
 function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
     # Mesh list:
