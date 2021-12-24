@@ -253,8 +253,22 @@ The transformation matrices in `geometry` are 3*4.
 parse_opf_topology!(elem, node_i, features)
 node = elem
 mtg = node_i
+features = get_attr_type(opf_attr[:attributeBDD])
+
+# Debugging:
+mtg = nothing
+
+node = elem
+mtg = node_i
+parse_opf_topology!(
+                node,
+                nothing,
+                get_attr_type(opf_attr[:attributeBDD]),
+                attr_type,
+                mtg_type
+            )
 """
-function parse_opf_topology!(node, mtg, features, attr_type, mtg_type)
+function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, id = [1])
     if node.name == "topology" # First node
         link = "/"
     elseif node.name == "decomp"
@@ -265,6 +279,8 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type)
         link = "<"
     end
 
+    id[1] = id[1] + 1
+
     MTG = mtg_type(
         link,
         node["class"],
@@ -274,7 +290,7 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type)
 
     if mtg !== nothing
         node_i = Node(
-            mtg.id + 1,
+            id[1],
             mtg,
             MTG,
             MultiScaleTreeGraph.init_empty_attr(attr_type)
@@ -284,10 +300,11 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type)
         node_i = Node(1, MTG, MultiScaleTreeGraph.init_empty_attr(attr_type))
     end
 
+    # node_i.children
     attrs = Dict{Symbol,Any}()
 
     # Handle the children, can be attributes of children nodes:
-    # elem = elements(node)[5]
+    # elem = elements(node)[3]
     for elem in eachelement(node)
         # If an element is an attribute, add it to the attributes of the Node:
         if elem.name in keys(features)
@@ -296,7 +313,7 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type)
             # Parse the geometry (transformation matrix and dUp and dDwn):
             push!(attrs, Symbol(elem.name) => parse_geometry(elem))
         else
-            parse_opf_topology!(elem, node_i, features, attr_type, mtg_type)
+            parse_opf_topology!(elem, node_i, features, attr_type, mtg_type, id)
         end
     end
 

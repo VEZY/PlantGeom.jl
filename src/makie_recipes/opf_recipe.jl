@@ -3,13 +3,15 @@ plottype(::MultiScaleTreeGraph.Node) = Viz{<:Tuple{MultiScaleTreeGraph.Node}}
 """
 using MultiScaleTreeGraph, PlantGeom, WGLMakie
 
-# file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+# file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
+# file = "D:/OneDrive - cirad.fr/Travail_AMAP/Processes/Light_interception_GPU/Julia_3D/P6_Ru_ii_L2P02.opf"
 opf = read_opf(file)
 ref_meshes = get_ref_meshes(opf)
+# viz(ref_meshes)
 transform!(opf, (node -> refmesh_to_mesh(node, ref_meshes)) => :mesh)
 
-viz(opf)
+viz(opf, color = Dict(0 => :burlywood4, 1 => :springgreen4))
 
 # With one shared color:
 viz(meshes, color = :green)
@@ -56,6 +58,8 @@ function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
             "(see [Colors.jl](https://juliagraphics.github.io/Colors.jl/stable/)), or ",
             "Dict{Int,T} such as Dict(0 => :green) or Dict(0 => [colors...])"
         )
+    else
+        attr_color = false
     end
 
     # If not coloring by attribute color, color should have the same length as number of ReMeshes
