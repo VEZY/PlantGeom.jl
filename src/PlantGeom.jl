@@ -8,6 +8,7 @@ import Meshes: SimpleMesh, connect, Point3, Ngon, vertices, topology, Vec, coord
 import Meshes: nvertices, nelements
 import Makie: plot!, Attributes
 import Colors: RGBA, Colorant
+import ColorSchemes: get, rainbow
 
 # Read OPF:
 import EzXML: readxml, root, StreamReader, attributes, expandtree # For reading OPF files

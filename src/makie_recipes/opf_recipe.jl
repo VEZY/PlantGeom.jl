@@ -17,11 +17,11 @@ viz(opf, color = :green)
 viz(opf, color = Dict(0 => :burlywood4, 1 => :springgreen4))
 # Or just changing the color of some:
 viz(opf, color = Dict(0 => :burlywood4))
-# One color for each vertex of the refmesh 0:
-viz(opf, color = Dict(0 => 1:nvertices(ref_meshes)[0]))
+# One color for each vertex of the refmesh 1:
+viz(opf, color = Dict(1 => 1:nvertices(ref_meshes)[1]))
 
+# Or coloring by opf attribute, e.g. using the mesh max Z coordinates:
 transform!(opf, :mesh => (x -> maximum([i.coords[3] for i in x.points])) => :z_max, ignore_nothing = true)
-
 viz(opf, color = :z_max)
 
 """
@@ -43,13 +43,12 @@ function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
             attr_color = false
             color = get_ref_meshes_color(ref_meshes)
         elseif color in names(opf)
+            # Coloring using opf attribute:
             attr_color = true
-            @warn "Coloring by attribute is not implemented yet"
+            color_attr = descendants(opf, color, ignore_nothing = true)
+            key_cache = MultiScaleTreeGraph.cache_name(color)
 
-            # The following code falls back to the default behavior for now, delete it when
-            # ready to implement the new feature:
-            attr_color = false
-            color = get_ref_meshes_color(ref_meshes)
+            transform!(opf, color => (x -> get(rainbow, x / maximum(color_attr))) => key_cache, ignore_nothing = true)
         else
             attr_color = false
             color = Dict(zip(keys(ref_meshes.meshes), repeat([color], length(ref_meshes.meshes))))
@@ -90,7 +89,8 @@ function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
                 facetcolor = facetcolor,
                 showfacets = showfacets,
                 colormap = colormap
-            );
+            )
+            ;
             # scale = scale,
             # symbol = symbol,
             # link = link,
@@ -100,6 +100,23 @@ function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
         #? a subset of the plant/scene. This will be especially usefull when we have different
         #? kind of geometries at different scales of representation.
     else
-        nothing
+        traverse!(
+            opf,
+            function (node)
+                viz!(
+                    plot,
+                    node[:mesh],
+                    color = node[key_cache],
+                    facetcolor = facetcolor,
+                    showfacets = showfacets,
+                    colormap = colormap
+                )
+                pop!(node, key_cache) # Remove the cached variable
+            end;
+            # scale = scale,
+            # symbol = symbol,
+            # link = link,
+            filter_fun = node -> node[:mesh] !== nothing
+        )
     end
 end
