@@ -15,6 +15,7 @@ MultiScaleTreeGraph = "dd4a991b-8a45-4075-bede-262ee62d5583"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
+ColorSchemes = "3"
 Colors = "0.12"
 EzXML = "1"
 Makie = "0.15"
