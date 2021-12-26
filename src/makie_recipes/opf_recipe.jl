@@ -3,8 +3,8 @@ plottype(::MultiScaleTreeGraph.Node) = Viz{<:Tuple{MultiScaleTreeGraph.Node}}
 """
 using MultiScaleTreeGraph, PlantGeom, GLMakie
 
-# file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+# file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
 # file = "D:/OneDrive - cirad.fr/Travail_AMAP/Processes/Light_interception_GPU/Julia_3D/P6_Ru_ii_L2P02.opf"
 opf = read_opf(file)
 ref_meshes = get_ref_meshes(opf)
@@ -21,9 +21,12 @@ viz(opf, color = Dict(0 => :burlywood4))
 viz(opf, color = Dict(1 => 1:nvertices(ref_meshes)[1]))
 
 # Or coloring by opf attribute, e.g. using the mesh max Z coordinates:
-transform!(opf, :mesh => (x -> maximum([i.coords[3] for i in x.points])) => :z_max, ignore_nothing = true)
+transform!(opf, :mesh => zmax => :z_max, ignore_nothing = true)
 viz(opf, color = :z_max)
 
+# Or even coloring by the value of the Z coordinates of each vertex:
+transform!(opf, :mesh => (x -> [i.coords[3] for i in x.points]) => :z, ignore_nothing = true)
+viz(opf, color = :z, showfacets = true)
 """
 function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
     # Mesh list:
@@ -48,7 +51,13 @@ function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
             color_attr = descendants(opf, color, ignore_nothing = true)
             key_cache = MultiScaleTreeGraph.cache_name(color)
 
-            transform!(opf, color => (x -> get(rainbow, x / maximum(color_attr))) => key_cache, ignore_nothing = true)
+            if length(color_attr[1]) == 1
+                max_val = maximum(color_attr)
+            else
+                max_val = maximum(maximum.(color_attr))
+            end
+
+            transform!(opf, color => (x -> get(rainbow, x / max_val)) => key_cache, ignore_nothing = true)
         else
             attr_color = false
             color = Dict(zip(keys(ref_meshes.meshes), repeat([color], length(ref_meshes.meshes))))

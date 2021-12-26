@@ -24,6 +24,7 @@ include("tapering.jl")
 include("opf/refmesh_to_mesh.jl")
 include("makie_recipes/RefMeshes_recipes.jl")
 include("makie_recipes/opf_recipe.jl")
+include("meshes/summary_coordinates.jl")
 
 # 3D Plotting (OPF):
 export get_ref_meshes
@@ -32,5 +33,6 @@ export nvertices, nelements
 export read_opf
 export taper
 export refmesh_to_mesh
+export xmax, ymax, zmax, xmin, ymin, zmin
 
 end
