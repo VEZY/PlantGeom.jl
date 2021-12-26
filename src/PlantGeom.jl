@@ -13,6 +13,8 @@ import ColorSchemes: get, rainbow
 # Read OPF:
 import EzXML: readxml, root, StreamReader, attributes, expandtree # For reading OPF files
 import EzXML: eachelement, nodename, nodecontent, elements
+import EzXML: XMLDocument, ElementNode, setroot!, addelement!
+import EzXML: prettyprint # to remove
 import StaticArrays: SMatrix
 import LinearAlgebra: I # Used for geometry parsing in OPF
 
@@ -22,6 +24,7 @@ include("opf/read_opf.jl")
 include("opf/reference_meshes.jl")
 include("tapering.jl")
 include("opf/refmesh_to_mesh.jl")
+include("opf/write_opf.jl")
 include("makie_recipes/RefMeshes_recipes.jl")
 include("makie_recipes/opf_recipe.jl")
 include("meshes/summary_coordinates.jl")

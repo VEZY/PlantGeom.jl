@@ -21,6 +21,8 @@ struct RefMesh{S<:Union{String,SubString},M<:Material}
     mesh::SimpleMesh
 end
 
+#! Make a method that computes the normals and textureCoords from the mesh
+
 """
 RefMeshes type. Stores all RefMesh.
 """
