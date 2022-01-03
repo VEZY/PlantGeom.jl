@@ -3,17 +3,33 @@
 
 Write an MTG with explicit geometry to disk as an OPF file.
 
+# Notes
+
+Node attributes `:mesh`, `:ref_meshes` and `:geometry` are treated as reserved keywords and
+should not be used without knowing their meaning:
+
+- `:ref_meshes`: a `RefMeshes` structure that holds the MTG reference meshes.
+- `:geometry`: a Dict of four:
+    - `:shapeIndex`: the index of the node reference mesh
+    - `:dUp`: tappering in the upper direction
+    - `:dDwn`: tappering in the bottom direction
+    - `:mat`: the transformation matrix (4x4)
+- `:mesh`: a `SimpleMesh` computed from a reference mesh (`:ref_meshes`) and a transformation
+matrix (`:geometry`).
+
 # Examples
 
 ```julia
 using PlantGeom
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
 opf = read_opf(file)
 
-write_opf(opf, "test.opf")
+write_opf("test.opf", opf)
+file = "test.opf"
+mtg[:ref_meshes].meshes[1].textureCoords
 ```
 """
-function write_opf(opf, file)
+function write_opf(file, mtg)
     doc = XMLDocument()
     opf_elm = ElementNode("opf")
     setroot!(doc, opf_elm)
@@ -23,31 +39,37 @@ function write_opf(opf, file)
     # Writing the reference meshes (meshBDD):
     meshBDD = addelement!(opf_elm, "meshBDD")
 
-    for (key, mesh) in opf[:ref_meshes].meshes
-        # key = 0; mesh = opf[:ref_meshes].meshes[key]
+    if mtg[:ref_meshes] === nothing
+        error("No reference meshes found in the MTG.")
+    end
+
+    for (key, mesh) in mtg[:ref_meshes].meshes
         mesh_elm = addelement!(meshBDD, "mesh")
         mesh_elm["name"] = ""
         mesh_elm["shape"] = ""
         mesh_elm["Id"] = key
         mesh_elm["enableScale"] = true
 
-        points_elm = addelement!(
+        addelement!(
             mesh_elm,
             "points",
-            join([vcat([p.coords for p in mesh.mesh.points]...)...], " ")
+            string("\n", join([vcat([p.coords for p in mesh.mesh.points]...)...], "\t"), "\n")
         )
 
         norm_elm = addelement!(
             mesh_elm,
             "normals",
-            join(mesh.normals, " ")
+            string("\n", join(mesh.normals, "\t"), "\n")
         )
 
-        norm_elm = addelement!(
-            mesh_elm,
-            "textureCoords",
-            join(mesh.textureCoords, " ")
-        )
+        if length(mesh.textureCoords) > 0
+            # textureCoords are optional
+            norm_elm = addelement!(
+                mesh_elm,
+                "textureCoords",
+                string("\n", join(mesh.textureCoords, "\t"), "\n")
+            )
+        end
 
         faces_elm = addelement!(mesh_elm, "faces")
 
@@ -56,8 +78,9 @@ function write_opf(opf, file)
             face_elm = addelement!(
                 faces_elm,
                 "face",
-                join(mesh.mesh.topology.connec[i].indices, " ")
+                string("\n", join(mesh.mesh.topology.connec[i].indices .- 1, "\t"), "\n")
             )
+            #? NB: we remove one because face index are 0-based in the opf
             face_elm["Id"] = face_id[1]
             face_id[1] = face_id[1] + 1
         end
@@ -69,63 +92,61 @@ function write_opf(opf, file)
     #! for each mesh. The mesh should only reference a material.
     #! Change that when reading and writing opf
     materialBDD = addelement!(opf_elm, "materialBDD")
-    for (key, mesh) in opf[:ref_meshes].meshes
+    for (key, mesh) in mtg[:ref_meshes].meshes
         mat_elm = addelement!(materialBDD, "material")
         mat_elm["Id"] = key
 
-        e_elm = addelement!(
+        addelement!(
             mat_elm,
             "emission",
             rgba_to_string(mesh.material.emission)
         )
 
-        a_elm = addelement!(
+        addelement!(
             mat_elm,
             "ambiant",
             rgba_to_string(mesh.material.ambiant)
         )
 
-        d_elm = addelement!(
+        addelement!(
             mat_elm,
             "diffuse",
             rgba_to_string(mesh.material.diffuse)
         )
 
-        s_elm = addelement!(
+        addelement!(
             mat_elm,
             "specular",
             rgba_to_string(mesh.material.specular)
         )
 
-        sh_elm = addelement!(
+        addelement!(
             mat_elm,
             "shininess",
             string(mesh.material.shininess)
         )
     end
 
-
     # Parsing the shapeBDD section.
     shapeBDD = addelement!(opf_elm, "shapeBDD")
-    for (key, mesh) in opf[:ref_meshes].meshes
+    for (key, mesh) in mtg[:ref_meshes].meshes
         shape_elm = addelement!(shapeBDD, "shape")
         shape_elm["Id"] = key
 
-
-        name_elm = addelement!(
+        addelement!(
             shape_elm,
             "name",
             mesh.name
         )
 
-        meshIndex = addelement!(
+        addelement!(
             shape_elm,
             "meshIndex",
             string(key)
         )
 
         #! NB: here we should only reference the material (see above):
-        matIndex = addelement!(
+        addelement!(
             shape_elm,
             "materialIndex",
             string(key)
@@ -134,7 +155,7 @@ function write_opf(opf, file)
 
     # Parsing the attributeBDD section:
     attrBDD = addelement!(opf_elm, "attributeBDD")
-    attrs = get_features(opf)
+    attrs = get_features(mtg)
     for i = 1:size(attrs, 1)
         shape_elm = addelement!(attrBDD, "attribute")
         shape_elm["name"] = string(attrs[i, 1])
@@ -148,33 +169,26 @@ function write_opf(opf, file)
             attr_type_opf = "Integer"
         end
 
-        attr_type["class"] = attr_type_opf
+        shape_elm["class"] = attr_type_opf
     end
 
-    # Parsing the attributeBDD section:
-    topo = addelement!(opf_elm, "topology")
-    topo["class"] = "Scene"
-    topo["scale"] = 0
-    topo["Id"] = 0
+    # Parsing the topology section:
+    mtg_topology_to_xml!(mtg, opf_elm)
 
-    traverse!(opf) do node
-
-        node_i = addelement!(opf_elm, mtg_to_opf_link(node.MTG.link))
-        #! continue here!!
-    end
-
-    # link!(elm, txt)
-    # addelement!(user, "name", "Kumiko Oumae")
-
-    prettyprint(doc)
-
-
+    # prettyprint(doc)
+    write(file, doc)
 end
 
 function rgba_to_string(x)
-    join([x.r, x.g, x.b, x.alpha], " ")
+    join([x.r, x.g, x.b, x.alpha], "\t")
 end
 
+"""
+    mtg_to_opf_link(link)
+
+Takes an MTG link as input ("/", "<" or "+") and outputs its corresponding link as declared
+in the OPF format ("decomp", "follow" or "branch")
+"""
 function mtg_to_opf_link(link)
     if link == "/"
         "decomp"
@@ -183,4 +197,74 @@ function mtg_to_opf_link(link)
     elseif link == "+"
         "branch"
     end
+end
+
+
+"""
+    mtg_topology_to_xml!(node, xml_parent)
+
+Write the MTG topology, attributes and geometry into XML format. This function is used to
+write the "topology" section of the OPF.
+"""
+function mtg_topology_to_xml!(node, xml_parent)
+
+    if isroot(node)
+        xml_parent = attributes_to_xml(node, xml_parent)
+    end
+
+    if !isleaf(node)
+        for chnode in MultiScaleTreeGraph.ordered_children(node)
+            xml_node = attributes_to_xml(chnode, xml_parent)
+            mtg_topology_to_xml!(chnode, xml_node)
+        end
+    end
+end
+
+"""
+    attributes_to_xml(node, xml_parent)
+
+Write an MTG node into an XML node.
+"""
+function attributes_to_xml(node, xml_parent)
+    opf_link = isroot(node) ? "topology" : mtg_to_opf_link(node.MTG.link)
+    xml_node = addelement!(xml_parent, opf_link)
+    xml_node["class"] = node.MTG.symbol
+    xml_node["scale"] = node.MTG.scale
+    xml_node["Id"] = node.id #! maybe this should be `node.MTG.index` instead ? But I think is is unique
+
+    for key in keys(node.attributes)
+        if key == :geometry
+            geom = addelement!(xml_node, string(key))
+            geom["class"] = "Mesh"
+
+            if haskey(node[key], :shapeIndex)
+                # shapeIndex is optional, and only needed for the mesh with a reference mesh
+                addelement!(geom, "shapeIndex", string(node[key][:shapeIndex]))
+            end
+            addelement!(
+                geom,
+                "mat",
+                string(
+                    "\n",
+                    join(node[key][:mat][1, :], "\t"),
+                    "\n",
+                    join(node[key][:mat][2, :], "\t"),
+                    "\n",
+                    join(node[key][:mat][3, :], "\t"),
+                    "\n"
+                )
+            )
+            #? NB: Only the three first rows are written as the fourth is always the same
+            addelement!(geom, "dUp", string(node[key][:dUp]))
+            addelement!(geom, "dDwn", string(node[key][:dDwn]))
+        elseif key == :mesh || key == :ref_meshes
+            # We don't write the mesh directly in the opf, as it can be recomputed from
+            # the reference meshes
+            continue
+        else
+            addelement!(xml_node, string(key), string(node[key]))
+        end
+    end
+
+    return xml_node
 end
