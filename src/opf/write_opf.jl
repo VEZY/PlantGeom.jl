@@ -25,8 +25,6 @@ file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
 opf = read_opf(file)
 
 write_opf("test.opf", opf)
-file = "test.opf"
-mtg[:ref_meshes].meshes[1].textureCoords
 ```
 """
 function write_opf(file, mtg)

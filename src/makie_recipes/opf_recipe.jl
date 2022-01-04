@@ -3,8 +3,8 @@ plottype(::MultiScaleTreeGraph.Node) = Viz{<:Tuple{MultiScaleTreeGraph.Node}}
 """
 using MultiScaleTreeGraph, PlantGeom, GLMakie
 
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
-# file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
+# file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
 # file = "D:/OneDrive - cirad.fr/Travail_AMAP/Processes/Light_interception_GPU/Julia_3D/P6_Ru_ii_L2P02.opf"
 opf = read_opf(file)
 ref_meshes = get_ref_meshes(opf)

@@ -42,7 +42,8 @@ viz(opf, color = :z_max)
 ## Roadmap
 
 - [x] Add `read_opf()`
-- [ ] Add `write_opf()`. NB: if does not work, change space to tab for vector delimited values
+- [x] Add `write_opf()`
+- [ ] Use pointers to ref meshes instead of an index. It will be more simple then.
 - [ ] Add `read_ops()`
 - [ ] Add recipe for simple MTG without any geometry (and remove this plot from MultiScaleTreeGraph)
 - [ ] Manage different degree of information into an MTG:
