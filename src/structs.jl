@@ -41,25 +41,34 @@ mutable struct RefMeshes
 end
 
 """
-    geometry(mesh::RefMesh, transformation_matrix, shapeIndex::Union{Int,Nothing})
+    geometry(
+        ref_mesh::M
+        ref_mesh_index::Union{Int,Nothing}
+        transformation_matrix::T
+        dUp::S
+        dDwn::S
+        mesh::Union{SimpleMesh,Nothing}
+    )
 
 A Node geometry with the reference mesh, its transformation matrix and optionnally the
-index of the reference mesh in the reference meshes data base (see notes).
+index of the reference mesh in the reference meshes data base (see notes) and the resulting
+mesh (optional to save memory).
 
 # Note
 
-The mesh usually points to a [`RefMesh`](@ref) stored in the `:ref_meshes` attribute of the
+The ref_mesh points to a [`RefMesh`](@ref) stored in the `:ref_meshes` attribute of the
 root node of the MTG.
 
-Storing the index of the reference mesh in the database allows a faster writing of the MTG
-as an OPF to disk.
+Storing the index of the reference mesh (`ref_mesh_index`) in the database allows a faster
+writing of the MTG as an OPF to disk.
 
 If no transformation matrix is needed, you can use `I` from the Linear Algebra package (lazy)
 """
 mutable struct geometry{M<:RefMesh,T,S}
-    mesh::M
+    ref_mesh::M
     ref_mesh_index::Union{Int,Nothing}
     transformation_matrix::T
     dUp::S
     dDwn::S
+    mesh::Union{SimpleMesh,Nothing}
 end

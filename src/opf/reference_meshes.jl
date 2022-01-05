@@ -32,7 +32,7 @@ function get_ref_mesh_index!(node, ref_meshes = get_ref_meshes(node))
     # If the reference node mesh is unknown, get it:
     if node[:geometry].ref_mesh_index === nothing
         node[:geometry].ref_mesh_index =
-            findfirst(x -> x === node[:geometry].mesh, ref_meshes.meshes)
+            findfirst(x -> x === node[:geometry].ref_mesh, ref_meshes.meshes)
     end
 
     return node[:geometry].ref_mesh_index
@@ -41,7 +41,7 @@ end
 function get_ref_mesh_index(node, ref_meshes = get_ref_meshes(node))
     # If the reference node mesh is unknown, get it:
     if node[:geometry].ref_mesh_index === nothing
-        return findfirst(x -> x === node[:geometry].mesh, ref_meshes.meshes)
+        return findfirst(x -> x === node[:geometry].ref_mesh, ref_meshes.meshes)
     end
 
     return node[:geometry].ref_mesh_index

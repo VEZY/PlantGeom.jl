@@ -7,10 +7,15 @@ file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_s
 # file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
 
 opf = read_opf(file)
-transform!(opf, (node -> refmesh_to_mesh(node)) => :mesh)
-
 viz(opf)
 
+# If you need to plot the opf several times, you better cache the mesh in the node geometry
+# like so:
+transform!(opf, node -> refmesh_to_mesh!(node))
+# Then plot it again like before, and it will be faster:
+viz(opf)
+
+# We can also color the 3d plot with several options:
 # With one shared color:
 viz(opf, color = :red)
 # One color per reference mesh:
@@ -18,14 +23,15 @@ viz(opf, color = Dict(1 => :burlywood4, 2 => :springgreen4, 3 => :burlywood4))
 # Or just changing the color of some:
 viz(opf, color = Dict(1 => :burlywood4))
 # One color for each vertex of the refmesh 1:
-viz(opf, color = Dict(1 => 1:nvertices(ref_meshes)[1]))
+viz(opf, color = Dict(1 => 1:nvertices(get_ref_meshes(opf))[1]))
 
-# Or coloring by opf attribute, e.g. using the mesh max Z coordinates:
-transform!(opf, :mesh => zmax => :z_max, ignore_nothing = true)
+# Or coloring by opf attribute, e.g. using the mesh max Z coordinates (NB: need to use
+# `refmesh_to_mesh!` before, see above):
+transform!(opf, :geometry => (x -> zmax(x.mesh)) => :z_max, ignore_nothing = true)
 viz(opf, color = :z_max)
 
 # Or even coloring by the value of the Z coordinates of each vertex:
-transform!(opf, :mesh => (x -> [i.coords[3] for i in x.points]) => :z, ignore_nothing = true)
+transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.points]) => :z, ignore_nothing = true)
 viz(opf, color = :z, showfacets = true)
 """
 function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
@@ -88,12 +94,11 @@ function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
     colormap = plot[:colormap][]
 
     if attr_color == false
-
         traverse!(
             opf,
             node -> viz!(
                 plot,
-                node[:mesh],
+                node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
                 color = color[get_ref_mesh_index!(node, ref_meshes)],
                 facetcolor = facetcolor,
                 showfacets = showfacets,
@@ -103,7 +108,7 @@ function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
             # scale = scale,
             # symbol = symbol,
             # link = link,
-            filter_fun = node -> node[:mesh] !== nothing
+            filter_fun = node -> node[:geometry] !== nothing
         )
         #? NB: implement scale / symbol / link / filter_fun filtering to be able to plot only
         #? a subset of the plant/scene. This will be especially usefull when we have different
@@ -114,7 +119,7 @@ function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
             function (node)
                 viz!(
                     plot,
-                    node[:mesh],
+                    node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
                     color = node[key_cache],
                     facetcolor = facetcolor,
                     showfacets = showfacets,
@@ -125,7 +130,7 @@ function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
             # scale = scale,
             # symbol = symbol,
             # link = link,
-            filter_fun = node -> node[:mesh] !== nothing
+            filter_fun = node -> node[:geometry] !== nothing
         )
     end
 end

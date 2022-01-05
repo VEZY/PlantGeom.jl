@@ -344,7 +344,8 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
                         geom[:shapeIndex],
                         geom[:mat],
                         geom[:dUp],
-                        geom[:dDwn]
+                        geom[:dDwn],
+                        nothing
                     )
                 )
             end
