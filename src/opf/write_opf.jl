@@ -41,12 +41,12 @@ function write_opf(file, mtg)
         error("No reference meshes found in the MTG.")
     end
 
-    for (key, mesh) in mtg[:ref_meshes].meshes
+    for (key, mesh) in enumerate(mtg[:ref_meshes].meshes)
         mesh_elm = addelement!(meshBDD, "mesh")
-        mesh_elm["name"] = ""
+        mesh_elm["name"] = mesh.name
         mesh_elm["shape"] = ""
         mesh_elm["Id"] = key
-        mesh_elm["enableScale"] = true
+        mesh_elm["enableScale"] = mesh.taper
 
         addelement!(
             mesh_elm,

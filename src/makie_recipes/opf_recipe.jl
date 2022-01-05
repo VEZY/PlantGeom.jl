@@ -3,20 +3,20 @@ plottype(::MultiScaleTreeGraph.Node) = Viz{<:Tuple{MultiScaleTreeGraph.Node}}
 """
 using MultiScaleTreeGraph, PlantGeom, GLMakie
 
-# file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
-# file = "D:/OneDrive - cirad.fr/Travail_AMAP/Processes/Light_interception_GPU/Julia_3D/P6_Ru_ii_L2P02.opf"
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+# file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
+
 opf = read_opf(file)
-ref_meshes = get_ref_meshes(opf)
-# viz(ref_meshes)
-transform!(opf, (node -> refmesh_to_mesh(node, ref_meshes)) => :mesh)
+transform!(opf, (node -> refmesh_to_mesh(node)) => :mesh)
+
+viz(opf)
 
 # With one shared color:
-viz(opf, color = :green)
+viz(opf, color = :red)
 # One color per reference mesh:
-viz(opf, color = Dict(0 => :burlywood4, 1 => :springgreen4))
+viz(opf, color = Dict(1 => :burlywood4, 2 => :springgreen4, 3 => :burlywood4))
 # Or just changing the color of some:
-viz(opf, color = Dict(0 => :burlywood4))
+viz(opf, color = Dict(1 => :burlywood4))
 # One color for each vertex of the refmesh 1:
 viz(opf, color = Dict(1 => 1:nvertices(ref_meshes)[1]))
 
@@ -62,17 +62,17 @@ function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
             attr_color = false
             color = Dict(zip(keys(ref_meshes.meshes), repeat([color], length(ref_meshes.meshes))))
         end
-    elseif !isa(color, Dict)
+    elseif length(color) != length(ref_meshes.meshes) && !isa(color, Dict)
         error(
             "color argument should be of type Colorant ",
             "(see [Colors.jl](https://juliagraphics.github.io/Colors.jl/stable/)), or ",
-            "Dict{Int,T} such as Dict(0 => :green) or Dict(0 => [colors...])"
+            "an MTG attribute, or a Dict{Int,Colorant} mapping reference meshes to a color."
         )
     else
         attr_color = false
     end
 
-    # If not coloring by attribute color, color should have the same length as number of ReMeshes
+    # If not coloring by attribute color, color should have the same length as number of RefMeshes
     if attr_color == false && length(color) != length(ref_meshes.meshes)
         new_color = Dict{Int,Any}(color)
         ref_cols = get_ref_meshes_color(ref_meshes)
@@ -94,7 +94,7 @@ function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
             node -> viz!(
                 plot,
                 node[:mesh],
-                color = color[node[:geometry][:shapeIndex]],
+                color = color[get_ref_mesh_index!(node, ref_meshes)],
                 facetcolor = facetcolor,
                 showfacets = showfacets,
                 colormap = colormap

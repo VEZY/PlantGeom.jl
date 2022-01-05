@@ -54,7 +54,7 @@ function read_opf(file, attr_type = Dict, mtg_type = MutableNodeMTG)
     end
 
     if xroot["version"] != "2.0"
-        error("Cannot reaf OPF files version other than V2.0")
+        error("Cannot read OPF files version other than 2.0")
     end
 
     editable = parse(Bool, xroot["editable"])
@@ -69,21 +69,23 @@ function read_opf(file, attr_type = Dict, mtg_type = MutableNodeMTG)
         if node.name == "materialBDD"
             push!(
                 opf_attr,
-                :materialBDD => parse_opf_elements!(
-                    node,
-                    [Float64, Float64, Float64, Float64, Float64]
-                )
+                :materialBDD => parse_materialBDD!(node)
             )
         end
 
         if node.name == "shapeBDD"
-            push!(
-                opf_attr,
-                :shapeBDD => parse_opf_elements!(
-                    node,
-                    [String, Int64, Int64]
-                )
+            shapeBDD = parse_opf_elements!(
+                node,
+                [String, Int64, Int64]
             )
+
+            # Increment index by 1 because Julia is 1-based indexing (OPF is 0-based):
+            for (key, value) in shapeBDD
+                value["materialIndex"] += 1
+                value["meshIndex"] += 1
+            end
+
+            push!(opf_attr, :shapeBDD => shapeBDD)
         end
 
         if node.name == "attributeBDD"
@@ -91,19 +93,22 @@ function read_opf(file, attr_type = Dict, mtg_type = MutableNodeMTG)
         end
 
         if node.name == "topology"
+            ref_meshes = parse_ref_meshes(opf_attr)
+
             global mtg = parse_opf_topology!(
                 node,
                 nothing,
                 get_attr_type(opf_attr[:attributeBDD]),
                 attr_type,
-                mtg_type
+                mtg_type,
+                ref_meshes
             )
 
             append!(
                 mtg,
                 MultiScaleTreeGraph.node_attributes(
                     attr_type,
-                    Dict(:ref_meshes => parse_ref_meshes(opf_attr))
+                    Dict(:ref_meshes => ref_meshes)
                 )
             )
 
@@ -132,15 +137,17 @@ end
 
 
 """
-Parse the mesh_BDD using [`parse_opf_array`](@ref)
+Parse the meshBDD using [`parse_opf_array`](@ref)
 """
 function parse_meshBDD!(node)
     # MeshBDD:
-    meshes = Dict{Int,Dict{String,Union{Vector{Float64},Vector{Int64}}}}()
+    meshes = Dict{Int,Dict{String,Any}}()
 
     for m in eachelement(node)
         m.name != "mesh" ? @warn("Unknown node element in meshBDD: $(m.name)") : nothing
-        mesh = Dict{String,Union{Vector{Float64},Vector{Int}}}()
+        mesh = Dict{String,Any}()
+        mesh["name"] = m["name"]
+        mesh["enableScale"] = parse(Bool, m["enableScale"])
         for i in eachelement(m)
             if i.name == "faces"
                 push!(mesh, i.name => parse_opf_array(i.content, Int) .+ 1)
@@ -153,12 +160,27 @@ function parse_meshBDD!(node)
         if !haskey(mesh, "textureCoords")
             push!(mesh, "textureCoords" => Float64[])
         end
-        push!(meshes, parse(Int, m["Id"]) => mesh)
+        push!(meshes, parse(Int, m["Id"]) + 1 => mesh)
     end
 
     return meshes
 end
 
+"""
+Parse the materialBDD using [`parse_opf_elements!`](@ref)
+"""
+function parse_materialBDD!(node)
+    metBDDraw = parse_opf_elements!(
+        node,
+        [Float64, Float64, Float64, Float64, Float64]
+    )
+    metBDD = Dict{Int,Material}()
+    for (key, value) in metBDDraw
+        push!(metBDD, key => materialBDD_to_material(value))
+    end
+
+    return metBDD
+end
 
 """
 Generic parser for OPF elements.
@@ -184,7 +206,7 @@ function parse_opf_elements!(node, elem_types)
                 push!(elems_, el.name => content)
             end
         end
-        push!(elem_dict, parse(Int, m["Id"]) => elems_)
+        push!(elem_dict, parse(Int, m["Id"]) + 1 => elems_)
     end
     return elem_dict
 end
@@ -231,7 +253,7 @@ function parse_geometry(elem)
     geom = Dict{Symbol,Union{Int,Float64,SMatrix{4,4}}}()
     for i in eachelement(elem)
         if i.name == "shapeIndex"
-            push!(geom, :shapeIndex => parse(Int, i.content))
+            push!(geom, :shapeIndex => parse(Int, i.content) + 1)
         elseif i.name == "mat"
             push!(geom, :mat => SMatrix{4,4}(transpose(reshape(append!(parse_opf_array(i.content), [0 0 0 1]), 4, 4))))
         elseif i.name == "dUp"
@@ -265,10 +287,11 @@ parse_opf_topology!(
                 nothing,
                 get_attr_type(opf_attr[:attributeBDD]),
                 attr_type,
-                mtg_type
+                mtg_type,
+                ref_meshes
             )
 """
-function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, id = [1])
+function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes, id = [1])
     if node.name == "topology" # First node
         link = "/"
     elseif node.name == "decomp"
@@ -310,10 +333,23 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, id = [1])
         if elem.name in keys(features)
             push!(attrs, Symbol(elem.name) => parse_opf_array(elem.content, features[elem.name]))
         elseif elem.name == "geometry"
-            # Parse the geometry (transformation matrix and dUp and dDwn):
-            push!(attrs, Symbol(elem.name) => parse_geometry(elem))
+
+            geom = parse_geometry(elem)
+            # Parse the geometry (transformation matrix, reference mesh + index and dUp and dDwn):
+            if haskey(geom, :shapeIndex)
+                push!(
+                    attrs,
+                    Symbol(elem.name) => geometry(
+                        ref_meshes.meshes[geom[:shapeIndex]],
+                        geom[:shapeIndex],
+                        geom[:mat],
+                        geom[:dUp],
+                        geom[:dDwn]
+                    )
+                )
+            end
         else
-            parse_opf_topology!(elem, node_i, features, attr_type, mtg_type, id)
+            parse_opf_topology!(elem, node_i, features, attr_type, mtg_type, ref_meshes, id)
         end
     end
 

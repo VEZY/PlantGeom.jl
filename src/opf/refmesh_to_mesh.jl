@@ -1,5 +1,5 @@
 """
-    refmesh_to_mesh(node, ref_meshes)
+    refmesh_to_mesh(node)
 
 Compute a node mesh based on the reference mesh, the transformation matrix and the tapering.
 
@@ -12,34 +12,28 @@ opf = read_opf(file)
 
 node = opf[1][1][1]
 
-new_mesh = refmesh_to_mesh(node, get_ref_meshes(opf))
+new_mesh = refmesh_to_mesh(node)
 
 using MeshViz, GLMakie
 viz(new_mesh)
 ```
 """
-function refmesh_to_mesh(node, ref_meshes)
-    if node[:geometry] !== nothing && haskey(node[:geometry], :shapeIndex)
+function refmesh_to_mesh(node)
+    if node[:geometry] !== nothing
 
-        if haskey(node[:geometry], :mat)
-            # Add w to the transformation matrix:
-            m = node[:geometry][:mat]
-        else
-            m = I # identity matrix from LinearAlgebra package (lazy)
-        end
-
-        ref_mesh_info = ref_meshes.meshes[node[:geometry][:shapeIndex]]
-        ref_mesh = ref_mesh_info.mesh
+        ref_mesh = node[:geometry].mesh.mesh
 
         # Get the reference mesh and taper it in z and y (the principal axis is following x already):
-        ref_mesh_scaled = taper(ref_mesh, node[:geometry][:dUp], node[:geometry][:dDwn])
-
-        scaled_mesh = Array{Point3}(undef, nvertices(ref_mesh_scaled))
-        for (i, p) in enumerate(ref_mesh_scaled.points)
-            scaled_mesh[i] = Point3((m*vcat(p.coords, 1.0))[1:3])
+        if node[:geometry].mesh.taper # Taper only if enableScale="true" in the OPF: taper == true
+            ref_mesh = taper(ref_mesh, node[:geometry].dUp, node[:geometry].dDwn)
         end
 
-        return SimpleMesh(scaled_mesh, ref_mesh_scaled.topology)
+        scaled_mesh = Array{Point3}(undef, nvertices(ref_mesh))
+        for (i, p) in enumerate(ref_mesh.points)
+            scaled_mesh[i] = Point3((node[:geometry].transformation_matrix*vcat(p.coords, 1.0))[1:3])
+        end
+
+        return SimpleMesh(scaled_mesh, ref_mesh.topology)
     else
         return nothing
     end

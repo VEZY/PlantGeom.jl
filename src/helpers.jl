@@ -1,27 +1,35 @@
 """
-    nvertices(meshes::RefMeshes)
+    nvertices(meshes::RefMesh)
 
-Return the number of vertices for each reference mesh as a dict of id => nvertices
+Return the number of vertices of a reference mesh
 """
-function nvertices(meshes::RefMeshes)
-    nvert = Dict{Int,Int}()
-    for (key, value) in meshes.meshes
-        push!(nvert, key => nvertices(value.mesh))
-    end
-
-    return nvert
+function nvertices(mesh::RefMesh)
+    nvertices(mesh.mesh)
 end
 
 """
     nelements(meshes::RefMeshes)
 
-Return the number of elements for each reference mesh as a dict of id => nelements
+Return the number of elements of a reference mesh
+"""
+function nelements(mesh::RefMesh)
+    nelements(mesh.mesh)
+end
+
+"""
+    nvertices(meshes::RefMeshes)
+
+Return the number of vertices for each reference mesh as a vector of nvertices
+"""
+function nvertices(meshes::RefMeshes)
+    [nvertices(i) for i in meshes.meshes]
+end
+
+"""
+    nelements(meshes::RefMeshes)
+
+Return the number of elements for each reference mesh as a vector of nelements
 """
 function nelements(meshes::RefMeshes)
-    nelem = Dict{Int,Int}()
-    for (key, value) in meshes.meshes
-        push!(nelem, key => nelements(value.mesh))
-    end
-
-    return nelem
+    [nelements(i) for i in meshes.meshes]
 end

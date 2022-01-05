@@ -1,9 +1,9 @@
 plottype(::RefMeshes) = Viz{<:Tuple{RefMeshes}}
 
 """
-using MultiScaleTreeGraph, PlantGeom, WGLMakie, Meshes
+using PlantGeom, GLMakie
 
-file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))),"test","files","simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
 opf = read_opf(file)
 meshes = get_ref_meshes(opf)
 
@@ -11,12 +11,13 @@ viz(meshes)
 # With one shared color:
 viz(meshes, color = :green)
 # One color per reference mesh:
-viz(meshes, color = Dict(0 => :burlywood4, 1 => :springgreen4, 2 => :burlywood4))
+viz(meshes, color = Dict(1 => :burlywood4, 2 => :springgreen4, 3 => :burlywood4))
 # Or just changing the color of some:
-viz(meshes, color = Dict(0 => :burlywood4, 2 => :burlywood4))
+viz(meshes, color = Dict(1 => :burlywood4, 3 => :burlywood4))
 # One color for each vertex of the refmesh 0:
-nvertices(meshes)[1]
-viz(meshes, color = Dict(0 => 1:nvertices(meshes)[0]))
+viz(meshes, color = Dict(2 => 1:nvertices(meshes)[2]))
+# Colors as a vector (no missing values allowed here):
+viz(meshes, color = [:burlywood4, :springgreen4, :burlywood4])
 """
 function plot!(plot::Viz{<:Tuple{RefMeshes}})
     # Mesh list:
@@ -37,11 +38,12 @@ function plot!(plot::Viz{<:Tuple{RefMeshes}})
         else
             color = Dict(zip(keys(p), repeat([color], n_meshes)))
         end
-    elseif !isa(color, Dict)
+    elseif length(color) != n_meshes && !isa(color, Dict)
         error(
             "color argument should be of type Colorant ",
             "(see [Colors.jl](https://juliagraphics.github.io/Colors.jl/stable/)), or ",
-            "Dict{Int,T} such as Dict(0 => :green) or Dict(0 => [colors...])"
+            "a vector of colors, or Dict{Int,T} such as Dict(1 => :green) or ",
+            "Dict(2 => [colors...])"
         )
     end
 
@@ -59,7 +61,7 @@ function plot!(plot::Viz{<:Tuple{RefMeshes}})
     showfacets = plot[:showfacets][]
     colormap = plot[:colormap][]
 
-    for (key, value) in p
+    for (key, value) in enumerate(p)
         viz!(plot, value, color = color[key], facetcolor = facetcolor, showfacets = showfacets, colormap = colormap)
     end
 end

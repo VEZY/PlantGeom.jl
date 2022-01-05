@@ -6,14 +6,13 @@ Get all reference meshes from an mtg, usually from an OPF.
 # Examples
 
 ```julia
-using MultiScaleTreeGraph, PlantGeom
-file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))),"test","files","simple_OPF_shapes.opf")
+using PlantGeom
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
 opf = read_opf(file)
 meshes = get_ref_meshes(opf)
 
-using MeshViz, GLMakie
+using GLMakie
 viz(meshes)
-meshes.meshes[0].material
 ```
 """
 function get_ref_meshes(mtg)
@@ -28,31 +27,71 @@ function get_ref_meshes(mtg)
     return x.attributes[:ref_meshes]
 end
 
+function get_ref_mesh_index!(node, ref_meshes = get_ref_meshes(node))
+
+    # If the reference node mesh is unknown, get it:
+    if node[:geometry].ref_mesh_index === nothing
+        node[:geometry].ref_mesh_index =
+            findfirst(x -> x === node[:geometry].mesh, ref_meshes.meshes)
+    end
+
+    return node[:geometry].ref_mesh_index
+end
+
+function get_ref_mesh_index(node, ref_meshes = get_ref_meshes(node))
+    # If the reference node mesh is unknown, get it:
+    if node[:geometry].ref_mesh_index === nothing
+        return findfirst(x -> x === node[:geometry].mesh, ref_meshes.meshes)
+    end
+
+    return node[:geometry].ref_mesh_index
+end
+
+"""
+    get_ref_mesh_index!(node, ref_meshes = get_ref_meshes(node))
+    get_ref_mesh_index(node, ref_meshes = get_ref_meshes(node))
+
+Get the index of the reference mesh used in the current node.
+
+# Notes
+
+Please use the `ref_meshes` argument preferably as not giving it make the function visit the
+root node each time otherwise, and it can become a limitation when traversing a big MTG.
+"""
+get_ref_mesh_index!, get_ref_mesh_index
+
+
 """
     parse_ref_meshes(mtg)
 
 Parse the reference meshes of an OPF into RefMeshes.
 """
 function parse_ref_meshes(x)
-
-    meshes = RefMeshes(Dict{Int,RefMesh}())
+    meshes = Dict{Int,RefMesh}()
     meshBDD = meshBDD_to_meshes(x[:meshBDD])
 
     for (id, value) in x[:shapeBDD]
         push!(
-            meshes.meshes,
+            meshes,
             id => RefMesh(
                 value["name"],
                 meshBDD[value["meshIndex"]]["normals"],
                 haskey(meshBDD[value["meshIndex"]], "textureCoords") ?
                 meshBDD[value["meshIndex"]]["textureCoords"] : nothing,
-                materialBDD_to_material(x[:materialBDD][value["materialIndex"]]),
-                meshBDD[value["meshIndex"]]["mesh"]
+                x[:materialBDD][value["materialIndex"]],
+                meshBDD[value["meshIndex"]]["mesh"],
+                meshBDD[value["meshIndex"]]["enableScale"]
             )
         )
     end
 
-    return meshes
+    refmeshes = RefMeshes(RefMesh[])
+
+    for i in sort(collect(keys(meshes)))
+        push!(refmeshes.meshes, meshes[i])
+    end
+
+    return refmeshes
 end
 
 
@@ -109,19 +148,18 @@ end
 Align all reference meshes along the X axis. Used for visualisation only.
 """
 function align_ref_meshes(meshes::RefMeshes)
-    meshes_vec = Dict{Int,SimpleMesh}()
+    meshes_vec = SimpleMesh[]
     translation_vec = [0.0, 0.0, 0.0]
 
-    for (key, value) in meshes.meshes
+    for i in meshes.meshes
+        translated_vertices = [i + Vec(translation_vec...) for i in vertices(i.mesh)]
 
-        translated_vertices = [i + Vec(translation_vec...) for i in vertices(value.mesh)]
-
-        push!(meshes_vec, key => SimpleMesh(translated_vertices, topology(value.mesh)))
+        push!(meshes_vec, SimpleMesh(translated_vertices, topology(i.mesh)))
 
         # Maximum X coordinates of the newly translated mesh:
-        xmax = maximum([coordinates(i)[1] for i in translated_vertices])
+        xmax_ = maximum([coordinates(i)[1] for i in translated_vertices])
         # Update the translation for the next mesh to begin at xmax*1.1 from the last one
-        translation_vec[1] = xmax * 1.1
+        translation_vec[1] = xmax_ * 1.1
     end
 
     return meshes_vec
@@ -145,11 +183,5 @@ PlantGeom.get_ref_meshes_color(meshes)
 ```
 """
 function get_ref_meshes_color(meshes::RefMeshes)
-    mesh_cols = Dict{Int,RGBA{Float64}}()
-
-    for (key, value) in meshes.meshes
-        push!(mesh_cols, key => value.material.diffuse)
-    end
-
-    return mesh_cols
+    [i.material.diffuse for i in meshes.meshes]
 end

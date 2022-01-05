@@ -4,7 +4,7 @@ Tapering a mesh transforms it into a tapered version (*i.e.* pointy) or enlarged
 *e.g.* make a cone from a cylinder.
 """
 function taper(mesh, dUp, dDwn)
-    if dUp != 1.0 && dDwn != 1.0
+    if dUp != 1.0 && dDwn != 1.0 && !isnan(dUp) && !isnan(dDwn)
         mesh_points = mesh.points
         delta = dDwn - dUp
         Xs = map(x -> x.coords[1], mesh_points)
