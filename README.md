@@ -42,8 +42,8 @@ viz(opf, color = :z_max)
 ## Roadmap
 
 - [x] Add `read_opf()`
-- [x] Add `write_opf()`
-- [ ] Use pointers to ref meshes instead of an index. It will be more simple then.
+- [x] Add `write_opf()`. Is geometry mandatory? -> can't re-read it...
+- [x] Use pointers to ref meshes instead of an index. It will be more simple then.
 - [ ] Add `read_ops()`
 - [ ] Add recipe for simple MTG without any geometry (and remove this plot from MultiScaleTreeGraph)
 - [ ] Manage different degree of information into an MTG:

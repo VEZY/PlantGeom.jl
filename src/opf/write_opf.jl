@@ -86,11 +86,8 @@ function write_opf(file, mtg)
     end
 
     # Parsing the materialBDD section.
-    #! NB: the materials should be unique and not repeated
-    #! for each mesh. The mesh should only reference a material.
-    #! Change that when reading and writing opf
     materialBDD = addelement!(opf_elm, "materialBDD")
-    for (key, mesh) in mtg[:ref_meshes].meshes
+    for (key, mesh) in enumerate(mtg[:ref_meshes].meshes)
         mat_elm = addelement!(materialBDD, "material")
         mat_elm["Id"] = key
 
@@ -127,7 +124,7 @@ function write_opf(file, mtg)
 
     # Parsing the shapeBDD section.
     shapeBDD = addelement!(opf_elm, "shapeBDD")
-    for (key, mesh) in mtg[:ref_meshes].meshes
+    for (key, mesh) in enumerate(mtg[:ref_meshes].meshes)
         shape_elm = addelement!(shapeBDD, "shape")
         shape_elm["Id"] = key
 
@@ -143,7 +140,6 @@ function write_opf(file, mtg)
             string(key)
         )
 
-        #! NB: here we should only reference the material (see above):
         addelement!(
             shape_elm,
             "materialIndex",
@@ -204,16 +200,16 @@ end
 Write the MTG topology, attributes and geometry into XML format. This function is used to
 write the "topology" section of the OPF.
 """
-function mtg_topology_to_xml!(node, xml_parent)
+function mtg_topology_to_xml!(node, xml_parent, ref_meshes = get_ref_meshes(node))
 
     if isroot(node)
-        xml_parent = attributes_to_xml(node, xml_parent)
+        xml_parent = attributes_to_xml(node, xml_parent, ref_meshes)
     end
 
     if !isleaf(node)
         for chnode in MultiScaleTreeGraph.ordered_children(node)
-            xml_node = attributes_to_xml(chnode, xml_parent)
-            mtg_topology_to_xml!(chnode, xml_node)
+            xml_node = attributes_to_xml(chnode, xml_parent, ref_meshes)
+            mtg_topology_to_xml!(chnode, xml_node, ref_meshes)
         end
     end
 end
@@ -223,7 +219,7 @@ end
 
 Write an MTG node into an XML node.
 """
-function attributes_to_xml(node, xml_parent)
+function attributes_to_xml(node, xml_parent, ref_meshes)
     opf_link = isroot(node) ? "topology" : mtg_to_opf_link(node.MTG.link)
     xml_node = addelement!(xml_parent, opf_link)
     xml_node["class"] = node.MTG.symbol
@@ -235,29 +231,29 @@ function attributes_to_xml(node, xml_parent)
             geom = addelement!(xml_node, string(key))
             geom["class"] = "Mesh"
 
-            if haskey(node[key], :shapeIndex)
-                # shapeIndex is optional, and only needed for the mesh with a reference mesh
-                addelement!(geom, "shapeIndex", string(node[key][:shapeIndex]))
+            if node[key].ref_mesh_index === nothing
+                get_ref_mesh_index!(node, ref_meshes)
             end
+            addelement!(geom, "shapeIndex", string(node[key].ref_mesh_index))
+
             addelement!(
                 geom,
                 "mat",
                 string(
                     "\n",
-                    join(node[key][:mat][1, :], "\t"),
+                    join(node[key].transformation_matrix[1, :], "\t"),
                     "\n",
-                    join(node[key][:mat][2, :], "\t"),
+                    join(node[key].transformation_matrix[2, :], "\t"),
                     "\n",
-                    join(node[key][:mat][3, :], "\t"),
+                    join(node[key].transformation_matrix[3, :], "\t"),
                     "\n"
                 )
             )
             #? NB: Only the three first rows are written as the fourth is always the same
-            addelement!(geom, "dUp", string(node[key][:dUp]))
-            addelement!(geom, "dDwn", string(node[key][:dDwn]))
-        elseif key == :mesh || key == :ref_meshes
-            # We don't write the mesh directly in the opf, as it can be recomputed from
-            # the reference meshes
+            addelement!(geom, "dUp", string(node[key].dUp))
+            addelement!(geom, "dDwn", string(node[key].dDwn))
+        elseif key == :ref_meshes
+            # We don't write the reference meshes here but before in the opf
             continue
         else
             addelement!(xml_node, string(key), string(node[key]))
