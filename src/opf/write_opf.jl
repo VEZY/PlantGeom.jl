@@ -25,6 +25,9 @@ file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
 opf = read_opf(file)
 
 write_opf("test.opf", opf)
+file = "test.opf"
+opf2 = read_opf(file)
+viz(opf2)
 ```
 """
 function write_opf(file, mtg)
@@ -45,7 +48,7 @@ function write_opf(file, mtg)
         mesh_elm = addelement!(meshBDD, "mesh")
         mesh_elm["name"] = mesh.name
         mesh_elm["shape"] = ""
-        mesh_elm["Id"] = key
+        mesh_elm["Id"] = key - 1 # opf uses 0-based indexing
         mesh_elm["enableScale"] = mesh.taper
 
         addelement!(
@@ -89,7 +92,7 @@ function write_opf(file, mtg)
     materialBDD = addelement!(opf_elm, "materialBDD")
     for (key, mesh) in enumerate(mtg[:ref_meshes].meshes)
         mat_elm = addelement!(materialBDD, "material")
-        mat_elm["Id"] = key
+        mat_elm["Id"] = key - 1 # opf uses 0-based indexing
 
         addelement!(
             mat_elm,
@@ -126,7 +129,7 @@ function write_opf(file, mtg)
     shapeBDD = addelement!(opf_elm, "shapeBDD")
     for (key, mesh) in enumerate(mtg[:ref_meshes].meshes)
         shape_elm = addelement!(shapeBDD, "shape")
-        shape_elm["Id"] = key
+        shape_elm["Id"] = key - 1 # opf uses 0-based indexing
 
         addelement!(
             shape_elm,
@@ -234,7 +237,8 @@ function attributes_to_xml(node, xml_parent, ref_meshes)
             if node[key].ref_mesh_index === nothing
                 get_ref_mesh_index!(node, ref_meshes)
             end
-            addelement!(geom, "shapeIndex", string(node[key].ref_mesh_index))
+            addelement!(geom, "shapeIndex", string(node[key].ref_mesh_index - 1))
+            # NB: opf uses 0-based indexing, that's why we use ref_mesh_index - 1
 
             addelement!(
                 geom,
