@@ -1,3 +1,10 @@
+xmax(x::Node) = x[:geometry] !== nothing ? xmax(x[:geometry].mesh) : nothing
+xmin(x::Node) = x[:geometry] !== nothing ? xmin(x[:geometry].mesh) : nothing
+ymax(x::Node) = x[:geometry] !== nothing ? ymax(x[:geometry].mesh) : nothing
+ymin(x::Node) = x[:geometry] !== nothing ? ymin(x[:geometry].mesh) : nothing
+zmax(x::Node) = x[:geometry] !== nothing ? zmax(x[:geometry].mesh) : nothing
+zmin(x::Node) = x[:geometry] !== nothing ? zmin(x[:geometry].mesh) : nothing
+
 xmax(x) = map_coord(maximum, x, 1)
 xmin(x) = map_coord(minimum, x, 1)
 ymax(x) = map_coord(maximum, x, 2)
@@ -10,7 +17,7 @@ zmin(x) = map_coord(minimum, x, 3)
     ymax(x)
     zmax(x)
 
-Get the maximum x, y or z coordinates of a mesh.
+Get the maximum x, y or z coordinates of a mesh or a Node.
 """
 xmax, ymax, zmax
 
@@ -19,7 +26,7 @@ xmax, ymax, zmax
     ymin(x)
     zmin(x)
 
-Get the minimum x, y or z coordinates of a mesh.
+Get the minimum x, y or z coordinates of a mesh or a Node.
 """
 xmin, ymin, zmin
 
