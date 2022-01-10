@@ -10,8 +10,8 @@
 
 The package is designed around [MultiScaleTreeGraph](https://github.com/VEZY/MultiScaleTreeGraph.jl) that serves as the basic structure for the plant topology and attributes.
 
-!!! note
-    `:geometry` is a reserved attribute used to hold each node (*e.g.* organ) 3D geometry as a special structure ([`geometry`](@ref)).
+
+Note that `:geometry` is a reserved attribute used to hold each node (*e.g.* organ) 3D geometry as a special structure ([`geometry`](@ref)).
 
 The package provides different functionalities, the main ones being:
 
