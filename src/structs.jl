@@ -56,18 +56,22 @@ mesh (optional to save memory).
 
 # Note
 
-The ref_mesh points to a [`RefMesh`](@ref) stored in the `:ref_meshes` attribute of the
+The ref_mesh usually points to a [`RefMesh`](@ref) stored in the `:ref_meshes` attribute of the
 root node of the MTG.
 
-Storing the index of the reference mesh (`ref_mesh_index`) in the database allows a faster
+Although optinal, storing the index of the reference mesh (`ref_mesh_index`) in the database allows a faster
 writing of the MTG as an OPF to disk.
 
 If no transformation matrix is needed, you can use `I` from the Linear Algebra package (lazy)
+
+The `transformation` field should a `CoordinateTransformations.jl`'s transformation. In case
+no transformation is needed, use `IdentityTransformation()`. If you already have the
+transformation matrix, you can pass it to `LinearMap()`.
 """
-mutable struct geometry{M<:RefMesh,T,S}
+mutable struct geometry{M<:RefMesh,S}
     ref_mesh::M
     ref_mesh_index::Union{Int,Nothing}
-    transformation::T
+    transformation::Transformation #! replace by concrete types ?
     dUp::S
     dDwn::S
     mesh::Union{SimpleMesh,Nothing}

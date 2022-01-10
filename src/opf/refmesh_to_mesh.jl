@@ -35,7 +35,7 @@ function refmesh_to_mesh(node)
 
         scaled_mesh = Array{Point3}(undef, nvertices(ref_mesh))
         for (i, p) in enumerate(ref_mesh.points)
-            scaled_mesh[i] = Point3((node[:geometry].transformation*vcat(p.coords, 1.0))[1:3])
+            scaled_mesh[i] = Point3(node[:geometry].transformation(p.coords))
         end
 
         return SimpleMesh(scaled_mesh, ref_mesh.topology)
@@ -57,7 +57,7 @@ function refmesh_to_mesh!(node)
 
         scaled_mesh = Array{Point3}(undef, nvertices(ref_mesh))
         for (i, p) in enumerate(ref_mesh.points)
-            scaled_mesh[i] = Point3((node[:geometry].transformation*vcat(p.coords, 1.0))[1:3])
+            scaled_mesh[i] = Point3(node[:geometry].transformation(p.coords))
         end
 
         node[:geometry].mesh = SimpleMesh(scaled_mesh, ref_mesh.topology)

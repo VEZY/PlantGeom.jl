@@ -17,6 +17,8 @@ import EzXML: XMLDocument, ElementNode, setroot!, addelement!
 import EzXML: prettyprint # to remove
 import StaticArrays: SMatrix
 import LinearAlgebra: I # Used for geometry parsing in OPF
+import Rotations: RotXYZ
+import CoordinateTransformations: Transformation, Translation, LinearMap, ∘
 
 include("structs.jl")
 include("helpers.jl")
@@ -28,6 +30,7 @@ include("opf/write_opf.jl")
 include("makie_recipes/RefMeshes_recipes.jl")
 include("makie_recipes/opf_recipe.jl")
 include("meshes/summary_coordinates.jl")
+include("meshes/transformations.jl")
 
 # 3D Plotting (OPF):
 export get_ref_meshes
@@ -37,5 +40,6 @@ export read_opf
 export taper
 export refmesh_to_mesh
 export xmax, ymax, zmax, xmin, ymin, zmin
+export transform_mesh!
 
 end

@@ -11,7 +11,8 @@ viz(opf)
 
 # If you need to plot the opf several times, you better cache the mesh in the node geometry
 # like so:
-transform!(opf, node -> refmesh_to_mesh!(node))
+transform!(opf, refmesh_to_mesh!)
+
 # Then plot it again like before, and it will be faster:
 viz(opf)
 

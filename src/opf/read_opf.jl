@@ -250,12 +250,12 @@ The transformation matrix is 3*4.
 elem = elem.content
 """
 function parse_geometry(elem)
-    geom = Dict{Symbol,Union{Int,Float64,SMatrix{4,4}}}()
+    geom = Dict{Symbol,Union{Int,Float64,SMatrix{3,4}}}()
     for i in eachelement(elem)
         if i.name == "shapeIndex"
             push!(geom, :shapeIndex => parse(Int, i.content) + 1)
         elseif i.name == "mat"
-            push!(geom, :mat => SMatrix{4,4}(transpose(reshape(append!(parse_opf_array(i.content), [0 0 0 1]), 4, 4))))
+            push!(geom, :mat => SMatrix{3,4}(reshape(parse_opf_array(i.content), 4, 3)'))
         elseif i.name == "dUp"
             push!(geom, :dUp => parse(Float64, i.content))
         elseif i.name == "dDwn"
@@ -335,14 +335,32 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
         elseif elem.name == "geometry"
 
             geom = parse_geometry(elem)
-            # Parse the geometry (transformation matrix, reference mesh + index and dUp and dDwn):
+
+            # Parse the geometry (transformation, reference mesh + index and dUp and dDwn):
             if haskey(geom, :shapeIndex)
+                # Rotation + Scaling. No need to decouple them here, but in case we need to
+                # in the future, see: https://stackoverflow.com/a/29618569/6947799
+                # See also this for decomposition: https://colab.research.google.com/drive/1ImBB-N6P9zlNMCBH9evHD6tjk0dzvy1_
+
+                #! OK what I could do is use my own transformation function that adds w (=1)
+                #! to the Point3 when transforming it with the 4x4 matrix?
+
+                cartesian_rotation = geom[:mat][1:3, 1:3]
+
+                transformation = Translation(geom[:mat][1:3, 4]) ∘ LinearMap(cartesian_rotation)
+                # NB: We read an homogeneous transformation matrix from the OPF, but we work
+                # with cartesian coordinates in PlantGeom by design. So we deconstruct our
+                # homogeneous matrix into the two corresponding rotation and translation
+                # matrices, and create a transformation from them using transformation
+                # composition from CoordinateTransformations.jl. Note that our homogeneous
+                # matrix is rotate first, then translate (hence the order of transformation)
+
                 push!(
                     attrs,
                     Symbol(elem.name) => geometry(
                         ref_meshes.meshes[geom[:shapeIndex]],
                         geom[:shapeIndex],
-                        geom[:mat],
+                        transformation,
                         geom[:dUp],
                         geom[:dDwn],
                         nothing
