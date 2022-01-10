@@ -44,7 +44,7 @@ end
     geometry(
         ref_mesh::M
         ref_mesh_index::Union{Int,Nothing}
-        transformation_matrix::T
+        transformation::T
         dUp::S
         dDwn::S
         mesh::Union{SimpleMesh,Nothing}
@@ -67,7 +67,7 @@ If no transformation matrix is needed, you can use `I` from the Linear Algebra p
 mutable struct geometry{M<:RefMesh,T,S}
     ref_mesh::M
     ref_mesh_index::Union{Int,Nothing}
-    transformation_matrix::T
+    transformation::T
     dUp::S
     dDwn::S
     mesh::Union{SimpleMesh,Nothing}
