@@ -43,7 +43,7 @@ file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_s
 opf = read_opf(file)
 ```
 """
-function read_opf(file, attr_type = Dict, mtg_type = MutableNodeMTG)
+function read_opf(file, attr_type = Dict, mtg_type = MultiScaleTreeGraph.MutableNodeMTG)
 
     doc = readxml(file)
     xroot = root(doc)
@@ -176,6 +176,8 @@ function parse_materialBDD!(node)
     )
     metBDD = Dict{Int,Material}()
     for (key, value) in metBDDraw
+        # key = 1
+        # value = metBDDraw[key]
         push!(metBDD, key => materialBDD_to_material(value))
     end
 

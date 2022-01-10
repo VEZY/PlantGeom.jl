@@ -4,7 +4,7 @@ type model. All data is stored as RGBα for Red, Green, Blue and transparency.
 """
 struct Material{T,S<:Colorant}
     emission::S
-    ambiant::S
+    ambient::S
     diffuse::S
     specular::S
     shininess::T

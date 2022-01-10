@@ -21,7 +21,7 @@ matrix (`:geometry`).
 
 ```julia
 using PlantGeom
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
 opf = read_opf(file)
 
 write_opf("test.opf", opf)
@@ -102,8 +102,8 @@ function write_opf(file, mtg)
 
         addelement!(
             mat_elm,
-            "ambiant",
-            rgba_to_string(mesh.material.ambiant)
+            "ambient",
+            rgba_to_string(mesh.material.ambient)
         )
 
         addelement!(
@@ -140,19 +140,19 @@ function write_opf(file, mtg)
         addelement!(
             shape_elm,
             "meshIndex",
-            string(key)
+            string(key - 1)
         )
 
         addelement!(
             shape_elm,
             "materialIndex",
-            string(key)
+            string(key - 1)
         )
     end
 
     # Parsing the attributeBDD section:
     attrBDD = addelement!(opf_elm, "attributeBDD")
-    attrs = get_features(mtg)
+    attrs = MultiScaleTreeGraph.get_features(mtg)
     for i = 1:size(attrs, 1)
         shape_elm = addelement!(attrBDD, "attribute")
         shape_elm["name"] = string(attrs[i, 1])
@@ -227,7 +227,7 @@ function attributes_to_xml(node, xml_parent, ref_meshes)
     xml_node = addelement!(xml_parent, opf_link)
     xml_node["class"] = node.MTG.symbol
     xml_node["scale"] = node.MTG.scale
-    xml_node["Id"] = node.id #! maybe this should be `node.MTG.index` instead ? But I think is is unique
+    xml_node["id"] = node.id #! maybe this should be `node.MTG.index` instead ? But I think is is unique
 
     for key in keys(node.attributes)
         if key == :geometry
@@ -240,16 +240,19 @@ function attributes_to_xml(node, xml_parent, ref_meshes)
             addelement!(geom, "shapeIndex", string(node[key].ref_mesh_index - 1))
             # NB: opf uses 0-based indexing, that's why we use ref_mesh_index - 1
 
+            # Make the homogeneous matrix from the transformations:
+            mat4x4 = hcat(node[key].transformation.linear, node[key].transformation.translation)
+
             addelement!(
                 geom,
                 "mat",
                 string(
                     "\n",
-                    join(node[key].transformation[1, :], "\t"),
+                    join(mat4x4[1, :], "\t"),
                     "\n",
-                    join(node[key].transformation[2, :], "\t"),
+                    join(mat4x4[2, :], "\t"),
                     "\n",
-                    join(node[key].transformation[3, :], "\t"),
+                    join(mat4x4[3, :], "\t"),
                     "\n"
                 )
             )
