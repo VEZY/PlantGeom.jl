@@ -245,11 +245,11 @@ function attributes_to_xml(node, xml_parent, ref_meshes)
                 "mat",
                 string(
                     "\n",
-                    join(node[key].transformation_matrix[1, :], "\t"),
+                    join(node[key].transformation[1, :], "\t"),
                     "\n",
-                    join(node[key].transformation_matrix[2, :], "\t"),
+                    join(node[key].transformation[2, :], "\t"),
                     "\n",
-                    join(node[key].transformation_matrix[3, :], "\t"),
+                    join(node[key].transformation[3, :], "\t"),
                     "\n"
                 )
             )
