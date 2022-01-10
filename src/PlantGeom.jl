@@ -18,7 +18,7 @@ import EzXML: prettyprint # to remove
 import StaticArrays: SMatrix
 import LinearAlgebra: I # Used for geometry parsing in OPF
 import Rotations: RotXYZ
-import CoordinateTransformations: LinearMap, ∘
+import CoordinateTransformations: Transformation, Translation, LinearMap, ∘
 
 include("structs.jl")
 include("helpers.jl")
@@ -40,5 +40,6 @@ export read_opf
 export taper
 export refmesh_to_mesh
 export xmax, ymax, zmax, xmin, ymin, zmin
+export transform_mesh!
 
 end

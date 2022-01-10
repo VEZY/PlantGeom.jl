@@ -346,16 +346,8 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
                 #! to the Point3 when transforming it with the 4x4 matrix?
 
                 cartesian_rotation = geom[:mat][1:3, 1:3]
-                # The translation is just the 3 first values from the last column:
-                cartesian_translation =
-                    SMatrix{3,3}(
-                        hcat(
-                            one(cartesian_rotation)[1:3, 1:2],
-                            geom[:mat][1:3, 4]
-                        )
-                    )
 
-                transformation = LinearMap(cartesian_rotation) ∘ LinearMap(cartesian_translation)
+                transformation = Translation(geom[:mat][1:3, 4]) ∘ LinearMap(cartesian_rotation)
                 # NB: We read an homogeneous transformation matrix from the OPF, but we work
                 # with cartesian coordinates in PlantGeom by design. So we deconstruct our
                 # homogeneous matrix into the two corresponding rotation and translation

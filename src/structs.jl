@@ -68,10 +68,10 @@ The `transformation` field should a `CoordinateTransformations.jl`'s transformat
 no transformation is needed, use `IdentityTransformation()`. If you already have the
 transformation matrix, you can pass it to `LinearMap()`.
 """
-mutable struct geometry{M<:RefMesh,T,S}
+mutable struct geometry{M<:RefMesh,S}
     ref_mesh::M
     ref_mesh_index::Union{Int,Nothing}
-    transformation::T
+    transformation::Transformation #! replace by concrete types ?
     dUp::S
     dDwn::S
     mesh::Union{SimpleMesh,Nothing}
