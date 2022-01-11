@@ -18,6 +18,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [compat]
 ColorSchemes = "3"
 Colors = "0.12"
+CoordinateTransformations = "0.6"
 EzXML = "1"
 Makie = "0.15, 0.16"
 MeshViz = "0.3"
