@@ -174,7 +174,7 @@ function parse_materialBDD!(node)
         node,
         [Float64, Float64, Float64, Float64, Float64]
     )
-    metBDD = Dict{Int,Material}()
+    metBDD = Dict{Int,Phong}()
     for (key, value) in metBDDraw
         # key = 1
         # value = metBDDraw[key]

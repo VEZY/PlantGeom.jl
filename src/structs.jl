@@ -1,8 +1,14 @@
 """
+A material for the illumination model (e.g. Phong illumination).
+"""
+abstract type Material end
+
+
+"""
 Data structure for a mesh material that is used to describe the light components of a [Phong reflection](https://en.wikipedia.org/wiki/Phong_reflection_model)
 type model. All data is stored as RGBα for Red, Green, Blue and transparency.
 """
-struct Material{T,S<:Colorant}
+struct Phong{T,S<:Colorant} <: Material
     emission::S
     ambient::S
     diffuse::S
@@ -21,7 +27,7 @@ RefMesh type. Stores all information about a Mesh:
 
 
 """
-struct RefMesh{S<:Union{String,SubString},M<:Material}
+struct RefMesh{S<:Union{String,SubString},M<:Union{Material,Colorant}}
     name::S
     normals::Vector{Float64}
     textureCoords::Vector{Float64}

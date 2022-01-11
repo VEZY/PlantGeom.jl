@@ -132,7 +132,7 @@ end
 Parse a material in opf format to a [`material`](@ref)
 """
 function materialBDD_to_material(x)
-    Material(
+    Phong(
         RGBA(x["emission"]...),
         RGBA(x["ambient"]...),
         RGBA(x["diffuse"]...),
@@ -183,5 +183,13 @@ PlantGeom.get_ref_meshes_color(meshes)
 ```
 """
 function get_ref_meshes_color(meshes::RefMeshes)
-    [i.material.diffuse for i in meshes.meshes]
+    [material_single_color(i.material) for i in meshes.meshes]
+end
+
+function material_single_color(x::Phong)
+    x.diffuse
+end
+
+function material_single_color(x::Colorant)
+    x
 end

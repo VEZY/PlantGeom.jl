@@ -41,5 +41,7 @@ export refmesh_to_mesh
 export xmax, ymax, zmax, xmin, ymin, zmin
 export refmesh_to_mesh!
 export transform_mesh!
+export Material, Phong
+export RefMesh, RefMeshes
 
 end

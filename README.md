@@ -58,6 +58,8 @@ transform!(opf, refmesh_to_mesh!)
 - [x] Use pointers to ref meshes instead of an index. It will be more simple then.
 - [ ] Add `read_ops()`
 - [ ] Add recipe for simple MTG without any geometry (and remove this plot from MultiScaleTreeGraph)
+- [ ] Use Primitives from Meshes as reference meshes.
+- [ ] Import reference meshes from disk (e.g. export from blender)
 - [ ] Add a ref mesh for wood
 - [ ] Add a ref mesh for a leaf
 - [ ] Add tutorials
