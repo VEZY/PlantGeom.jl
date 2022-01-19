@@ -5,9 +5,9 @@ import MeshViz: viz, viz!, Viz
 
 # For 3D (OPF):
 import Meshes: SimpleMesh, connect, Point3, Ngon, vertices, topology, Vec, coordinates
-import Meshes: nvertices, nelements
+import Meshes: nvertices, nelements, normal, Triangle
 import Makie: plot!, Attributes
-import Colors: RGBA, Colorant
+import Colors: RGBA, Colorant, RGB
 import ColorSchemes: get, rainbow
 
 # Read OPF:
@@ -15,7 +15,7 @@ import EzXML: readxml, root, StreamReader, attributes, expandtree # For reading 
 import EzXML: eachelement, nodename, nodecontent, elements
 import EzXML: XMLDocument, ElementNode, setroot!, addelement!
 import EzXML: prettyprint # to remove
-import StaticArrays: SMatrix
+import StaticArrays: SMatrix, SVector
 import LinearAlgebra: I # Used for geometry parsing in OPF
 import CoordinateTransformations: Transformation, Translation, LinearMap, ∘
 

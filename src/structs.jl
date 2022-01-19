@@ -27,16 +27,30 @@ RefMesh type. Stores all information about a Mesh:
 
 
 """
-struct RefMesh{S<:Union{String,SubString},M<:Union{Material,Colorant}}
+struct RefMesh{S<:Union{String,SubString},M<:Union{Material,Colorant},N<:SVector,T<:Union{SVector,Nothing}}
     name::S
-    normals::Vector{Float64}
-    textureCoords::Vector{Float64}
-    material::M
     mesh::SimpleMesh
+    normals::N
+    textureCoords::T
+    material::M
     taper::Bool
 end
 
 #! Make a method that computes the normals and textureCoords from the mesh
+
+function RefMesh(name, mesh, material = RGB(220 / 255, 220 / 255, 220 / 255))
+    RefMesh(
+        name,
+        SVector{length(mesh.topology.connec)}(
+            normal(Triangle(mesh.points[[tri.indices...]])) for tri in mesh.topology.connec
+        ),
+        nothing,
+        material,
+        mesh,
+        false
+    )
+end
+
 
 """
 RefMeshes type. Data base that stores all [`RefMesh`](@ref) in an MTG. Usually stored in the
