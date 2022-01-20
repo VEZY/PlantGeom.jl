@@ -6,7 +6,8 @@ import MeshViz: viz, viz!, Viz
 # For 3D (OPF):
 import Meshes: SimpleMesh, connect, Point3, Point2, Ngon, vertices, topology, Vec
 import Meshes: nvertices, nelements, normal, Triangle, coordinates
-import Makie: plot!, Attributes
+import Makie: plot!, Attributes, scatter!, lines!, hidedecorations!, hidespines!, @recipe
+import Makie: Combined, theme
 import Colors: RGBA, Colorant, RGB
 import ColorSchemes: get, rainbow
 
@@ -28,6 +29,8 @@ include("opf/refmesh_to_mesh.jl")
 include("opf/write_opf.jl")
 include("makie_recipes/RefMeshes_recipes.jl")
 include("makie_recipes/opf_recipe.jl")
+include("makie_recipes/mtg_recipe_helpers.jl")
+include("makie_recipes/mtg_tree_recipe.jl")
 include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
 
@@ -43,5 +46,6 @@ export refmesh_to_mesh!
 export transform_mesh!
 export Material, Phong
 export RefMesh, RefMeshes
+export MTGPlot, mtgplot, mtgplot!
 
 end
