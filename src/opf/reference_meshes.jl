@@ -71,14 +71,24 @@ function parse_ref_meshes(x)
     meshBDD = meshBDD_to_meshes(x[:meshBDD])
 
     for (id, value) in x[:shapeBDD]
+        normals = meshBDD[value["meshIndex"]]["normals"]
+        normals = SVector{length(normals) ÷ 3}(Point3(normals[[i, i + 1, i + 2]]) for i in 1:3:length(normals))
+
+
+        if haskey(meshBDD[value["meshIndex"]], "textureCoords")
+            text_coord = meshBDD[value["meshIndex"]]["textureCoords"]
+            text_coord = SVector{length(text_coord) ÷ 2}(Point2(text_coord[[i, i + 1]]) for i in 1:2:length(text_coord))
+        else
+            text_coord = nothing
+        end
+
         push!(
             meshes,
             id => RefMesh(
                 value["name"],
                 meshBDD[value["meshIndex"]]["mesh"],
-                meshBDD[value["meshIndex"]]["normals"],
-                haskey(meshBDD[value["meshIndex"]], "textureCoords") ?
-                meshBDD[value["meshIndex"]]["textureCoords"] : nothing,
+                normals,
+                text_coord,
                 x[:materialBDD][value["materialIndex"]],
                 meshBDD[value["meshIndex"]]["enableScale"]
             )

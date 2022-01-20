@@ -60,7 +60,7 @@ function write_opf(file, mtg)
         norm_elm = addelement!(
             mesh_elm,
             "normals",
-            string("\n", join(mesh.normals, "\t"), "\n")
+            string("\n", join(vcat([[p.coords...] for p in mesh.normals]...), "\t"), "\n")
         )
 
         if length(mesh.texture_coords) > 0
@@ -68,7 +68,7 @@ function write_opf(file, mtg)
             norm_elm = addelement!(
                 mesh_elm,
                 "textureCoords",
-                string("\n", join(mesh.texture_coords, "\t"), "\n")
+                string("\n", join(vcat([[p.coords...] for p in mesh.texture_coords]...), "\t"), "\n")
             )
         end
 

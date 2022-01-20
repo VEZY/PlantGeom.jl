@@ -4,8 +4,8 @@ using MultiScaleTreeGraph
 import MeshViz: viz, viz!, Viz
 
 # For 3D (OPF):
-import Meshes: SimpleMesh, connect, Point3, Ngon, vertices, topology, Vec, coordinates
-import Meshes: nvertices, nelements, normal, Triangle
+import Meshes: SimpleMesh, connect, Point3, Point2, Ngon, vertices, topology, Vec
+import Meshes: nvertices, nelements, normal, Triangle, coordinates
 import Makie: plot!, Attributes
 import Colors: RGBA, Colorant, RGB
 import ColorSchemes: get, rainbow
