@@ -1,6 +1,18 @@
 plottype(::MultiScaleTreeGraph.Node) = Viz{<:Tuple{MultiScaleTreeGraph.Node}}
 
 """
+    viz(opf::MultiScaleTreeGraph.Node; kwargs...)
+    viz!(opf::MultiScaleTreeGraph.Node; kwargs...)
+
+Vizualise the 3D geometry of an MTG (usually read from an OPF). This function search for
+the `:geometry` attribute in each node of the MTG, and build the vizualisation using the
+`mesh` field, or the reference meshes and the associated transformation matrix if missing.
+
+This function needs 3D information first.
+
+# Examples
+
+```julia
 using MultiScaleTreeGraph, PlantGeom, GLMakie
 
 file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
@@ -34,7 +46,10 @@ viz(opf, color = :z_max)
 # Or even coloring by the value of the Z coordinates of each vertex:
 transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.points]) => :z, ignore_nothing = true)
 viz(opf, color = :z, showfacets = true)
+```
 """
+viz, viz!
+
 function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
     # Mesh list:
     opf = plot[:object][]

@@ -7,22 +7,37 @@
     )
 end
 
+
 """
+    diagram(opf::MultiScaleTreeGraph.Node; kwargs...)
+    diagram!(opf::MultiScaleTreeGraph.Node; kwargs...)
+
+Make a diagram of the MTG tree, paired with a `Makie.jl` backend.
+
+See also [`RecipesBase.apply_recipe`](@ref) for the same plot with a `Plots.jl` backend.
+
+# Examples
+
+```julia
 using PlantGeom, GLMakie
 
 file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
 # file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
 
 opf = read_opf(file)
+
 diagram(opf)
 
 # We can also color the 3d plot with several options:
 # With one shared color:
 diagram(opf, color = :red)
 
-# Or coloring by opf attribute, e.g. using the nodes Z coordinates:
+# Or colouring by opf attribute, *e.g.* using the nodes Z coordinates:
 diagram(opf, color = :ZZ)
+```
 """
+diagram, diagram!
+
 function Makie.plot!(p::Diagram{<:Tuple{MultiScaleTreeGraph.Node{<:AbstractNodeMTG,T}} where {T}})
 
     mtg = p[1][]

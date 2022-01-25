@@ -20,6 +20,7 @@ import EzXML: prettyprint # to remove
 import StaticArrays: SMatrix, SVector
 import LinearAlgebra: I # Used for geometry parsing in OPF
 import CoordinateTransformations: Transformation, Translation, LinearMap, ∘
+import RecipesBase
 
 include("structs.jl")
 include("helpers.jl")
@@ -34,6 +35,8 @@ include("makie_recipes/mtg_recipe_helpers.jl")
 include("makie_recipes/mtg_tree_recipe.jl")
 include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
+include("ref_meshes/cylinder_refmesh.jl")
+include("plots_recipes/plots_recipe.jl")
 
 # 3D Plotting (OPF):
 export get_ref_meshes
@@ -47,6 +50,7 @@ export refmesh_to_mesh!
 export transform_mesh!
 export Material, Phong
 export RefMesh, RefMeshes
-export MTGPlot, mtgplot, mtgplot!
+export Diagram, diagram, diagram!
+export cylinder
 
 end

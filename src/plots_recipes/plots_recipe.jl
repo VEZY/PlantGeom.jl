@@ -1,14 +1,6 @@
-# using MultiScaleTreeGraph
-# using Plots
-# using ColorSchemes
-# plotlyjs()
-
-# file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))), "test", "files", "simple_plant.mtg")
-# mtg = read_mtg(file)
-# plot(mtg)
-RecipesBase.@recipe function f(h::Node; mode = "2d")
-    branching_order!(mtg)
-    df_coordinates = MultiScaleTreeGraph.mtg_coordinates_df(mtg, force = true)
+RecipesBase.@recipe function f(mtg::MultiScaleTreeGraph.Node; mode = "2d")
+    MultiScaleTreeGraph.branching_order!(mtg)
+    df_coordinates = mtg_coordinates_df(mtg, force = true)
     df_coordinates[!, :branching_order] = descendants(mtg, :branching_order, self = true)
 
     x = df_coordinates.XX
@@ -20,7 +12,7 @@ RecipesBase.@recipe function f(h::Node; mode = "2d")
         y2 = [df_coordinates.YY_from[i], df_coordinates.YY[i]]
         z2 = [df_coordinates.ZZ_from[i], df_coordinates.ZZ[i]]
 
-        @series begin
+        RecipesBase.@series begin
             label := ""
             seriescolor := :black
             if mode == "2d"
@@ -33,7 +25,7 @@ RecipesBase.@recipe function f(h::Node; mode = "2d")
         end
     end
 
-    @series begin
+    RecipesBase.@series begin
         label := ""
         seriescolor := :viridis
         marker_z := df_coordinates.branching_order
@@ -55,3 +47,28 @@ RecipesBase.@recipe function f(h::Node; mode = "2d")
 
     end
 end
+
+
+"""
+    plot(opf::MultiScaleTreeGraph.Node; kwargs...)
+    plot!(opf::MultiScaleTreeGraph.Node; kwargs...)
+
+Make a diagram of the MTG tree, paired with a `Plots.jl` backend.
+
+See also [`diagram`](@ref) for the same plot with a `Makie.jl` backend.
+
+# Examples
+
+```julia
+using PlantGeom, Plots
+plotlyjs()
+
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+# file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
+
+opf = read_opf(file)
+
+plot(opf)
+```
+"""
+RecipesBase.apply_recipe
