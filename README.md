@@ -57,9 +57,10 @@ transform!(opf, refmesh_to_mesh!)
 - [x] Add `write_opf()`.
 - [x] Use pointers to ref meshes instead of an index. It will be more simple then.
 - [ ] Add `read_ops()`
-- [ ] Add recipe for simple MTG without any geometry (and remove this plot from MultiScaleTreeGraph)
-- [ ] Use Primitives from Meshes as reference meshes.
-- [ ] Import reference meshes from disk (e.g. export from blender)
+- [x] Add recipe for simple MTG without any geometry (and remove this plot from MultiScaleTreeGraph)
+- [ ] Use Primitives from Meshes as reference meshes:
+  - [ ] I added cylinder, but remove it whenever it is available from Meshes.jl.
+- [ ] Import reference meshes from disk (e.g. export from blender). This is done for the cylinder. Document it.
 - [ ] Add a ref mesh for wood
 - [ ] Add a ref mesh for a leaf
 - [ ] Add tutorials
