@@ -4,7 +4,7 @@ CurrentModule = PlantGeom
 
 # PlantGeom
 
-Documentation for [PlantGeom](https://github.com/VEZY/PlantGeom.jl), a package for everything 3D in plants.
+Documentation for [PlantGeom](https://github.com/VEZY/PlantGeom.jl), a package about everything 3D-related for plants.
 
 ## Introduction
 
@@ -16,14 +16,5 @@ The package is designed around [MultiScaleTreeGraph](https://github.com/VEZY/Mul
 The package provides different functionalities, the main ones being:
 
 - IO for the OPF file format (see [`read_opf`](@ref) and [`write_opf`](@ref));
-- plotting using [`viz`](@ref) and [`viz!`](@ref), optionally using colouring by attribute;
+- plotting using [`viz`](@ref) and [`viz!`](@ref) for explicit 3D plotting, optionally using colouring by attribute, and [`diagram`](@ref) for plotting a diagram of the MTG tree;
 - mesh transformations using [`transform_mesh!`](@ref)
-
-## API
-
-```@index
-```
-
-```@autodocs
-Modules = [PlantGeom]
-```
