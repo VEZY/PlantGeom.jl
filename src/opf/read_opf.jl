@@ -292,7 +292,7 @@ parse_opf_topology!(
                 ref_meshes
             )
 """
-function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes, id = [1])
+function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes, id = [0])
     if node.name == "topology" # First node
         link = "/"
     elseif node.name == "decomp"
@@ -321,7 +321,7 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
         )
     else
         # First node:
-        node_i = Node(1, MTG, MultiScaleTreeGraph.init_empty_attr(attr_type))
+        node_i = Node(id[1], MTG, MultiScaleTreeGraph.init_empty_attr(attr_type))
     end
 
     # node_i.children
