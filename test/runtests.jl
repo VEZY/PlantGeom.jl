@@ -1,6 +1,12 @@
 using PlantGeom
 using Test
 
-@testset "PlantGeom.jl" begin
-    # Write your tests here.
+using Meshes
+using StaticArrays
+using MultiScaleTreeGraph
+using CoordinateTransformations
+using LinearAlgebra
+
+@testset "Read OPF" begin
+    include("test-read_opf.jl")
 end
