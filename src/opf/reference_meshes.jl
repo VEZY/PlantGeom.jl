@@ -139,7 +139,7 @@ end
 
 
 """
-Parse a material in opf format to a [`material`](@ref)
+Parse a material in opf format to a [`Phong`](@ref) material.
 """
 function materialBDD_to_material(x)
     Phong(

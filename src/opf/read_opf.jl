@@ -21,15 +21,17 @@ very often, *e.g.* recompute an attribute value...
 - `Dict` or similar (*e.g.* `OrderedDict`) if you plan to heavily modify the attributes, *e.g.*
 adding/removing attributes a lot
 
-The `MultiScaleTreeGraph` package provides two types for `mtg_type`, one immutable ([`NodeMTG`](@ref)), and
-one mutable ([`MutableNodeMTG`](@ref)). If you're planning on modifying the mtg encoding of
-some of your nodes, you should use [`MutableNodeMTG`](@ref), and if you don't want to modify
-anything, use [`NodeMTG`](@ref) instead as it should be faster.
+The `MultiScaleTreeGraph` package provides two types for `mtg_type`, one immutable
+([`MultiScaleTreeGraph.NodeMTG`](@ref)), and one mutable
+([`MultiScaleTreeGraph.MutableNodeMTG`](@ref)). If you're planning on modifying the mtg
+encoding of some of your nodes, you should use [`MultiScaleTreeGraph.MutableNodeMTG`](@ref),
+and if you don't want to modify anything, use [`MultiScaleTreeGraph.NodeMTG`](@ref) instead
+as it should be faster.
 
 # Note
 
-See the documentation of the MTG format from the package documentation for further details,
-*e.g.* [The MTG concept](@ref).
+See the documentation of the MTG format from the MTG package documentation for further details,
+*e.g.* [The MTG concept](https://vezy.github.io/MultiScaleTreeGraph.jl/stable/the_mtg/mtg_concept/).
 
 # Returns
 
@@ -40,6 +42,7 @@ The MTG root node.
 ```julia
 using PlantGeom
 file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+# file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
 opf = read_opf(file)
 ```
 """
@@ -155,10 +158,6 @@ function parse_meshBDD!(node)
             else
                 push!(mesh, i.name => parse_opf_array(i.content))
             end
-        end
-        # textureCoords is optional, adding empty vector if not available.
-        if !haskey(mesh, "textureCoords")
-            push!(mesh, "textureCoords" => Float64[])
         end
         push!(meshes, parse(Int, m["Id"]) + 1 => mesh)
     end
