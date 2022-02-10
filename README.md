@@ -63,10 +63,20 @@ transform!(opf, refmesh_to_mesh!)
 - [ ] Import reference meshes from disk (e.g. export from blender). This is done for the cylinder. Document it.
 - [ ] Add a ref mesh for wood
 - [ ] Add a ref mesh for a leaf
-- [ ] Add tutorials
+- [ ] Add tutorials:
+  - [ ] How to plot with Plots.jl
+  - [ ] How to plot with Makie.jl
+  - [ ] How to build a geometry using attributes and reference meshes
+  - [ ] How to build a plant + geometry manually and recursively
 - [ ] Manage different degrees of information into an MTG:
   - [ ] Mesh for the nodes
   - [ ] Reference meshes + transformation matrix (e.g. from OPF)
   - [ ] Reference meshes + Length and/or Width/diameter for scaling. If only Length, scale the whole mesh by a factor, if Length + Width, scale accordingly
   - [ ] No dimensions at all -> plot MTG representation.
   - [ ] Add argument to control this ? E.g.: type = "mtg" or type = "3d"
+
+## To do before release
+
+- [ ] Write minimal docs
+- [ ] Make MultiScaleTreeGraph dependency to the one that is registered (there's an interdependency between the two, MultiScaleTreeGraph docs depends on PlantGeom and PlantGeom depends on MultiScaleTreeGraph)
+- [ ] Clean-up README

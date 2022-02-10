@@ -1,9 +1,9 @@
 # This is a makie recipe to plot the mtg nodes and connections.
-
 @Makie.recipe(Diagram) do scene
     Makie.Attributes(
         color = :black,
         colormap = :viridis,
+        edge_color = nothing
     )
 end
 
@@ -14,7 +14,15 @@ end
 
 Make a diagram of the MTG tree, paired with a `Makie.jl` backend.
 
-See also [`RecipesBase.apply_recipe`](@ref) for the same plot with a `Plots.jl` backend.
+See also [`apply_recipe`](@ref) for the same plot with a `Plots.jl` backend.
+
+The main attributes are:
+
+- color: the color of the nodes
+- colormap: the colormap used if the color uses an attribute. By default it uses viridis.
+Must be a ColorScheme from [ColorSchemes](https://juliagraphics.github.io/ColorSchemes.jl/stable/basics/)
+or a Symbol with its name.
+
 
 # Examples
 
@@ -42,58 +50,38 @@ function Makie.plot!(p::Diagram{<:Tuple{MultiScaleTreeGraph.Node{<:AbstractNodeM
 
     mtg = p[1][]
     color = p[:color][]
-    colormap = p[:colormap][]
+    edge_color = p[:edge_color][]
+    colormap = get_colormap(p[:colormap][])
 
-    if Symbol(color) in get_attributes(mtg)
-        # Coloring using mtg attribute:
-        df_coordinates = mtg_coordinates_df(mtg, color, force = true)
-        colouring_var = df_coordinates[:, color]
-        color = colouring_var ./ maximum(colouring_var)
+    if edge_color === nothing
+        edge_color = color
+    end
 
-        Makie.scatter!(
+    df_coordinates, color, edge_color, text_color = mtg_XYZ_color(mtg, color, edge_color, colormap)
+
+    Makie.scatter!(
+        p,
+        df_coordinates.XX,
+        df_coordinates.YY,
+        df_coordinates.ZZ,
+        color = color,
+        colormap = colormap
+    )
+
+    Makie.text!(
+        p,
+        string.(df_coordinates.id),
+        position = [Makie.Point3f(df_coordinates.XX[i], df_coordinates.YY[i], df_coordinates.ZZ[i]) for i in 1:size(df_coordinates, 1)],
+        color = text_color
+    )
+
+    for i in 2:size(df_coordinates, 1)
+        Makie.lines!(
             p,
-            df_coordinates.XX,
-            df_coordinates.YY,
-            df_coordinates.ZZ,
-            color = color,
-            colormap = colormap
-        )
-        # ?Note: could use meshscatter! instead here
-
-        for i in 2:size(df_coordinates, 1)
-            Makie.lines!(
-                p,
-                [df_coordinates.XX_from[i], df_coordinates.XX[i]],
-                [df_coordinates.YY_from[i], df_coordinates.YY[i]],
-                [df_coordinates.ZZ_from[i], df_coordinates.ZZ[i]],
-                color = get(p[:colormap][], [color[i-1], color[i]])
-            )
-        end
-    elseif typeof(color) <: Colorant || typeof(color) <: String || typeof(color) <: Symbol
-        df_coordinates = mtg_coordinates_df(mtg, force = true)
-        Makie.scatter!(
-            p,
-            df_coordinates.XX,
-            df_coordinates.YY,
-            df_coordinates.ZZ,
-            color = p[:color]
-        )
-        # ?Note: could use meshscatter! instead here
-
-        for i in 2:size(df_coordinates, 1)
-            Makie.lines!(
-                p,
-                [df_coordinates.XX_from[i], df_coordinates.XX[i]],
-                [df_coordinates.YY_from[i], df_coordinates.YY[i]],
-                [df_coordinates.ZZ_from[i], df_coordinates.ZZ[i]],
-                color = color
-            )
-        end
-    else
-        error(
-            "color argument should be of type Colorant ",
-            "(see [Colors.jl](https://juliagraphics.github.io/Colors.jl/stable/)), or ",
-            "an MTG attribute."
+            [df_coordinates.XX_from[i], df_coordinates.XX[i]],
+            [df_coordinates.YY_from[i], df_coordinates.YY[i]],
+            [df_coordinates.ZZ_from[i], df_coordinates.ZZ[i]],
+            color = edge_color[i]
         )
     end
 

@@ -10,7 +10,7 @@ import Meshes: nvertices, nelements, normal, Triangle, coordinates
 # import Makie: Combined, theme
 import Makie
 import Colors: RGBA, Colorant, RGB
-import ColorSchemes: get, rainbow
+import ColorSchemes: get, rainbow, colorschemes, ColorScheme
 
 # Read OPF:
 import EzXML: readxml, root, StreamReader, attributes, expandtree # For reading OPF files
@@ -29,6 +29,7 @@ include("opf/reference_meshes.jl")
 include("tapering.jl")
 include("opf/refmesh_to_mesh.jl")
 include("opf/write_opf.jl")
+include("colors.jl")
 include("makie_recipes/RefMeshes_recipes.jl")
 include("makie_recipes/opf_recipe.jl")
 include("makie_recipes/mtg_recipe_helpers.jl")

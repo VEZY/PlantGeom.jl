@@ -32,9 +32,7 @@ function coordinates!(mtg; angle = 45, force = false)
 
     phyllotaxy = [-1]
     # This function adds a XX, YY and ZZ coordinates of each node
-    append!(mtg, (XX = 0.0, YY = 0.0, ZZ = 0.0))
-    append!(mtg[1], (XX = 0.0, YY = 0.1, ZZ = 0.0))
-    traverse!(mtg[1][1], new_pos, angle, phyllotaxy)
+    traverse!(mtg, new_pos, angle, phyllotaxy)
 end
 
 function coordinates_parent!(mtg)
@@ -53,6 +51,12 @@ function coordinates_parent!(mtg)
 end
 
 function new_pos(node, angle, phyllotaxy)
+
+    if isroot(node)
+        append!(node, (XX = 0.0, YY = 0.0, ZZ = 0.0))
+        return nothing
+    end
+
     parent_node = parent(node)
     great_parent_node = parent(parent_node)
 
@@ -65,7 +69,7 @@ function new_pos(node, angle, phyllotaxy)
     end
 
     if node.MTG.link == "/"
-        extend_length = 0.1
+        extend_length = 0.2
     else
         extend_length = 1
     end
@@ -124,12 +128,13 @@ end
 
 
 """
-    mtg_coordinates_df(mtg; force = false)
-    mtg_coordinates_df!(mtg; force = false)
+    mtg_coordinates_df(mtg, attr; force = false)
+    mtg_coordinates_df!(mtg, attr; force = false)
 
 Extract the coordinates of the nodes of the mtg and the
 coordinates of their parents (:XX_from, :YY_from, :ZZ_from) and output
-a DataFrame.
+a DataFrame. Optionally you can also provide an attribute to add to the
+output DataFrame too by passing its name as a symbol to `attr`.
 
 The coordinates are computed using [`coordinates!`](@ref) if missing, or if
 `force = true`.
@@ -157,4 +162,48 @@ function mtg_coordinates_df!(mtg, attr = :YY; force = false)
     coordinates_parent!(mtg)
 
     DataFrame(mtg, unique([:XX, :YY, :ZZ, :XX_from, :YY_from, :ZZ_from, attr]))
+end
+
+function mtg_XYZ_color(mtg, color, edge_color, colormap)
+    if Symbol(color) in get_attributes(mtg)
+        # Color is an attribute from the mtg:
+        df_coordinates = mtg_coordinates_df(mtg, color, force = true)
+        color_var = df_coordinates[:, color]
+        color_var = color_var ./ maximum(color_var)
+        text_color = [RGBA(get(colormap, color_var[i])) for i in 1:length(color_var)]
+    elseif typeof(color) <: Colorant || typeof(color) <: String || typeof(color) <: Symbol
+        df_coordinates = mtg_coordinates_df(mtg, force = true)
+        color_var = color
+        text_color = color_var
+    else
+        error(
+            "color argument should be of type Colorant ",
+            "(see [Colors.jl](https://juliagraphics.github.io/Colors.jl/stable/)), or ",
+            "an MTG attribute."
+        )
+    end
+
+    if edge_color == color
+        # If edge_color is the same as color, use color_var
+        edge_color_var = [get(colormap, [color_var[i-1], color_var[i]]) for i in 2:length(color_var)]
+        pushfirst!(edge_color_var, edge_color_var[1])
+    elseif Symbol(edge_color) in get_attributes(mtg)
+        # If edge_color is different than color, and is an attribute from the mtg
+        df_coordinates = mtg_coordinates_df(mtg, edge_color, force = true)
+        edge_color_var = df_coordinates[:, edge_color]
+        edge_color_var = edge_color_var ./ maximum(edge_color_var)
+        edge_color_var = [get(colormap, [edge_color_var[i-1], edge_color_var[i]]) for i in 2:length(edge_color_var)]
+        pushfirst!(edge_color_var, edge_color_var[1])
+    elseif typeof(edge_color) <: Colorant || typeof(edge_color) <: String || typeof(edge_color) <: Symbol
+        # edge_color is just a single color
+        edge_color_var = repeat([edge_color, edge_color], size(df_coordinates, 1))
+    else
+        error(
+            "edge_color argument should be of type Colorant ",
+            "(see [Colors.jl](https://juliagraphics.github.io/Colors.jl/stable/)), or ",
+            "an MTG attribute."
+        )
+    end
+
+    return df_coordinates, color_var, edge_color_var, text_color
 end
