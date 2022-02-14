@@ -1,6 +1,13 @@
 plottype(::RefMeshes) = Viz{<:Tuple{RefMeshes}}
 
 """
+    viz!(ref_meshes; kwargs...)
+
+Plot all reference meshes in a single 3d plot using Makie.
+
+# Examples
+
+```julia
 using PlantGeom, GLMakie
 
 file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
@@ -18,6 +25,7 @@ viz(meshes, color = Dict(1 => :burlywood4, 3 => :burlywood4))
 viz(meshes, color = Dict(2 => 1:nvertices(meshes)[2]))
 # Colors as a vector (no missing values allowed here):
 viz(meshes, color = [:burlywood4, :springgreen4, :burlywood4])
+```
 """
 function plot!(plot::Viz{<:Tuple{RefMeshes}})
     # Mesh list:

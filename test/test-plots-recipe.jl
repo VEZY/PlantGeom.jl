@@ -14,11 +14,10 @@
     df_coordinates = PlantGeom.mtg_coordinates_df(mtg, force = true)
 
     @test recipe[7].args[1] == df_coordinates.XX
-
-    recipe[7].plotattributes[:hover]
     @test recipe[7].plotattributes == Dict{Symbol,Any}(
+        :color => [:black, :black, :black, :black, :black, :black, :black],
+        :palette => colorschemes[:viridis],
         :label => "",
-        :seriescolor => :viridis,
         :hover => [
             "name: `node_1`, link: `/`, symbol: `Scene`, index: `3`",
             "name: `node_2`, link: `/`, symbol: `Individual`, index: `2`",
@@ -29,7 +28,6 @@
             "name: `node_7`, link: `+`, symbol: `Leaf`, index: `11`",
         ],
         :seriestype => :scatter,
-        :colorbar_entry => false,
-        :marker_z => Any[1, 1, 1, 1, 2, 1, 2]
+        :colorbar_entry => false
     )
 end
