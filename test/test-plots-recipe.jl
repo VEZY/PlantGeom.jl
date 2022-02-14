@@ -8,8 +8,8 @@
     #? and 1 scatter.
 
     @test recipe[1].plotattributes == Dict{Symbol,Any}(:label => "", :seriescolor => :black, :seriestype => :line)
-    @test recipe[1].args == ([0.0, 0.0], [0.0, 0.1]) # coordinates of the two vertex for the edge
-    @test recipe[6].args == ([0.0, 0.7071067811865476], [1.2, 1.9071067811865476]) # same, last one
+    @test recipe[1].args == ([0.0, 0.0], [0.0, 0.2]) # coordinates of the two vertex for the edge
+    @test recipe[6].args == ([0.0, 0.7071067811865475], [1.4, 2.1071067811865474]) # same, last one
 
     df_coordinates = PlantGeom.mtg_coordinates_df(mtg, force = true)
 
