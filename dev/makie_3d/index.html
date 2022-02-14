@@ -25,30 +25,6 @@ JSServe.setup_connection({offline: true})
 </script>
   </div>
 </div>
-<h2 id="D-plots-(meshes)"><a class="docs-heading-anchor" href="#D-plots-(meshes)">3D plots (meshes)</a><a id="D-plots-(meshes)-1"></a><a class="docs-heading-anchor-permalink" href="#D-plots-(meshes)" title="Permalink"></a></h2><p>Here comes the fun part! We can make 3D representations of the plants based on the geometry of each of its nodes.</p><p>If you read your MTG from an OPF file, the 3D geometry should already be computed.</p><pre><code class="language-julia hljs">using PlantGeom, WGLMakie
+<h2 id="D-plots-(meshes)"><a class="docs-heading-anchor" href="#D-plots-(meshes)">3D plots (meshes)</a><a id="D-plots-(meshes)-1"></a><a class="docs-heading-anchor-permalink" href="#D-plots-(meshes)" title="Permalink"></a></h2><p>Here comes the fun part! We can make 3D representations of the plants based on the geometry of each of its nodes.</p><p>If you read your MTG from an OPF file, the 3D geometry should already be computed.</p><pre><code class="language- hljs">using PlantGeom, WGLMakie
 opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),&quot;test&quot;,&quot;files&quot;,&quot;coffee.opf&quot;))
-# diagram(opf)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">/ 1: Individual
-└─ / 2: Axis
-   ├─ &lt; 5: Metamer
-   ├─ &lt; 799: Metamer
-   │  ├─ + 800: Axis
-   │  │  ├─ &lt; 875: Metamer
-   │  │  │  ├─ + 877: Leaf
-   │  │  │  └─ + 876: Leaf
-   │  │  ├─ &lt; 867: Metamer
-   │  │  │  └─ + 868: Leaf
-   │  │  ├─ &lt; 824: Metamer
-   │  │  ├─ &lt; 864: Metamer
-   │  │  │  ├─ + 866: Leaf
-   │  │  │  └─ + 865: Leaf
-   │  │  ├─ &lt; 850: Metamer
-   │  │  ├─ &lt; 860: Metamer
-   │  │  │  └─ + 861: Leaf
-   │  │  ├─ &lt; 851: Metamer
-   │  │  ├─ &lt; 854: Metamer
-   │  │  │  ├─ + 856: Leaf
-   │  │  │  └─ + 855: Leaf
-   │  │  ├─ &lt; 848: Metamer
-   │  │  ├─ &lt; 847: Metamer
-   │  │  ├─ &lt; 802: Metamer
-…</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../plot_diagram/plots_diagram/">« Plots.jl</a><a class="docs-footer-nextpage" href="../API/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.12 on <span class="colophon-date" title="Monday 14 February 2022 17:56">Monday 14 February 2022</span>. Using Julia version 1.7.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+viz(opf)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../plot_diagram/plots_diagram/">« Plots.jl</a><a class="docs-footer-nextpage" href="../API/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.12 on <span class="colophon-date" title="Monday 14 February 2022 18:25">Monday 14 February 2022</span>. Using Julia version 1.7.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
