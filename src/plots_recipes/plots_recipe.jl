@@ -99,4 +99,4 @@ opf = read_opf(file)
 plot(opf, node_color = :Length)
 ```
 """
-plot!
+RecipesBase.plot!, RecipesBase.plot
