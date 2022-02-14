@@ -37,19 +37,25 @@ RecipesBase.@recipe function f(mtg::MultiScaleTreeGraph.Node;
         end
     end
 
+    hover_arg = string.(
+        "name: `node_", df_coordinates.id,
+        "`, link: `", df_coordinates.link,
+        "`, symbol: `", df_coordinates.symbol,
+        "`, index: `", df_coordinates.index, "`",
+        if Symbol(node_color) in get_attributes(mtg)
+            string.(", $node_color: ", df_coordinates[:, node_color])
+        else
+            ""
+        end
+    )
+
     RecipesBase.@series begin
         label := ""
         palette := colormap
         color := node_color_in
         # marker_z := node_color
         colorbar_entry := false
-        hover := string.(
-            "name: `node_", df_coordinates.id,
-            "`, link: `", df_coordinates.link,
-            "`, symbol: `", df_coordinates.symbol,
-            "`, index: `", df_coordinates.index, "`"
-        )
-
+        hover := hover_arg
         if mode == "2d"
             seriestype := :scatter
             x, y
