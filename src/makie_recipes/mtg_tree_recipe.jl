@@ -3,7 +3,8 @@
     Makie.Attributes(
         color = :black,
         colormap = :viridis,
-        edge_color = nothing
+        edge_color = nothing,
+        color_missing = RGBA(0, 0, 0, 0.3)
     )
 end
 
@@ -57,7 +58,8 @@ function Makie.plot!(p::Diagram{<:Tuple{MultiScaleTreeGraph.Node{<:AbstractNodeM
         edge_color = color
     end
 
-    df_coordinates, color, edge_color, text_color = mtg_XYZ_color(mtg, color, edge_color, colormap)
+    df_coordinates, color, edge_color, text_color =
+        mtg_XYZ_color(mtg, color, edge_color, colormap, color_missing = p[:color_missing][])
 
     Makie.scatter!(
         p,
@@ -72,7 +74,8 @@ function Makie.plot!(p::Diagram{<:Tuple{MultiScaleTreeGraph.Node{<:AbstractNodeM
         p,
         string.(df_coordinates.id),
         position = [Makie.Point3f(df_coordinates.XX[i], df_coordinates.YY[i], df_coordinates.ZZ[i]) for i in 1:size(df_coordinates, 1)],
-        color = text_color
+        color = text_color,
+        offset = (5, 5)
     )
 
     for i in 2:size(df_coordinates, 1)
