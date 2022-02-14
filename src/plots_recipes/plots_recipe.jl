@@ -79,10 +79,10 @@ See also [`diagram`](@ref) for the same plot with a `Makie.jl` backend.
 ## Attributes
 
 - `mode = "2d"`: The mode for plotting, either "2d" or "3d"
-- `node_color = :black`: the node color, can be a color or an MTG attribute
+- `node_color = :black`: the node color, can be a color or any MTG attribute
+- `edge_color = node_color`: same as `node_color`, but for the edges
 - `colormap = :viridis`: the colormap used for coloring
-- `edge_color = nothing`: same as `node_color`, but for the edges
-- `color_missing`: The color used for missing values
+- `color_missing = RGBA(0, 0, 0, 0.3)`: The color used for missing values
 
 # Examples
 
@@ -99,4 +99,4 @@ opf = read_opf(file)
 plot(opf, node_color = :Length)
 ```
 """
-RecipesBase.apply_recipe
+plot!
