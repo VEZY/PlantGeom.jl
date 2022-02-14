@@ -1,7 +1,18 @@
-RecipesBase.@recipe function f(mtg::MultiScaleTreeGraph.Node; mode = "2d")
-    MultiScaleTreeGraph.branching_order!(mtg)
-    df_coordinates = mtg_coordinates_df(mtg, force = true)
-    df_coordinates[!, :branching_order] = descendants(mtg, :branching_order, self = true)
+RecipesBase.@recipe function f(mtg::MultiScaleTreeGraph.Node;
+    mode = "2d",
+    node_color = :black,
+    colormap = :viridis,
+    edge_color = nothing,
+    color_missing = RGBA(0, 0, 0, 0.3)
+)
+
+    if edge_color === nothing
+        edge_color = node_color
+    end
+
+    colormap = get_colormap(colormap)
+    df_coordinates, node_color_in, edge_color, text_color =
+        mtg_XYZ_color(mtg, node_color, edge_color, colormap, color_missing = color_missing)
 
     x = df_coordinates.XX
     y = df_coordinates.YY
@@ -11,10 +22,11 @@ RecipesBase.@recipe function f(mtg::MultiScaleTreeGraph.Node; mode = "2d")
         x2 = [df_coordinates.XX_from[i], df_coordinates.XX[i]]
         y2 = [df_coordinates.YY_from[i], df_coordinates.YY[i]]
         z2 = [df_coordinates.ZZ_from[i], df_coordinates.ZZ[i]]
+        edge_col = edge_color[i][1] # Plot is not compatible with line gradients
 
         RecipesBase.@series begin
             label := ""
-            seriescolor := :black
+            seriescolor := edge_col
             if mode == "2d"
                 seriestype := :line
                 x2, y2
@@ -27,8 +39,9 @@ RecipesBase.@recipe function f(mtg::MultiScaleTreeGraph.Node; mode = "2d")
 
     RecipesBase.@series begin
         label := ""
-        seriescolor := :viridis
-        marker_z := df_coordinates.branching_order
+        palette := colormap
+        color := node_color_in
+        # marker_z := node_color
         colorbar_entry := false
         hover := string.(
             "name: `node_", df_coordinates.id,
@@ -57,10 +70,19 @@ Make a diagram of the MTG tree, paired with a `Plots.jl` backend.
 
 See also [`diagram`](@ref) for the same plot with a `Makie.jl` backend.
 
+## Attributes
+
+- `mode = "2d"`: The mode for plotting, either "2d" or "3d"
+- `node_color = :black`: the node color, can be a color or an MTG attribute
+- `colormap = :viridis`: the colormap used for coloring
+- `edge_color = nothing`: same as `node_color`, but for the edges
+- `color_missing`: The color used for missing values
+
 # Examples
 
 ```julia
-using PlantGeom, Plots
+# import Pkg; Pkg.add("PlotlyJS")
+using Plots, PlantGeom
 plotlyjs()
 
 file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
@@ -68,7 +90,7 @@ file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_s
 
 opf = read_opf(file)
 
-plot(opf)
+plot(opf, node_color = :Length)
 ```
 """
 RecipesBase.apply_recipe
