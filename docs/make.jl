@@ -1,7 +1,7 @@
 using PlantGeom
 using Documenter
 
-DocMeta.setdocmeta!(PlantGeom, :DocTestSetup, :(using PlantGeom; using MultiScaleTreeGraph); recursive = true)
+DocMeta.setdocmeta!(PlantGeom, :DocTestSetup, :(using PlantGeom; using MultiScaleTreeGraph; using JSServe); recursive = true)
 
 makedocs(;
     modules = [PlantGeom],
@@ -15,9 +15,12 @@ makedocs(;
     ),
     pages = [
         "Home" => "index.md",
-        "Recipes" => [
-            "Makie.jl" => "makie_recipes.md",
-            "Plots.jl" => "plots_recipes.md",
+        "Plot recipes" => [
+            "MTG diagrams" => [
+                "Makie.jl" => "plot_diagram/makie_diagram.md",
+                "Plots.jl" => "plot_diagram/plots_diagram.md",
+            ],
+            "3D" => "makie_3d.md"
         ],
         "API" => "API.md"
     ]
