@@ -1,4 +1,4 @@
-plottype(::RefMeshes) = Viz{<:Tuple{RefMeshes}}
+Makie.plottype(::RefMeshes) = Viz{<:Tuple{RefMeshes}}
 
 """
     viz!(ref_meshes; kwargs...)
@@ -27,7 +27,7 @@ viz(meshes, color = Dict(2 => 1:nvertices(meshes)[2]))
 viz(meshes, color = [:burlywood4, :springgreen4, :burlywood4])
 ```
 """
-function plot!(plot::Viz{<:Tuple{RefMeshes}})
+function Makie.plot!(plot::Viz{<:Tuple{RefMeshes}})
     # Mesh list:
     p = align_ref_meshes(plot[:object][])
 

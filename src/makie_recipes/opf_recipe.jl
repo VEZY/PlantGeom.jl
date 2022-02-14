@@ -1,4 +1,4 @@
-plottype(::MultiScaleTreeGraph.Node) = Viz{<:Tuple{MultiScaleTreeGraph.Node}}
+Makie.plottype(::MultiScaleTreeGraph.Node) = Viz{<:Tuple{MultiScaleTreeGraph.Node}}
 
 """
     viz(opf::MultiScaleTreeGraph.Node; kwargs...)
@@ -33,6 +33,7 @@ viz(opf)
 viz(opf, color = :red)
 # One color per reference mesh:
 viz(opf, color = Dict(1 => :burlywood4, 2 => :springgreen4, 3 => :burlywood4))
+
 # Or just changing the color of some:
 viz(opf, color = Dict(1 => :burlywood4))
 # One color for each vertex of the refmesh 1:
@@ -50,7 +51,7 @@ viz(opf, color = :z, showfacets = true)
 """
 viz, viz!
 
-function plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
+function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
     # Mesh list:
     opf = plot[:object][]
 

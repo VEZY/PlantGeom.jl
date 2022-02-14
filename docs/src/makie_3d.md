@@ -14,5 +14,5 @@ If you read your MTG from an OPF file, the 3D geometry should already be compute
 ```@example 1
 using PlantGeom, WGLMakie
 opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf"))
-viz(opf)
+viz(opf, color = Dict(1 => :burlywood4, 2 => :springgreen4))
 ```
