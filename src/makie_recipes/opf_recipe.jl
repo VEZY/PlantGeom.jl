@@ -100,7 +100,7 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
                         color_missing
                     else
                         # get the color based on a colormap and the normalized attribute value
-                        get(colormap, (x - range_val[1]) / (range_val[2] - range_val[1]))
+                        [get(colormap, (i - range_val[1]) / (range_val[2] - range_val[1])) for i in x]
                     end
                     ) => key_cache
             )
