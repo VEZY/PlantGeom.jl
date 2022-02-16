@@ -45,7 +45,7 @@ export viz, viz!
 export nvertices, nelements
 export read_opf
 export taper
-export refmesh_to_mesh
+export refmesh_to_mesh, get_ref_meshes_color
 export xmax, ymax, zmax, xmin, ymin, zmin
 export refmesh_to_mesh!
 export transform_mesh!
