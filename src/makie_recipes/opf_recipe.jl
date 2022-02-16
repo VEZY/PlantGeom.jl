@@ -52,36 +52,60 @@ viz(opf, color = :z, showfacets = true)
 viz, viz!
 
 function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
+    # function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}}, fig::Makie.GridPosition; axis = NamedTuple(), kwargs...)
+
+    # ax = Makie.Axis(fig[1, 2]; axis...)
+
     # Mesh list:
     opf = plot[:object][]
 
     # Plot options:
     color = plot[:color][]
-
+    colormap = get_colormap(plot[:colormap][])
+    color_missing = RGBA(0, 0, 0, 0.3)
     ref_meshes = get_ref_meshes(opf)
+    colorbar = false
 
-    # use the color from the reference mesh if the default is used, else use the user-input color
+    # Color the meshes:
     if isa(color, Symbol) || typeof(color) <: Colorant
         if color == :slategray3
-            # Overides the default color given by MeshViz (:slategray3) with value in the ref meshes
-            # see here for default value in MeshViz:
+            # No color is given, we inherit from the default of MeshViz `Viz` (:slategray3) .
+            # What we do in this case is use the color given by each reference mesh in the MTG
+            # See here for default value in MeshViz:
             # https://github.com/JuliaGeometry/MeshViz.jl/blob/6e37908c78c06212f09229e3e8d92483535ffa16/src/MeshViz.jl#L50
             attr_color = false
             color = get_ref_meshes_color(ref_meshes)
-        elseif color in names(opf)
-            # Coloring using opf attribute:
+        elseif color in get_attributes(opf)
+            # The user provides the name of an attribute from the MTG, coloring using the attribute:
             attr_color = true
+            colorbar = true
+            # Get the attribute values without nothing values:
             color_attr = descendants(opf, color, ignore_nothing = true)
+            # Make a temporary name for our color to use as attribute:
             key_cache = MultiScaleTreeGraph.cache_name(color)
 
+            # Get the range of the values:
             if length(color_attr[1]) == 1
-                max_val = maximum(color_attr)
+                range_val = extrema(color_attr)
             else
-                max_val = maximum(maximum.(color_attr))
+                range_val = (minimum(minimum.(color_attr)), maximum(maximum.(color_attr)))
             end
 
-            transform!(opf, color => (x -> get(rainbow, x / max_val)) => key_cache, ignore_nothing = true)
+            # Compute the color of each mesh based on the attribute value (use color_missing
+            # if no value).
+            transform!(
+                opf,
+                color =>
+                    (x -> if x === nothing
+                        color_missing
+                    else
+                        # get the color based on a colormap and the normalized attribute value
+                        get(colormap, (x - range_val[1]) / (range_val[2] - range_val[1]))
+                    end
+                    ) => key_cache
+            )
         else
+            # User-input single color-value. Here we give the same color to all reference meshes:
             attr_color = false
             color = Dict(zip(keys(ref_meshes.meshes), repeat([color], length(ref_meshes.meshes))))
         end
@@ -95,7 +119,8 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
         attr_color = false
     end
 
-    # If not coloring by attribute color, color should have the same length as number of RefMeshes
+    # If color is not an attribute, it should have the same length as number of RefMeshes, or
+    # if not, we provide the reference mesh color:
     if attr_color == false && length(color) != length(ref_meshes.meshes)
         new_color = Dict{Int,Any}(color)
         ref_cols = get_ref_meshes_color(ref_meshes)
@@ -111,9 +136,11 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
     colormap = plot[:colormap][]
 
     if attr_color == false
+        # Make the plot, case where the color is a color for each reference mesh:
         traverse!(
             opf,
             node -> viz!(
+                # ax,
                 plot,
                 node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
                 color = color[get_ref_mesh_index!(node, ref_meshes)],
@@ -131,10 +158,12 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
         #? a subset of the plant/scene. This will be especially usefull when we have different
         #? kind of geometries at different scales of representation.
     else
+        # Make the plot, case where the color is an attribute from the MTG:
         traverse!(
             opf,
             function (node)
                 viz!(
+                    # ax,
                     plot,
                     node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
                     color = node[key_cache],
@@ -150,4 +179,10 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
             filter_fun = node -> node[:geometry] !== nothing
         )
     end
+
+    # if colorbar
+    #     cb = Makie.Colorbar(fig[1, 2], plot, label = string(color), colormap = colormap, colorrange = range_val)
+    # end
+
+    # return Makie.AxisPlot(ax, plot)
 end
