@@ -45,10 +45,7 @@ PlantGeom.coordinates!(opf, force = true)
 diagram(opf, color = :YY, edge_color = :XX)
 ```
 
-!!! note
-    Attributes used for coloring may have `missing` values.
-
-In this case you can choose their color using `color_missing`, *e.g.*:
+Attributes used for coloring may have `missing` values. In this case you can choose their color using `color_missing`, *e.g.*:
 
 ```julia
 diagram(opf, color = :Length, edge_color = :Width, color_missing = :red)
