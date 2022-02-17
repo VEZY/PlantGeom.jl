@@ -1,34 +1,6 @@
 Makie.plottype(::RefMeshes) = Viz{<:Tuple{RefMeshes}}
 
-"""
-    viz!(ref_meshes; kwargs...)
-
-Plot all reference meshes in a single 3d plot using Makie.
-
-# Examples
-
-```julia
-using PlantGeom, GLMakie
-
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
-opf = read_opf(file)
-meshes = get_ref_meshes(opf)
-
-viz(meshes)
-# With one shared color:
-viz(meshes, color = :green)
-# One color per reference mesh:
-viz(meshes, color = Dict(1 => :burlywood4, 2 => :springgreen4, 3 => :burlywood4))
-# Or just changing the color of some:
-viz(meshes, color = Dict(1 => :burlywood4, 3 => :burlywood4))
-# One color for each vertex of the refmesh 0:
-viz(meshes, color = Dict(2 => 1:nvertices(meshes)[2]))
-# Colors as a vector (no missing values allowed here):
-viz(meshes, color = [:burlywood4, :springgreen4, :burlywood4])
-```
-"""
-viz, viz!
-
+# Documentation is in opf_recipe.jl
 function Makie.plot!(plot::Viz{<:Tuple{RefMeshes}})
     # Mesh list:
     p = align_ref_meshes(plot[:object][])
