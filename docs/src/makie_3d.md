@@ -35,6 +35,7 @@ Note that the plot is interactive. This is because we use `WGLMakie` as a plotti
 
 ```@setup 2
 using PlantGeom, CairoMakie, MultiScaleTreeGraph
+CairoMakie.activate!()
 mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf"))
 transform!(mtg, refmesh_to_mesh!)
 ref_meshes = get_ref_meshes(mtg);
