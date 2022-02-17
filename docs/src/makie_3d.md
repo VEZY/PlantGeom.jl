@@ -73,6 +73,7 @@ The default behavior of `viz(mtg)` -without providing colors- is to use the colo
 
 ```@example 2
 using PlantGeom, CairoMakie
+CairoMakie.activate!()
 
 file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
 mtg = read_opf(file)
@@ -149,7 +150,7 @@ Of course all Makie commands are available. For example we can zoom-in the plot 
 ```@example 2
 f, ax, p = viz(mtg, color = :Area)
 CairoMakie.scale!(p, 1.5, 1.5, 1.5) # we zoom-in a little bit
-CairoMakie.Colorbar(f[1,2], label = :Area)
+CairoMakie.Colorbar(f[1,2], label = "Area")
 f
 ```
 
