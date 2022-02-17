@@ -1,6 +1,7 @@
 @testset "read_opf: simple_OPF_shapes.opf -> read" begin
     mtg = read_opf("files/simple_OPF_shapes.opf", Dict)
 end
+
 mtg = read_opf("files/simple_OPF_shapes.opf", Dict)
 
 @testset "read_opf: simple_OPF_shapes.opf -> attributes" begin
@@ -22,9 +23,9 @@ end
     @test length(first_mesh.mesh) == 22
     @test isa(first_mesh.material, Phong)
     @test first_mesh.name == "Mesh0"
-    @test isa(first_mesh.normals, SVector{28,Point3})
+    @test isa(first_mesh.normals, SVector{28,Meshes.Point3})
     @test first_mesh.taper == false
-    @test isa(first_mesh.texture_coords, SVector{28,Point2})
+    @test isa(first_mesh.texture_coords, SVector{28,Meshes.Point2})
 end
 
 @testset "read_opf: simple_OPF_shapes.opf -> meshes" begin

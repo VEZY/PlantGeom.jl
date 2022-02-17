@@ -1,5 +1,6 @@
 using PlantGeom
 using Test
+using ReferenceTests
 
 using ColorSchemes
 using Meshes
@@ -7,9 +8,18 @@ using StaticArrays
 using MultiScaleTreeGraph
 using CoordinateTransformations
 using LinearAlgebra
+using CairoMakie
+using MeshViz
+
+# Update the reference plots (do only when you know awhat you are doing!):
+# include("makes_references.jl")
 
 @testset "Read OPF" begin
     include("test-read_opf.jl")
+end
+
+@testset "Makie recipes" begin
+    include("test-makie-recipes.jl")
 end
 
 using RecipesBase
