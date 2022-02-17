@@ -23,7 +23,10 @@ opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simp
 # First, we compute the 3D coordinates for each node in the MTG:
 transform!(opf, refmesh_to_mesh!)
 # And compute the max z of each node based on their mesh:
-transform!(opf, zmax => :z, ignore_nothing = true)
+transform!(opf, zmax => :z_node, ignore_nothing = true)
+# Or the z coordinate of each vertez of each node mesh:
+transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.points]) => :z_vertex, ignore_nothing = true)
+
 
 # Then we make a Makie figure:
 f = Figure()
@@ -35,17 +38,17 @@ ax2 = Axis3(gb[1, 1], aspect = :data, title = "3D representation (mesh)", elevat
 hidedecorations!(ax2)
 
 # We can make a diagram out of the MTG, and coloring using the z coordinates attribute:
-diagram!(ax1, opf, color = :z)
+diagram!(ax1, opf, color = :z_node)
 hidedecorations!(ax1)
 ax1.title = "MultiscaleTreeGraph diagram"
 
 # And a 3d representation:
 
-viz!(opf, color = :z)
+viz!(opf, color = :z_vertex)
 
 # And making a little animation out of it:
 CairoMakie.record(f, "plant_animation.mp4", 1:120) do frame
-    ax2.azimuth[] = 1.7pi + 0.3 *sin(2pi* frame / 120)
+    ax2.azimuth[] = 0.3π + 0.3 * sin(2π * frame / 120)
 end
 ```
 
@@ -60,7 +63,10 @@ opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simp
 # First, we compute the 3D coordinates for each node in the MTG:
 transform!(opf, refmesh_to_mesh!)
 # And compute the max z of each node based on their mesh:
-transform!(opf, zmax => :z, ignore_nothing = true)
+transform!(opf, zmax => :z_node, ignore_nothing = true)
+# Or the z coordinate of each vertez of each node mesh:
+transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.points]) => :z_vertex, ignore_nothing = true)
+
 
 # Then we make a Makie figure:
 f = Figure()
@@ -72,16 +78,16 @@ ax2 = Axis3(gb[1, 1], aspect = :data, title = "3D representation (mesh)", elevat
 hidedecorations!(ax2)
 
 # We can make a diagram out of the MTG, and coloring using the z coordinates attribute:
-diagram!(ax1, opf, color = :z)
+diagram!(ax1, opf, color = :z_node)
 hidedecorations!(ax1)
 ax1.title = "MultiscaleTreeGraph diagram"
 
 # And a 3d representation:
 
-viz!(opf, color = :z)
+viz!(opf, color = :z_vertex)
 
 # And making a little animation out of it:
 CairoMakie.record(f, "plant_animation.mp4", 1:120) do frame
-    ax2.azimuth[] = 1.7pi + 0.3 *sin(2pi* frame / 120)
+    ax2.azimuth[] = 0.3π + 0.3 * sin(2π * frame / 120)
 end
 ```
