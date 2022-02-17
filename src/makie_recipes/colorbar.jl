@@ -4,7 +4,7 @@
 Add a colorbar based on the attribute chose to color the plot. plotobject must be a plot of
 an MTG colored by an attribute. Use Makie.Colorbar for any other use case instead.
 """
-function colorbar(parent, plotobject, kwargs...)
+function colorbar(parent, plotobject; kwargs...)
     color = plotobject.attributes.color[]
     mtg = plotobject.converted[1][]
 
@@ -19,18 +19,13 @@ function colorbar(parent, plotobject, kwargs...)
         )
     end
 
-    range_val = extrema(
-        descendants(
-            plotobject.converted[1][],
-            plotobject.attributes.color[],
-            ignore_nothing = true
-        )
-    )
+    range_val = attribute_range(plotobject.converted[1][], plotobject.attributes.color[])
+
     Makie.Colorbar(
         parent,
         label = string(plotobject.attributes.color[]),
         colormap = plotobject.attributes.colormap,
-        limits = Float64.(range_val),
+        limits = Float64.(range_val);
         kwargs...
     )
 end

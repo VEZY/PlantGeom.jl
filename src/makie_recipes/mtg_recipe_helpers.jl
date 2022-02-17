@@ -217,3 +217,21 @@ function mtg_XYZ_color(mtg, color, edge_color, colormap; color_missing = RGBA(0,
 
     return df_coordinates, color_var, edge_color_var, text_color
 end
+
+
+function attribute_range(mtg, attr)
+    vals =
+        descendants(
+            mtg,
+            attr,
+            ignore_nothing = true
+        )
+
+    if length(vals[1]) == 1
+        range_val = extrema(vals)
+    else
+        range_val = (minimum(minimum.(vals)), maximum(maximum.(vals)))
+    end
+
+    return range_val
+end

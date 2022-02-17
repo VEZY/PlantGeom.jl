@@ -80,16 +80,9 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
             attr_color = true
             colorbar = true
             # Get the attribute values without nothing values:
-            color_attr = descendants(opf, color, ignore_nothing = true)
+            range_val = attribute_range(opf, color)
             # Make a temporary name for our color to use as attribute:
             key_cache = MultiScaleTreeGraph.cache_name(color)
-
-            # Get the range of the values:
-            if length(color_attr[1]) == 1
-                range_val = extrema(color_attr)
-            else
-                range_val = (minimum(minimum.(color_attr)), maximum(maximum.(color_attr)))
-            end
 
             # Compute the color of each mesh based on the attribute value (use color_missing
             # if no value).
