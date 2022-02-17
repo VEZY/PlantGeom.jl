@@ -38,6 +38,7 @@ include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
 include("ref_meshes/cylinder_refmesh.jl")
 include("plots_recipes/plots_recipe.jl")
+include("makie_recipes/colorbar.jl")
 
 # 3D Plotting (OPF):
 export get_ref_meshes
@@ -53,5 +54,6 @@ export Material, Phong
 export RefMesh, RefMeshes
 export Diagram, diagram, diagram!
 export cylinder
+export colorbar
 
 end

@@ -143,11 +143,20 @@ We can see that we have an attribute call `:Area`. Let's color each organ by its
 viz(mtg, color = :Area)
 ```
 
-Of course all Makie commands are available. For example we can zoom-in the plot using `scale!`:
+Of course all Makie commands are available. For example we can zoom-in the plot using `scale!`, and add a colorbar:
 
 ```@example 2
 f, ax, p = viz(mtg, color = :Area)
 CairoMakie.scale!(p, 1.5, 1.5, 1.5) # we zoom-in a little bit
+CairoMakie.Colorbar(f[1,2], label = :Area)
+f
+```
+
+We can see that the colorbar is only in relative values (0-1). If you need absolute values, you can use PlantGeom's own colorbar instead:
+
+```@example 2
+f, ax, p = viz(mtg, color = :Area)
+colorbar(f[1, 2], p)
 f
 ```
 

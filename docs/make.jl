@@ -20,7 +20,7 @@ makedocs(;
                 "Makie.jl" => "plot_diagram/makie_diagram.md",
                 "Plots.jl" => "plot_diagram/plots_diagram.md",
             ],
-            "3D" => "makie_3d.md"
+            "3D Makie recipes" => "makie_3d.md"
         ],
         "API" => "API.md"
     ]

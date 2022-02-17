@@ -181,7 +181,7 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
     end
 
     # if colorbar
-    #     cb = Makie.Colorbar(fig[1, 2], plot, label = string(color), colormap = colormap, colorrange = range_val)
+    # cb = Makie.Colorbar(plot.parent, label = string(color), colormap = colormap, colorrange = range_val)
     # end
 
     # return Makie.AxisPlot(ax, plot)
