@@ -63,7 +63,7 @@ function write_opf(file, mtg)
             string("\n", join(vcat([[p.coords...] for p in mesh.normals]...), "\t"), "\n")
         )
 
-        if length(mesh.texture_coords) > 0
+        if mesh.texture_coords !== nothing && length(mesh.texture_coords) > 0
             # texture_coords are optional
             norm_elm = addelement!(
                 mesh_elm,
