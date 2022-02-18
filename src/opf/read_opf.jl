@@ -129,7 +129,7 @@ function parse_opf_array(elem, type = Float64)
     if type == String
         strip(elem)
     else
-        parsed = map(x -> parse(type, x), split(elem))
+        parsed = map(x -> x == "NA" ? nothing : parse(type, x), split(elem))
         if length(parsed) == 1
             return parsed[1]
         else
