@@ -72,3 +72,4 @@ transform!(mtg, refmesh_to_mesh!)
   - [ ] Mesh for the nodes
   - [ ] Reference meshes + transformation matrix (e.g. from OPF)
   - [ ] Reference meshes + Length and/or Width/diameter for scaling. If only Length, scale the whole mesh by a factor, if Length + Width, scale accordingly
+- [ ] Remove coffee.opf from tests and add PlantBiophysics as a dependency instead. It will make PlantGeom much lighter.
