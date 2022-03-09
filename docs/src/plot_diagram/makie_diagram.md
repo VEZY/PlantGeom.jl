@@ -4,7 +4,7 @@
 using CairoMakie
 CairoMakie.activate!(type = "svg")
 using PlantGeom
-opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf"))
+opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 ```
 
 ## Diagram
@@ -13,7 +13,7 @@ We can make a diagram of the MTG graph using the [`diagram`](@ref) function:
 
 ```@example usewgl
 using PlantGeom, CairoMakie
-opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf"))
+opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 diagram(opf)
 ```
 

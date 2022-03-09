@@ -24,7 +24,7 @@ It is also possible to invert a transformation using `inv` from
 ```julia
 using PlantGeom, MultiScaleTreeGraph, GLMakie, Rotations, CoordinateTransformations
 
-file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
 opf = read_opf(file)
 
 # Visualize the mesh as is:

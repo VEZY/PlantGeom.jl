@@ -25,7 +25,7 @@ Read an example OPF:
 ```julia
 using PlantGeom, MultiScaleTreeGraph
 
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf")
 mtg = read_opf(file)
 ```
 

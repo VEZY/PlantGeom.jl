@@ -1,9 +1,8 @@
 # Import / pre-compute
-file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
 opf = read_opf(file)
 meshes = get_ref_meshes(opf)
 transform!(opf, refmesh_to_mesh!)
-
 @testset "Makie recipes: reference meshes -> plot structure" begin
     f, ax, p = viz(meshes)
     @test p.converted[1].val == meshes
@@ -14,7 +13,6 @@ transform!(opf, refmesh_to_mesh!)
     @test p.plots[1].converted[1][] == aligned_meshes[1]
     @test p.plots[2].converted[1][] == aligned_meshes[2]
 end
-
 
 @testset "Makie recipes: reference meshes -> image references" begin
     @test_reference "reference_images/refmesh_basic.png" viz(meshes)

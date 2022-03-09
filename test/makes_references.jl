@@ -3,7 +3,7 @@
 # using CairoMakie
 
 # Import / pre-compute
-file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
 opf = read_opf(file)
 meshes = get_ref_meshes(opf)
 # Caching the meshes as we are plotting the opf several times:

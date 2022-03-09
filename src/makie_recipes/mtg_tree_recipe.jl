@@ -30,7 +30,7 @@ or a Symbol with its name.
 ```julia
 using PlantGeom, GLMakie
 
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf")
 # file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
 
 opf = read_opf(file)

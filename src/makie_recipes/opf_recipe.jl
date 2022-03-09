@@ -15,7 +15,7 @@ This function needs 3D information first.
 ```julia
 using MultiScaleTreeGraph, PlantGeom, GLMakie
 
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf")
 # file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
 
 opf = read_opf(file)
@@ -59,7 +59,7 @@ Plot all reference meshes in a single 3d plot using Makie.
 ```julia
 using PlantGeom, GLMakie
 
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf")
 opf = read_opf(file)
 meshes = get_ref_meshes(opf)
 

@@ -4,7 +4,7 @@
 using PlantGeom
 using Plots
 plotlyjs()
-opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf"))
+opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 ```
 
 `PlantGeom.jl` provides recipes to make plots using `Plots.jl`. The only recipe so far is to make a diagram of the MTG tree.
@@ -24,7 +24,7 @@ The plot recipe provides some arguments to customize the plot:
 using Plots
 # import Pkg; Pkg.add("PlotlyJS")
 plotlyjs()
-opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf"))
+opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 plot(opf, node_color = :Length)
 savefig("mtgplot.html"); nothing # hide
 ```

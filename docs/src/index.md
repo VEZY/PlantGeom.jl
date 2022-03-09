@@ -18,7 +18,7 @@ Note that PlantGeom reserves the `:geometry` attribute in the nodes (*e.g.* orga
 
 ```@setup animation
 using PlantGeom, MultiScaleTreeGraph, CairoMakie
-opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf"))
+opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 
 # First, we compute the 3D coordinates for each node in the MTG:
 transform!(opf, refmesh_to_mesh!)
@@ -58,7 +58,7 @@ If you want to reproduce the animation, you can look at the code below. Otherwis
 
 ```julia
 using PlantGeom, MultiScaleTreeGraph, CairoMakie
-opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf"))
+opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 
 # First, we compute the 3D coordinates for each node in the MTG:
 transform!(opf, refmesh_to_mesh!)

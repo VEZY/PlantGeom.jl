@@ -1,34 +1,33 @@
-@testset "read_opf: simple_OPF_shapes.opf -> read" begin
-    mtg = read_opf("files/simple_OPF_shapes.opf", Dict)
+@testset "read_opf: simple_plant.opf -> read" begin
+    mtg = read_opf("files/simple_plant.opf", Dict)
 end
 
-mtg = read_opf("files/simple_OPF_shapes.opf", Dict)
+mtg = read_opf("files/simple_plant.opf", Dict)
 
-@testset "read_opf: simple_OPF_shapes.opf -> attributes" begin
+@testset "read_opf: simple_plant.opf -> attributes" begin
     @test length(mtg) == 7
     @test haskey(mtg.attributes, :ref_meshes)
-    @test names(mtg) == [:ref_meshes, :FileName, :YY, :ZZ, :XX, :geometry, :Length, :Width, :XEuler]
-    @test descendants(mtg, :Length) == Any[nothing, nothing, 4.0f0, 10.0f0, 6.0f0, 12.0f0]
-    @test descendants(mtg, :Width) == Any[nothing, nothing, 1.0f0, 6.0f0, nothing, 7.0f0]
-    @test descendants(mtg, :YY) == Any[0.0f0, nothing, nothing, nothing, nothing, nothing]
-    @test descendants(mtg, :ZZ) == Any[0.0f0, nothing, nothing, nothing, nothing, nothing]
-    @test descendants(mtg, :XX) == Any[0.0f0, nothing, nothing, nothing, nothing, nothing]
+    @test names(mtg) == [:ref_meshes, :FileName, :geometry, :Length, :Width, :XEuler]
+    @test descendants(mtg, :Length) == Any[nothing, nothing, 0.1f0, 0.2f0, 0.1f0, 0.2f0]
+    @test descendants(mtg, :Width) == Any[nothing, nothing, 0.02f0, 0.1f0, 0.02f0, 0.1f0]
+    @test descendants(mtg, :FileName) == Any["ArchiTree", nothing, nothing, nothing, nothing, nothing]
+    @test descendants(mtg, :XEuler) == Any[nothing, nothing, nothing, nothing, 180.0f0, nothing]
 end
 
-@testset "read_opf: simple_OPF_shapes.opf -> ref. meshes" begin
+@testset "read_opf: simple_plant.opf -> ref. meshes" begin
     ref_meshes = mtg[:ref_meshes].meshes
-    @test length(ref_meshes) == 3
+    @test length(ref_meshes) == 2
     first_mesh = ref_meshes[1]
     @test isa(first_mesh.mesh, Meshes.SimpleMesh)
-    @test length(first_mesh.mesh) == 22
+    @test length(first_mesh.mesh) == 50
     @test isa(first_mesh.material, Phong)
     @test first_mesh.name == "Mesh0"
-    @test isa(first_mesh.normals, SVector{28,Meshes.Point3})
+    @test isa(first_mesh.normals, SVector{50,Meshes.Point3})
     @test first_mesh.taper == false
-    @test isa(first_mesh.texture_coords, SVector{28,Meshes.Point2})
+    @test isa(first_mesh.texture_coords, SVector{50,Meshes.Point2})
 end
 
-@testset "read_opf: simple_OPF_shapes.opf -> meshes" begin
+@testset "read_opf: simple_plant.opf -> meshes" begin
     Internode = get_node(mtg, 4)
 
     @test collect(keys(Internode.attributes)) == [:geometry, :Length, :Width]

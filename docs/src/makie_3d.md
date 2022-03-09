@@ -22,7 +22,7 @@ Then we can plot our interactive 3D plant:
 ```@example 1
 using PlantGeom, WGLMakie
 WGLMakie.activate!() # hide
-mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf"))
+mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 viz(mtg)
 ```
 

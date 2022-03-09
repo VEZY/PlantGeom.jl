@@ -10,7 +10,7 @@ node.
 
 ```julia
 using PlantGeom
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf")
 opf = read_opf(file)
 
 node = opf[1][1][1]

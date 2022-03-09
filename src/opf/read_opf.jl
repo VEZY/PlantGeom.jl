@@ -41,7 +41,7 @@ The MTG root node.
 
 ```julia
 using PlantGeom
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf")
 # file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
 opf = read_opf(file)
 ```
@@ -294,40 +294,43 @@ parse_opf_topology!(
                 ref_meshes
             )
 """
-function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes, id = [0])
-    if node.name == "topology" # First node
-        link = "/"
-    elseif node.name == "decomp"
-        link = "/"
-    elseif node.name == "branch"
+function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes)
+
+    link = "/" # default, for "topology" and "decomp"
+
+    if node.name == "branch"
         link = "+"
     elseif node.name == "follow"
         link = "<"
     end
 
-    id[1] = id[1] + 1
+    id = parse(Int, node["id"])
 
     MTG = mtg_type(
         link,
         node["class"],
-        parse(Int, node["id"]),
+        id,
         parse(Int, node["scale"])
     )
 
     if mtg !== nothing
         node_i = Node(
-            id[1],
+            id,
             mtg,
             MTG,
             MultiScaleTreeGraph.init_empty_attr(attr_type)
         )
     else
         # First node:
-        node_i = Node(id[1], MTG, MultiScaleTreeGraph.init_empty_attr(attr_type))
+        node_i = Node(id, MTG, MultiScaleTreeGraph.init_empty_attr(attr_type))
     end
 
     # node_i.children
     attrs = Dict{Symbol,Any}()
+
+    # Array with the last node computed. This is used for the "follow" nodes, because they always
+    # refer to the last computed node...
+    last_node = Node[node_i]
 
     # Handle the children, can be attributes of children nodes:
     # elem = elements(node)[1]
@@ -370,8 +373,11 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
                     )
                 )
             end
-        elseif elem.name in ["decomp", "branch", "follow"]
-            parse_opf_topology!(elem, node_i, features, attr_type, mtg_type, ref_meshes, id)
+        elseif elem.name in ["decomp", "branch"]
+            last_node[1] = parse_opf_topology!(elem, node_i, features, attr_type, mtg_type, ref_meshes)
+        elseif elem.name == "follow"
+            # We use last_node here instead of node_i because a following node refers to the last computed node
+            last_node[1] = parse_opf_topology!(elem, last_node[1], features, attr_type, mtg_type, ref_meshes)
         else
             error("Attribute $(elem.name) not found in attributeBDD (or badly written?)")
         end

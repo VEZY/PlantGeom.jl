@@ -7,7 +7,7 @@ Get all reference meshes from an mtg, usually from an OPF.
 
 ```julia
 using PlantGeom
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf")
 opf = read_opf(file)
 meshes = get_ref_meshes(opf)
 
@@ -112,7 +112,7 @@ end
 
 ```julia
 using MultiScaleTreeGraph
-file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))),"test","files","simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))),"test","files","simple_plant.opf")
 opf = read_opf(file)
 meshBDD_to_meshes(opf.attributes[:meshBDD])
 ```
@@ -186,7 +186,7 @@ Get the reference meshes colors (only the diffuse part for now).
 
 ```julia
 using MultiScaleTreeGraph, PlantGeom
-file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))),"test","files","simple_OPF_shapes.opf")
+file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))),"test","files","simple_plant.opf")
 opf = read_opf(file)
 meshes = get_ref_meshes(opf)
 PlantGeom.get_ref_meshes_color(meshes)
