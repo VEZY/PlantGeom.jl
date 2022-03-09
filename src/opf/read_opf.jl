@@ -233,10 +233,12 @@ function get_attr_type(attr)
             push!(attr_Type, i => String)
         elseif attr[i] == "Integer"
             push!(attr_Type, i => Int32)
-        elseif attr[i] in ["Double", "Metre", "Centimetre", "Millimetre", "10E-5 Metre"]
+        elseif attr[i] in ["Double", "Metre", "Centimetre", "Millimetre", "10E-5 Metre", "Metre_100"]
             push!(attr_Type, i => Float32)
         elseif attr[i] == "Boolean"
             push!(attr_Type, i => Bool)
+        else
+            error("Attribute type `$(attr[i])` not recognised in attributeBDD.")
         end
     end
     return attr_Type
@@ -328,7 +330,7 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
     attrs = Dict{Symbol,Any}()
 
     # Handle the children, can be attributes of children nodes:
-    # elem = elements(node)[3]
+    # elem = elements(node)[1]
     for elem in eachelement(node)
         # If an element is an attribute, add it to the attributes of the Node:
         if elem.name in keys(features)
@@ -368,8 +370,10 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
                     )
                 )
             end
-        else
+        elseif elem.name in ["decomp", "branch", "follow"]
             parse_opf_topology!(elem, node_i, features, attr_type, mtg_type, ref_meshes, id)
+        else
+            error("Attribute $(elem.name) not found in attributeBDD (or badly written?)")
         end
     end
 
