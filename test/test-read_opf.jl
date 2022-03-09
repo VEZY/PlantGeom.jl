@@ -23,7 +23,7 @@ end
     @test isa(first_mesh.material, Phong)
     @test first_mesh.name == "Mesh0"
     @test isa(first_mesh.normals, SVector{50,Meshes.Point3})
-    @test first_mesh.taper == false
+    @test first_mesh.taper == true
     @test isa(first_mesh.texture_coords, SVector{50,Meshes.Point2})
 end
 
@@ -37,9 +37,9 @@ end
     @test isnothing(geom.mesh)
     @test geom.ref_mesh === mtg[:ref_meshes].meshes[geom.ref_mesh_index]
     @test isa(geom.transformation, AffineMap{Matrix{Float64},Vector{Float64}})
-    @test geom.transformation([1, 1, 1]) ≈ [-1.0, 1.0, 1.0] atol = 1e-6
+    @test geom.transformation([1, 1, 1]) ≈ [-1.0, 1.0, 10.0] atol = 1.0e-6
+    # NB: last one is 10 because there is some tappering
 end
-
 
 @testset "read_opf: read coffee.opf" begin
     mtg = read_opf("files/coffee.opf", Dict)
@@ -51,5 +51,5 @@ end
         :Plagiotropy, :Phyllotaxy, :StiffnessAngle, :Area, :XInsertionAngle
     ]
 
-    @test sum(descendants(mtg, :Area, ignore_nothing = true)) ≈ 77961.42f0 atol = 1e-6
+    @test sum(descendants(mtg, :Area, ignore_nothing = true)) ≈ 77961.414f0 atol = 1e-6
 end

@@ -16,14 +16,13 @@ end
 
 @testset "Makie recipes: reference meshes -> image references" begin
     @test_reference "reference_images/refmesh_basic.png" viz(meshes)
-    @test_reference "reference_images/refmesh_allcolors.png" viz(meshes, color = [:burlywood4, :springgreen4, :burlywood4])
-    @test_reference "reference_images/refmesh_somecolors.png" viz(meshes, color = Dict(1 => :burlywood4, 3 => :burlywood4))
+    @test_reference "reference_images/refmesh_allcolors.png" viz(meshes, color = [:burlywood4, :springgreen4])
+    @test_reference "reference_images/refmesh_somecolors.png" viz(meshes, color = Dict(2 => :burlywood4))
     @test_reference "reference_images/refmesh_vertex_colors.png" viz(
         meshes,
         color = Dict(
             1 => 1:nvertices(meshes)[1],
-            2 => 1:nvertices(meshes)[2],
-            3 => 1:nvertices(meshes)[3]
+            2 => 1:nvertices(meshes)[2]
         )
     )
 end
@@ -32,7 +31,7 @@ end
 @testset "Makie recipes: whole MTG -> image references" begin
     @test_reference "reference_images/opf_basic.png" viz(opf)
     @test_reference "reference_images/opf_one_color.png" viz(opf, color = :red)
-    @test_reference "reference_images/opf_one_color_per_ref.png" viz(opf, color = Dict(1 => :burlywood4, 2 => :springgreen4, 3 => :burlywood4))
+    @test_reference "reference_images/opf_one_color_per_ref.png" viz(opf, color = Dict(1 => :burlywood4, 2 => :springgreen4))
     @test_reference "reference_images/opf_one_color_one_ref.png" viz(opf, color = Dict(1 => :burlywood4))
     @test_reference "reference_images/opf_color_ref_vertex.png" viz(opf, color = Dict(1 => 1:nvertices(get_ref_meshes(opf))[1]))
     transform!(opf, zmax => :z_max, ignore_nothing = true)
