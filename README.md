@@ -77,4 +77,4 @@ transform!(mtg, refmesh_to_mesh!)
 - [ ] Improve the OPF writer similarly. It takes forever writing to disk.
 - [ ] Add a section about the OPF format.
 - [ ] Fix the example simple OPF -> use one cylinder only, fix the scales of each node.
-- [ ] Add tests using both simple_plant.opf and simple_plant.mtg
+- [ ] Add tests using both simple_plant.opf and simple_plant.mtg to make sure both work the same way.
