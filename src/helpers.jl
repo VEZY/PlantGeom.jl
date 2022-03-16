@@ -3,8 +3,8 @@
 
 Return the number of vertices of a reference mesh
 """
-function nvertices(mesh::RefMesh)
-    nvertices(mesh.mesh)
+function Meshes.nvertices(mesh::RefMesh)
+    Meshes.nvertices(mesh.mesh)
 end
 
 """
@@ -12,8 +12,8 @@ end
 
 Return the number of elements of a reference mesh
 """
-function nelements(mesh::RefMesh)
-    nelements(mesh.mesh)
+function Meshes.nelements(mesh::RefMesh)
+    Meshes.nelements(mesh.mesh)
 end
 
 """
@@ -21,8 +21,9 @@ end
 
 Return the number of vertices for each reference mesh as a vector of nvertices
 """
-function nvertices(meshes::RefMeshes)
-    [nvertices(i) for i in meshes.meshes]
+function Meshes.nvertices(meshes::RefMeshes)
+    [Meshes.nvertices(i) for i in meshes.meshes]
+    # TODO: Implement for RefMesh with GeometryBasics
 end
 
 """
@@ -30,6 +31,7 @@ end
 
 Return the number of elements for each reference mesh as a vector of nelements
 """
-function nelements(meshes::RefMeshes)
-    [nelements(i) for i in meshes.meshes]
+function Meshes.nelements(meshes::RefMeshes)
+    [Meshes.nelements(i) for i in meshes.meshes]
+    # TODO: Implement for RefMesh with GeometryBasics
 end

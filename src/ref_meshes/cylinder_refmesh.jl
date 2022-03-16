@@ -14,7 +14,7 @@ end
 """
     read_ply(file)
 
-Read a ply file into a `Meshes.SimpleMesh` format. Code taken from
+Read a ply file into a `Meshes.Meshes.SimpleMesh` format. Code taken from
 [Meshes.jl](https://juliageometry.github.io/Meshes.jl/stable/algorithms/smoothing.html)
 documentation.
 
@@ -26,6 +26,6 @@ function read_ply(file)
     y = ply["vertex"]["y"]
     z = ply["vertex"]["z"]
     points = Meshes.Point3.(x, y, z)
-    connec = [connect(Tuple(c .+ 1)) for c in ply["face"]["vertex_indices"]]
-    SimpleMesh(points, connec)
+    connec = [Meshes.connect(Tuple(c .+ 1)) for c in ply["face"]["vertex_indices"]]
+    Meshes.SimpleMesh(points, connec)
 end

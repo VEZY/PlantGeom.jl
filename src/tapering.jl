@@ -12,17 +12,17 @@ function taper(mesh, dUp, dDwn)
         xmax = maximum(Xs)
         deltaX = xmax - xmin
 
-        scaled_mesh = Array{Point3}(undef, length(mesh_points))
+        scaled_mesh = Array{Meshes.Point3}(undef, length(mesh_points))
         for i = 1:length(mesh_points)
             dX = (mesh_points[i].coords[1] - xmin)
             factor = dDwn - delta * (dX / deltaX)
-            scaled_mesh[i] = Point3(
+            scaled_mesh[i] = Meshes.Point3(
                 mesh_points[i].coords[1],
                 mesh_points[i].coords[2] * factor,
                 mesh_points[i].coords[3] * factor
             )
         end
-        mesh = SimpleMesh(scaled_mesh, mesh.topology)
+        mesh = Meshes.SimpleMesh(scaled_mesh, Meshes.topology(mesh))
     end
 
     return mesh

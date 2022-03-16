@@ -33,12 +33,12 @@ function refmesh_to_mesh(node)
             ref_mesh = taper(ref_mesh, node[:geometry].dUp, node[:geometry].dDwn)
         end
 
-        scaled_mesh = Array{Point3}(undef, nvertices(ref_mesh))
+        scaled_mesh = Array{Meshes.Point3}(undef, nvertices(ref_mesh))
         for (i, p) in enumerate(ref_mesh.points)
-            scaled_mesh[i] = Point3(node[:geometry].transformation(p.coords))
+            scaled_mesh[i] = Meshes.Point3(node[:geometry].transformation(p.coords))
         end
 
-        return SimpleMesh(scaled_mesh, ref_mesh.topology)
+        return Meshes.SimpleMesh(scaled_mesh, Meshes.topology(ref_mesh))
     else
         return nothing
     end
@@ -55,12 +55,12 @@ function refmesh_to_mesh!(node)
             ref_mesh = taper(ref_mesh, node[:geometry].dUp, node[:geometry].dDwn)
         end
 
-        scaled_mesh = Array{Point3}(undef, nvertices(ref_mesh))
+        scaled_mesh = Array{Meshes.Point3}(undef, Meshes.nvertices(ref_mesh))
         for (i, p) in enumerate(ref_mesh.points)
-            scaled_mesh[i] = Point3(node[:geometry].transformation(p.coords))
+            scaled_mesh[i] = Meshes.Point3(node[:geometry].transformation(p.coords))
         end
 
-        node[:geometry].mesh = SimpleMesh(scaled_mesh, ref_mesh.topology)
+        node[:geometry].mesh = Meshes.SimpleMesh(scaled_mesh, Meshes.topology(ref_mesh))
         return node[:geometry].mesh
     else
         return nothing

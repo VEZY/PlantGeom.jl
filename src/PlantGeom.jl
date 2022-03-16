@@ -4,10 +4,7 @@ using MultiScaleTreeGraph
 import MeshViz: viz, viz!, Viz
 
 # For 3D (OPF):
-import Meshes: SimpleMesh, connect, Point3, Point2, Ngon, vertices, topology, Vec
-import Meshes: nvertices, nelements, normal, Triangle, coordinates
-# import Makie: plot!, Attributes, scatter!, lines!, hidedecorations!, hidespines!, @recipe
-# import Makie: Combined, theme
+import Meshes
 import Makie
 import Colors: RGBA, Colorant, RGB
 import ColorSchemes: get, rainbow, colorschemes, ColorScheme

@@ -77,4 +77,7 @@ transform!(mtg, refmesh_to_mesh!)
 - [ ] Improve the OPF writer similarly. It takes forever writing to disk.
 - [ ] Add a section about the OPF format.
 - [ ] Fix the example simple OPF -> use one cylinder only, fix the scales of each node.
+- [ ] Fix the coffee OPF -> scales are wrong (Metamer = 6 -> 3, Leaf = 2 -> 3) + Fix the MTG accordingly
 - [ ] Add tests using both simple_plant.opf and simple_plant.mtg to make sure both work the same way.
+- [ ] Fix the OPF writer: follow nodes are placed as siblings not children.
+- [ ] Make it compatible with <https://github.com/JuliaGeometry/GeometryBasics.jl>

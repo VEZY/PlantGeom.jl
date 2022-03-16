@@ -46,7 +46,12 @@ file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant
 opf = read_opf(file)
 ```
 """
-function read_opf(file, attr_type = Dict, mtg_type = MultiScaleTreeGraph.MutableNodeMTG)
+function read_opf(
+    file,
+    attr_type = Dict,
+    mtg_type = MultiScaleTreeGraph.MutableNodeMTG,
+    geom_type = Meshes.SimpleMesh
+)
 
     doc = readxml(file)
     xroot = root(doc)
@@ -351,9 +356,7 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
                 #! OK what I could do is use my own transformation function that adds w (=1)
                 #! to the Point3 when transforming it with the 4x4 matrix?
 
-                cartesian_rotation = geom[:mat][1:3, 1:3]
-
-                transformation = Translation(geom[:mat][1:3, 4]) ∘ LinearMap(cartesian_rotation)
+                transformation = Translation(geom[:mat][1:3, 4]) ∘ LinearMap(geom[:mat][1:3, 1:3])
                 # NB: We read an homogeneous transformation matrix from the OPF, but we work
                 # with cartesian coordinates in PlantGeom by design. So we deconstruct our
                 # homogeneous matrix into the two corresponding rotation and translation

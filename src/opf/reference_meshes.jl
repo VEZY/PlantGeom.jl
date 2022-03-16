@@ -72,16 +72,17 @@ function parse_ref_meshes(x)
 
     for (id, value) in x[:shapeBDD]
         normals = meshBDD[value["meshIndex"]]["normals"]
-        normals = SVector{length(normals) ÷ 3}(Point3(normals[[i, i + 1, i + 2]]) for i in 1:3:length(normals))
+        normals = SVector{length(normals) ÷ 3}(Meshes.Point3(normals[[i, i + 1, i + 2]]) for i in 1:3:length(normals))
 
 
         if haskey(meshBDD[value["meshIndex"]], "textureCoords")
             text_coord = meshBDD[value["meshIndex"]]["textureCoords"]
-            text_coord = SVector{length(text_coord) ÷ 2}(Point2(text_coord[[i, i + 1]]) for i in 1:2:length(text_coord))
+            text_coord = SVector{length(text_coord) ÷ 2}(Meshes.Point2(text_coord[[i, i + 1]]) for i in 1:2:length(text_coord))
         else
             text_coord = nothing
         end
 
+        #! Create the RefMeshes directly and push to it?
         push!(
             meshes,
             id => RefMesh(
@@ -125,10 +126,10 @@ function meshBDD_to_meshes(x)
         mesh_points = pop!(value, "points")
         mesh_faces = pop!(value, "faces")
 
-        points3d = Point3[mesh_points[p:(p+2)] for p = 1:3:length(mesh_points)]
-        faces3d = [connect((mesh_faces[p:(p+2)]...,), Ngon) for p = 1:3:length(mesh_faces)]
+        points3d = Meshes.Point3[mesh_points[p:(p+2)] for p = 1:3:length(mesh_points)]
+        faces3d = [Meshes.connect((mesh_faces[p:(p+2)]...,), Meshes.Ngon) for p = 1:3:length(mesh_faces)]
 
-        push!(mesh, "mesh" => SimpleMesh(points3d, faces3d))
+        push!(mesh, "mesh" => Meshes.SimpleMesh(points3d, faces3d))
         merge!(mesh, value)
 
         push!(meshes, key => mesh)
@@ -158,16 +159,16 @@ end
 Align all reference meshes along the X axis. Used for visualisation only.
 """
 function align_ref_meshes(meshes::RefMeshes)
-    meshes_vec = SimpleMesh[]
+    meshes_vec = Meshes.SimpleMesh[]
     translation_vec = [0.0, 0.0, 0.0]
 
     for i in meshes.meshes
-        translated_vertices = [i + Vec(translation_vec...) for i in vertices(i.mesh)]
+        translated_vertices = [i + Meshes.Vec(translation_vec...) for i in Meshes.vertices(i.mesh)]
 
-        push!(meshes_vec, SimpleMesh(translated_vertices, topology(i.mesh)))
+        push!(meshes_vec, Meshes.SimpleMesh(translated_vertices, Meshes.topology(i.mesh)))
 
         # Maximum X coordinates of the newly translated mesh:
-        xmax_ = maximum([coordinates(i)[1] for i in translated_vertices])
+        xmax_ = maximum([Meshes.coordinates(i)[1] for i in translated_vertices])
         # Update the translation for the next mesh to begin at xmax*1.1 from the last one
         translation_vec[1] = xmax_ * 1.1
     end

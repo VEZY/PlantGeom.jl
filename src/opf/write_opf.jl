@@ -14,7 +14,7 @@ should not be used without knowing their meaning:
     - `:dUp`: tappering in the upper direction
     - `:dDwn`: tappering in the bottom direction
     - `:mat`: the transformation matrix (4x4)
-- `:mesh`: a `SimpleMesh` computed from a reference mesh (`:ref_meshes`) and a transformation
+- `:mesh`: a `Meshes.SimpleMesh` computed from a reference mesh (`:ref_meshes`) and a transformation
 matrix (`:geometry`).
 
 # Examples
@@ -75,11 +75,11 @@ function write_opf(file, mtg)
         faces_elm = addelement!(mesh_elm, "faces")
 
         face_id = [0]
-        for i = 1:nelements(mesh.mesh.topology)
+        for i = 1:nelements(Meshes.topology(mesh.mesh))
             face_elm = addelement!(
                 faces_elm,
                 "face",
-                string("\n", join(mesh.mesh.topology.connec[i].indices .- 1, "\t"), "\n")
+                string("\n", join(Meshes.topology(mesh.mesh).connec[i].indices .- 1, "\t"), "\n")
             )
             #? NB: we remove one because face index are 0-based in the opf
             face_elm["Id"] = face_id[1]

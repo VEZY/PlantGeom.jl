@@ -42,7 +42,7 @@ to match the actual mesh.
 """
 struct RefMesh{S<:Union{String,SubString},M<:Union{Material,Colorant},N<:SVector,T<:Union{SVector,Nothing}}
     name::S
-    mesh::SimpleMesh
+    mesh::Meshes.SimpleMesh
     normals::N
     texture_coords::T
     material::M
@@ -54,8 +54,8 @@ end
 function RefMesh(name, mesh, material = RGB(220 / 255, 220 / 255, 220 / 255))
     RefMesh(
         name,
-        SVector{length(mesh.topology.connec)}(
-            normal(Triangle(mesh.points[[tri.indices...]])) for tri in mesh.topology.connec
+        SVector{length(Meshes.topology(mesh).connec)}(
+            Meshes.normal(Meshes.Triangle(mesh.points[[tri.indices...]])) for tri in Meshes.topology(mesh).connec
         ),
         nothing,
         material,
@@ -109,5 +109,5 @@ mutable struct geometry{M<:RefMesh,S}
     transformation::Transformation #! replace by concrete types ?
     dUp::S
     dDwn::S
-    mesh::Union{SimpleMesh,Nothing}
+    mesh::Union{Meshes.SimpleMesh,Nothing}
 end
