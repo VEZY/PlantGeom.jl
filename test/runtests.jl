@@ -18,6 +18,10 @@ using MeshViz
     include("test-read_opf.jl")
 end
 
+@testset "Write OPF" begin
+    include("test-read_opf.jl")
+end
+
 @testset "Makie recipes" begin
     include("test-makie-recipes.jl")
 end
