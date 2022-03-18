@@ -25,19 +25,19 @@ refmesh_to_mesh!, refmesh_to_mesh
 
 function refmesh_to_mesh(node)
     if node[:geometry] !== nothing
-
+    
         ref_mesh = node[:geometry].ref_mesh.mesh
-
+    
         # Get the reference mesh and taper it in z and y (the principal axis is following x already):
         if node[:geometry].ref_mesh.taper # Taper only if enableScale="true" in the OPF: taper == true
             ref_mesh = taper(ref_mesh, node[:geometry].dUp, node[:geometry].dDwn)
         end
-
-        scaled_mesh = Array{Meshes.Point3}(undef, nvertices(ref_mesh))
+    
+        scaled_mesh = Array{Meshes.Point3}(undef, Meshes.nvertices(ref_mesh))
         for (i, p) in enumerate(ref_mesh.points)
             scaled_mesh[i] = Meshes.Point3(node[:geometry].transformation(p.coords))
         end
-
+    
         return Meshes.SimpleMesh(scaled_mesh, Meshes.topology(ref_mesh))
     else
         return nothing

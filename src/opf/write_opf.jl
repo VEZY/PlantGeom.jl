@@ -1,5 +1,5 @@
 """
-    write_opf(opf, file)
+    write_opf(file, opf)
 
 Write an MTG with explicit geometry to disk as an OPF file.
 
@@ -57,11 +57,28 @@ function write_opf(file, mtg)
             string("\n", join([vcat([p.coords for p in mesh.mesh.points]...)...], "\t"), "\n")
         )
 
+        if length(mesh.normals) == Meshes.nelements(mesh) && length(mesh.normals) != Meshes.nvertices(mesh)
+            # If the normals are per triangle, re-compute them per vertex:
+            vertex_normals = fill([1.0, 1.0, 1.0], Meshes.nvertices(mesh))
+            for (i, tri) in enumerate(Meshes.topology(mesh.mesh).connec)
+                vertex_normals[tri.indices[1]] = mesh.normals[i]
+                vertex_normals[tri.indices[2]] = mesh.normals[i]
+                vertex_normals[tri.indices[3]] = mesh.normals[i]
+            end
+            #! This is a naive approach because I have no time right know.
+            # We just put the face mesh as a vertex mesh (and ovewritting values for common points)
+            # TODO: Use a real computation instead. See e.g.:
+            # https://stackoverflow.com/questions/45477806/general-method-for-calculating-smooth-vertex-normals-with-100-smoothness?noredirect=1&lq=1
+        else
+            vertex_normals = mesh.normals
+        end
+
         norm_elm = addelement!(
             mesh_elm,
             "normals",
-            string("\n", join(vcat([[p.coords...] for p in mesh.normals]...), "\t"), "\n")
+            string("\n", join(vcat([p.coords for p in vertex_normals]...), "\t"), "\n")
         )
+
 
         if mesh.texture_coords !== nothing && length(mesh.texture_coords) > 0
             # texture_coords are optional
@@ -75,7 +92,7 @@ function write_opf(file, mtg)
         faces_elm = addelement!(mesh_elm, "faces")
 
         face_id = [0]
-        for i = 1:nelements(Meshes.topology(mesh.mesh))
+        for i = 1:Meshes.nelements(Meshes.topology(mesh.mesh))
             face_elm = addelement!(
                 faces_elm,
                 "face",
@@ -94,34 +111,35 @@ function write_opf(file, mtg)
         mat_elm = addelement!(materialBDD, "material")
         mat_elm["Id"] = key - 1 # opf uses 0-based indexing
 
+        mat = material_to_opf_string(mesh.material)
         addelement!(
             mat_elm,
             "emission",
-            rgba_to_string(mesh.material.emission)
+            mat[:emission]
         )
 
         addelement!(
             mat_elm,
             "ambient",
-            rgba_to_string(mesh.material.ambient)
+            mat[:ambient]
         )
 
         addelement!(
             mat_elm,
             "diffuse",
-            rgba_to_string(mesh.material.diffuse)
+            mat[:diffuse]
         )
 
         addelement!(
             mat_elm,
             "specular",
-            rgba_to_string(mesh.material.specular)
+            mat[:specular]
         )
 
         addelement!(
             mat_elm,
             "shininess",
-            string(mesh.material.shininess)
+            mat[:shininess]
         )
     end
 
@@ -176,10 +194,6 @@ function write_opf(file, mtg)
     write(file, doc)
 end
 
-function rgba_to_string(x)
-    join([x.r, x.g, x.b, x.alpha], "\t")
-end
-
 """
     mtg_to_opf_link(link)
 
@@ -203,16 +217,16 @@ end
 Write the MTG topology, attributes and geometry into XML format. This function is used to
 write the "topology" section of the OPF.
 """
-function mtg_topology_to_xml!(node, xml_parent, ref_meshes = get_ref_meshes(node))
+function mtg_topology_to_xml!(node, xml_parent, xml_gtparent=nothing, ref_meshes=get_ref_meshes(node))
 
     if isroot(node)
-        xml_parent = attributes_to_xml(node, xml_parent, ref_meshes)
+        xml_parent = attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
     end
 
     if !isleaf(node)
         for chnode in MultiScaleTreeGraph.ordered_children(node)
-            xml_node = attributes_to_xml(chnode, xml_parent, ref_meshes)
-            mtg_topology_to_xml!(chnode, xml_node, ref_meshes)
+            xml_node = attributes_to_xml(chnode, xml_parent, xml_gtparent, ref_meshes)
+            mtg_topology_to_xml!(chnode, xml_node, xml_parent, ref_meshes)
         end
     end
 end
@@ -222,9 +236,16 @@ end
 
 Write an MTG node into an XML node.
 """
-function attributes_to_xml(node, xml_parent, ref_meshes)
+function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
     opf_link = isroot(node) ? "topology" : mtg_to_opf_link(node.MTG.link)
-    xml_node = addelement!(xml_parent, opf_link)
+
+    if opf_link == "follow"
+        xml_gtparent === nothing ? error("Root node should start with a '/' link") : nothing
+        xml_node = addelement!(xml_gtparent, opf_link)
+    else
+        xml_node = addelement!(xml_parent, opf_link)
+    end
+
     xml_node["class"] = node.MTG.symbol
     xml_node["scale"] = node.MTG.scale
     xml_node["id"] = node.id #! maybe this should be `node.MTG.index` instead ? But I think is is unique
@@ -241,7 +262,8 @@ function attributes_to_xml(node, xml_parent, ref_meshes)
             # NB: opf uses 0-based indexing, that's why we use ref_mesh_index - 1
 
             # Make the homogeneous matrix from the transformations:
-            mat4x4 = hcat(node[key].transformation.linear, node[key].transformation.translation)
+
+            mat4x4 = mat_to_opf_string(node[key].transformation)
 
             addelement!(
                 geom,
@@ -268,4 +290,16 @@ function attributes_to_xml(node, xml_parent, ref_meshes)
     end
 
     return xml_node
+end
+
+function mat_to_opf_string(trans::T) where {T<:UniformScaling}
+    Matrix{Float64}(I, 3, 4)
+end
+
+function mat_to_opf_string(trans::IdentityTransformation)
+    Matrix{Float64}(I, 3, 4)
+end
+
+function mat_to_opf_string(trans)
+    hcat(trans.linear, trans.translation)
 end

@@ -81,3 +81,4 @@ transform!(mtg, refmesh_to_mesh!)
 - [ ] Add tests using both simple_plant.opf and simple_plant.mtg to make sure both work the same way.
 - [ ] Fix the OPF writer: follow nodes are placed as siblings not children.
 - [ ] Make it compatible with <https://github.com/JuliaGeometry/GeometryBasics.jl>
+- [ ] Compute the vertex normals properly when writting the OPF to disk

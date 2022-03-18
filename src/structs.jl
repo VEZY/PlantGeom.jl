@@ -17,6 +17,46 @@ struct Phong{T,S<:Colorant} <: Material
 end
 
 """
+    material_to_opf_string(material::Phong)
+    material_to_opf_string(material::Colorant)
+
+Format a material into a Dict for OPF writting.
+"""
+function material_to_opf_string(material::Phong)
+    Dict(
+        :emission => colorant_to_string(material.emission),
+        :ambient => colorant_to_string(material.ambient),
+        :diffuse => colorant_to_string(material.diffuse),
+        :specular => colorant_to_string(material.specular),
+        :shininess => string(material.shininess)
+    )
+end
+
+function material_to_opf_string(material::Colorant)
+    # Here we use the same color for all Phong parameters
+    Dict(
+        :emission => colorant_to_string(material),
+        :ambient => colorant_to_string(material),
+        :diffuse => colorant_to_string(material),
+        :specular => colorant_to_string(material),
+        :shininess => "1.0"
+    )
+end
+
+"""
+    colorant_to_string(x)
+
+Parse a geometry material for OPF writing.
+"""
+function colorant_to_string(x::T) where {T<:RGBA}
+    join(Float64[x.r, x.g, x.b, x.alpha], "\t")
+end
+
+function colorant_to_string(x::T) where {T<:RGB}
+    join(Float64[x.r, x.g, x.b, 1.0], "\t")
+end
+
+"""
 
     RefMesh(
         name::S
@@ -40,9 +80,9 @@ RefMesh type. Stores all information about a Mesh:
 The reference meshes are then transformed on each node of the MTG using a transformation matrix
 to match the actual mesh.
 """
-struct RefMesh{S<:Union{String,SubString},M<:Union{Material,Colorant},N<:SVector,T<:Union{SVector,Nothing}}
+struct RefMesh{S<:Union{String,SubString},ME<:Meshes.SimpleMesh,M<:Union{Material,Colorant},N<:SVector,T<:Union{SVector,Nothing}}
     name::S
-    mesh::Meshes.SimpleMesh
+    mesh::ME
     normals::N
     texture_coords::T
     material::M
@@ -51,15 +91,15 @@ end
 
 #! Make a method that computes the normals and texture_coords from the mesh
 
-function RefMesh(name, mesh, material = RGB(220 / 255, 220 / 255, 220 / 255))
+function RefMesh(name, mesh, material=RGB(220 / 255, 220 / 255, 220 / 255))
     RefMesh(
         name,
+        mesh,
         SVector{length(Meshes.topology(mesh).connec)}(
-            Meshes.normal(Meshes.Triangle(mesh.points[[tri.indices...]])) for tri in Meshes.topology(mesh).connec
+            Meshes.Point3(Meshes.normal(Meshes.Triangle(mesh.points[[tri.indices...]]))) for tri in Meshes.topology(mesh).connec
         ),
         nothing,
         material,
-        mesh,
         false
     )
 end
@@ -73,7 +113,7 @@ mutable struct RefMeshes
     meshes::Vector{RefMesh}
 end
 
-names(m::RefMeshes) = [i.name for i in RefMeshes.meshes]
+Base.names(m::RefMeshes) = [i.name for i in m.meshes]
 
 """
     geometry(
@@ -94,12 +134,12 @@ mesh (optional to save memory).
 The ref_mesh usually points to a [`RefMesh`](@ref) stored in the `:ref_meshes` attribute of the
 root node of the MTG.
 
-Although optinal, storing the index of the reference mesh (`ref_mesh_index`) in the database allows a faster
+Although optional, storing the index of the reference mesh (`ref_mesh_index`) in the database allows a faster
 writing of the MTG as an OPF to disk.
 
 If no transformation matrix is needed, you can use `I` from the Linear Algebra package (lazy)
 
-The `transformation` field should a `CoordinateTransformations.jl`'s transformation. In case
+The `transformation` field should be a `CoordinateTransformations.jl`'s transformation. In case
 no transformation is needed, use `IdentityTransformation()`. If you already have the
 transformation matrix, you can pass it to `LinearMap()`.
 """

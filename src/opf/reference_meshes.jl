@@ -82,7 +82,6 @@ function parse_ref_meshes(x)
             text_coord = nothing
         end
 
-        #! Create the RefMeshes directly and push to it?
         push!(
             meshes,
             id => RefMesh(
@@ -96,6 +95,7 @@ function parse_ref_meshes(x)
         )
     end
 
+    # We create RefMeshes just now in case they were not sorted in the opf file
     refmeshes = RefMeshes(RefMesh[])
 
     for i in sort(collect(keys(meshes)))
