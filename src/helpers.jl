@@ -16,6 +16,17 @@ function Meshes.nelements(mesh::RefMesh)
     Meshes.nelements(mesh.mesh)
 end
 
+function normals(mesh::RefMesh{S,ME,M,N,T}) where {S,ME<:Meshes.SimpleMesh,M,N,T}
+    if length(mesh.normals) == 0
+        return SVector{length(Meshes.topology(mesh.mesh).connec)}(
+            Meshes.Point3(Meshes.normal(Meshes.Triangle(mesh.mesh.points[[tri.indices...]]))) for tri in Meshes.topology(mesh.mesh).connec
+        )
+    else
+        return mesh.normals
+    end
+    # TODO: Implement for RefMesh with GeometryBasics
+end
+
 """
     nvertices(meshes::RefMeshes)
 
