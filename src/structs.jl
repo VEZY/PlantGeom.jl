@@ -35,7 +35,7 @@ end
 function material_to_opf_string(material::Colorant)
     # Here we use the same color for all Phong parameters
     Dict(
-        :emission => colorant_to_string(material),
+        :emission => join(Float64[0.0, 0.0, 0.0, 0.0], "\t"),
         :ambient => colorant_to_string(material),
         :diffuse => colorant_to_string(material),
         :specular => colorant_to_string(material),
@@ -95,9 +95,7 @@ function RefMesh(name, mesh, material=RGB(220 / 255, 220 / 255, 220 / 255))
     RefMesh(
         name,
         mesh,
-        SVector{length(Meshes.topology(mesh).connec)}(
-            Meshes.Point3(Meshes.normal(Meshes.Triangle(mesh.points[[tri.indices...]]))) for tri in Meshes.topology(mesh).connec
-        ),
+        normals_vertex(mesh),
         nothing,
         material,
         false

@@ -5,17 +5,11 @@ Write an MTG with explicit geometry to disk as an OPF file.
 
 # Notes
 
-Node attributes `:mesh`, `:ref_meshes` and `:geometry` are treated as reserved keywords and
+Node attributes `:ref_meshes` and `:geometry` are treated as reserved keywords and
 should not be used without knowing their meaning:
 
 - `:ref_meshes`: a `RefMeshes` structure that holds the MTG reference meshes.
-- `:geometry`: a Dict of four:
-    - `:shapeIndex`: the index of the node reference mesh
-    - `:dUp`: tappering in the upper direction
-    - `:dDwn`: tappering in the bottom direction
-    - `:mat`: the transformation matrix (4x4)
-- `:mesh`: a `Meshes.SimpleMesh` computed from a reference mesh (`:ref_meshes`) and a transformation
-matrix (`:geometry`).
+- `:geometry`: a [`geometry`](@ref) instance
 
 # Examples
 
@@ -23,10 +17,8 @@ matrix (`:geometry`).
 using PlantGeom
 file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf")
 opf = read_opf(file)
-
 write_opf("test.opf", opf)
-file = "test.opf"
-opf2 = read_opf(file)
+opf2 = read_opf("test.opf")
 viz(opf2)
 ```
 """
@@ -59,16 +51,7 @@ function write_opf(file, mtg)
 
         if length(mesh.normals) == Meshes.nelements(mesh) && length(mesh.normals) != Meshes.nvertices(mesh)
             # If the normals are per triangle, re-compute them per vertex:
-            vertex_normals = fill([1.0, 1.0, 1.0], Meshes.nvertices(mesh))
-            for (i, tri) in enumerate(Meshes.topology(mesh.mesh).connec)
-                vertex_normals[tri.indices[1]] = mesh.normals[i]
-                vertex_normals[tri.indices[2]] = mesh.normals[i]
-                vertex_normals[tri.indices[3]] = mesh.normals[i]
-            end
-            #! This is a naive approach because I have no time right know.
-            # We just put the face mesh as a vertex mesh (and ovewritting values for common points)
-            # TODO: Use a real computation instead. See e.g.:
-            # https://stackoverflow.com/questions/45477806/general-method-for-calculating-smooth-vertex-normals-with-100-smoothness?noredirect=1&lq=1
+            vertex_normals = normals_vertex(mesh)
         else
             vertex_normals = mesh.normals
         end
