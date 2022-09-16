@@ -1,7 +1,7 @@
 name = "PlantGeom"
 uuid = "5edaa67e-25db-4eb9-bf81-05d793b2238d"
 authors = ["remi.vezy <VEZY@users.noreply.github.com> and contributors"]
-version = "0.3.1"
+version = "0.4.0"
 
 [deps]
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
@@ -24,9 +24,9 @@ CoordinateTransformations = "0.6"
 EzXML = "1"
 GeometryBasics = "0.4"
 Makie = "0.15, 0.16, 0.17"
-MeshViz = "0.3, 0.4"
-Meshes = "0.19, 0.20, 0.21, 0.22"
-MultiScaleTreeGraph = "0.3, 0.4, 0.5"
+MeshViz = "0.4, 0.5"
+Meshes = "0.19, 0.20, 0.21, 0.22, 0.23, 0.24"
+MultiScaleTreeGraph = "0.3, 0.4, 0.5, 0.6, 0.7"
 RecipesBase = "1"
 StaticArrays = "1"
 julia = "1.6"
