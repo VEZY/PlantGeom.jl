@@ -88,7 +88,7 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
 
     # Plot options:
     color = plot[:color][]
-    colormap = get_colormap(plot[:colormap][])
+    colorscheme = get_colormap(plot[:colorscheme][])
     color_missing = RGBA(0, 0, 0, 0.3)
     ref_meshes = get_ref_meshes(opf)
     colorbar = false
@@ -119,8 +119,8 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
                     (x -> if x === nothing
                         color_missing
                     else
-                        # get the color based on a colormap and the normalized attribute value
-                        get_color(colormap, x, range_val)
+                        # get the color based on a colorscheme and the normalized attribute value
+                        get_color(colorscheme, x, range_val)
                     end
                     ) => key_cache
             )
@@ -153,7 +153,7 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
 
     facetcolor = plot[:facetcolor][]
     showfacets = plot[:showfacets][]
-    colormap = plot[:colormap][]
+    colorscheme = plot[:colorscheme][]
 
     if attr_color == false
         # Make the plot, case where the color is a color for each reference mesh:
@@ -163,16 +163,16 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
                 # ax,
                 plot,
                 node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
-                color = color[get_ref_mesh_index!(node, ref_meshes)],
-                facetcolor = facetcolor,
-                showfacets = showfacets,
-                colormap = colormap
+                color=color[get_ref_mesh_index!(node, ref_meshes)],
+                facetcolor=facetcolor,
+                showfacets=showfacets,
+                colorscheme=colorscheme
             )
             ;
             # scale = scale,
             # symbol = symbol,
             # link = link,
-            filter_fun = node -> node[:geometry] !== nothing
+            filter_fun=node -> node[:geometry] !== nothing
         )
         #? NB: implement scale / symbol / link / filter_fun filtering to be able to plot only
         #? a subset of the plant/scene. This will be especially usefull when we have different
@@ -186,22 +186,22 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
                     # ax,
                     plot,
                     node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
-                    color = node[key_cache],
-                    facetcolor = facetcolor,
-                    showfacets = showfacets,
-                    colormap = colormap
+                    color=node[key_cache],
+                    facetcolor=facetcolor,
+                    showfacets=showfacets,
+                    colorscheme=colorscheme
                 )
                 pop!(node, key_cache) # Remove the cached variable
             end;
             # scale = scale,
             # symbol = symbol,
             # link = link,
-            filter_fun = node -> node[:geometry] !== nothing
+            filter_fun=node -> node[:geometry] !== nothing
         )
     end
 
     # if colorbar
-    # cb = Makie.Colorbar(plot.parent, label = string(color), colormap = colormap, colorrange = range_val)
+    # cb = Makie.Colorbar(plot.parent, label = string(color), colorscheme = colorscheme, colorrange = range_val)
     # end
 
     # return Makie.AxisPlot(ax, plot)

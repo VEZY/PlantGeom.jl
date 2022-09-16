@@ -41,9 +41,9 @@ function Makie.plot!(plot::Viz{<:Tuple{RefMeshes}})
 
     facetcolor = plot[:facetcolor][]
     showfacets = plot[:showfacets][]
-    colormap = plot[:colormap][]
+    colorscheme = plot[:colorscheme][]
 
     for (key, value) in enumerate(p)
-        viz!(plot, value, color = color[key], facetcolor = facetcolor, showfacets = showfacets, colormap = colormap)
+        viz!(plot, value, color=color[key], facetcolor=facetcolor, showfacets=showfacets, colorscheme=colorscheme)
     end
 end
