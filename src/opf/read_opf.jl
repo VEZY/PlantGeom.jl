@@ -48,9 +48,9 @@ opf = read_opf(file)
 """
 function read_opf(
     file,
-    attr_type = Dict,
-    mtg_type = MultiScaleTreeGraph.MutableNodeMTG,
-    geom_type = Meshes.SimpleMesh
+    attr_type=Dict,
+    mtg_type=MultiScaleTreeGraph.MutableNodeMTG,
+    geom_type=Meshes.SimpleMesh
 )
 
     doc = readxml(file)
@@ -68,7 +68,7 @@ function read_opf(
     editable = parse(Bool, xroot["editable"])
 
     opf_attr = Dict{Symbol,Any}()
-    # node = elements(xroot)[5]
+    # node = elements(xroot)[1]
     for node in eachelement(xroot)
         if node.name == "meshBDD"
             push!(opf_attr, :meshBDD => parse_meshBDD!(node))
@@ -103,7 +103,7 @@ function read_opf(
         if node.name == "topology"
             ref_meshes = parse_ref_meshes(opf_attr)
 
-            global mtg = parse_opf_topology!(
+            mtg = parse_opf_topology!(
                 node,
                 nothing,
                 get_attr_type(opf_attr[:attributeBDD]),
@@ -119,7 +119,6 @@ function read_opf(
                     Dict(:ref_meshes => ref_meshes)
                 )
             )
-
             return mtg
         end
     end
@@ -130,7 +129,7 @@ end
 Parse an array of values from the OPF into a Julia array (Arrays in OPFs
 are not following XML recommendations)
 """
-function parse_opf_array(elem, type = Float64)
+function parse_opf_array(elem, type=Float64)
     if type == String
         strip(elem)
     else
@@ -144,27 +143,71 @@ function parse_opf_array(elem, type = Float64)
 end
 
 
+
+# struct TestMesh{N<:AbstractVector,T<:AbstractVector}
+#     points::N
+#     faces::T
+# end
+
+struct OPFmesh{M<:Meshes.SimpleMesh,N<:AbstractVector,T<:Union{AbstractVector,Nothing}}
+    name::String
+    enableScale::Bool
+    mesh::M
+    normals::N
+    textureCoords::T # texture coordinates (length = length(points) * 2/3, or Nothing)
+end
+
 """
 Parse the meshBDD using [`parse_opf_array`](@ref)
 """
 function parse_meshBDD!(node)
     # MeshBDD:
-    meshes = Dict{Int,Dict{String,Any}}()
-
+    meshes = Dict{Int,OPFmesh}()
+    # m = elements(node)[1]
+    # length(parse_opf_array(elements(m)[3].content))
+    # content = parse_opf_array(elements(m)[3].content)
     for m in eachelement(node)
         m.name != "mesh" ? @warn("Unknown node element in meshBDD: $(m.name)") : nothing
         mesh = Dict{String,Any}()
         mesh["name"] = m["name"]
         mesh["enableScale"] = parse(Bool, m["enableScale"])
+
         for i in eachelement(m)
             if i.name == "faces"
-                push!(mesh, i.name => parse_opf_array(i.content, Int) .+ 1)
+                content = parse_opf_array(i.content, Int) .+ 1
                 # NB: adding 1 to the faces because the opf is 0-based but Julia is 1-based
+
+                faces3d = Meshes.Connectivity[
+                    Meshes.connect((content[p], content[p+1], content[p+2]), Meshes.Triangle) for p = 1:3:length(content)
+                ]
+
+                push!(mesh, "faces" => faces3d)
+            elseif i.name == "textureCoords"
+                content = parse_opf_array(i.content)
+                content = Meshes.Point2[
+                    Meshes.Point2(content[[i, i + 1]]) for i in 1:2:length(content)
+                ]
+                push!(mesh, "textureCoords" => content)
             else
-                push!(mesh, i.name => parse_opf_array(i.content))
+                content = parse_opf_array(i.content)
+                content = Meshes.Point3[
+                    Meshes.Point3(content[[i, i + 1, i + 2]]) for i in 1:3:length(content)
+                ]
+                push!(mesh, i.name => content)
             end
         end
-        push!(meshes, parse(Int, m["Id"]) + 1 => mesh)
+
+        push!(
+            meshes,
+            parse(Int, m["Id"]) + 1 =>
+                OPFmesh(
+                    mesh["name"],
+                    mesh["enableScale"],
+                    Meshes.SimpleMesh(mesh["points"], mesh["faces"]),
+                    get(mesh, "normals", nothing),
+                    get(mesh, "textureCoords", nothing), # using get because sometimes missing
+                )
+        )
     end
 
     return meshes

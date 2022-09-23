@@ -7,7 +7,7 @@ transform!(opf, refmesh_to_mesh!)
     f, ax, p = viz(meshes)
     @test p.converted[1].val == meshes
     @test p.input_args[1].val == meshes
-    @test typeof(p.plots[1]) == Combined{MeshViz.viz,Tuple{Meshes.SimpleMesh{3,Float64,Vector{Meshes.Point3},Meshes.FullTopology{Meshes.Connectivity{Meshes.Triangle{Dim,T} where {Dim,T},3}}}}}
+    @test typeof(p.plots[1]) == Combined{MeshViz.viz,Tuple{Meshes.SimpleMesh{3,Float64,Vector{Meshes.Point3},Meshes.FullTopology{Meshes.Connectivity}}}}
     aligned_meshes = PlantGeom.align_ref_meshes(meshes)
     @test p.plots[1].converted[1][] == aligned_meshes[1]
     @test p.plots[2].converted[1][] == aligned_meshes[2]

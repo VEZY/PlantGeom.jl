@@ -5,7 +5,8 @@ import MeshViz: viz, viz!, Viz
 
 # For 3D (OPF):
 import Meshes
-import GeometryBasics
+# import GeometryBasics
+# import PlyIO
 import Makie
 import Colors: RGBA, Colorant, RGB
 import ColorSchemes: get, rainbow, colorschemes, ColorScheme
@@ -13,7 +14,7 @@ import ColorSchemes: get, rainbow, colorschemes, ColorScheme
 # Read OPF:
 import EzXML: readxml, root, StreamReader, attributes, expandtree # For reading OPF files
 import EzXML: eachelement, nodename, nodecontent, elements
-import EzXML: XMLDocument, ElementNode, setroot!, addelement!
+import EzXML: XMLDocument, ElementNode, setroot!, addelement!, hasnodename
 import EzXML: prettyprint # to remove
 import StaticArrays: SMatrix, SVector
 import LinearAlgebra: I, UniformScaling # Used for geometry parsing in OPF
@@ -54,7 +55,7 @@ export Material, Phong
 export RefMesh, RefMeshes
 export (==), names
 export Diagram, diagram, diagram!
-export cylinder
+export ref_cylinder
 export colorbar
 
 end

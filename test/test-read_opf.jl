@@ -22,9 +22,11 @@ end
     @test length(first_mesh.mesh) == 50
     @test isa(first_mesh.material, Phong)
     @test first_mesh.name == "Mesh0"
-    @test isa(first_mesh.normals, SVector{50,Meshes.Point3})
+    @test isa(first_mesh.normals, Vector{Meshes.Point3})
+    @test length(first_mesh.normals) == 50
     @test first_mesh.taper == true
-    @test isa(first_mesh.texture_coords, SVector{50,Meshes.Point2})
+    @test isa(first_mesh.texture_coords, Vector{Meshes.Point2})
+    @test length(first_mesh.texture_coords) == 50
 end
 
 @testset "read_opf: simple_plant.opf -> meshes" begin
@@ -51,5 +53,5 @@ end
         :Plagiotropy, :Phyllotaxy, :StiffnessAngle, :Area, :XInsertionAngle
     ]
 
-    @test sum(descendants(mtg, :Area, ignore_nothing = true)) ≈ 77961.414f0 atol = 1e-6
+    @test sum(descendants(mtg, :Area, ignore_nothing=true)) ≈ 77961.414f0 atol = 1e-6
 end

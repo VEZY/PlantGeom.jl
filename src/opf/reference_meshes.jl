@@ -27,7 +27,7 @@ function get_ref_meshes(mtg)
     return x.attributes[:ref_meshes]
 end
 
-function get_ref_mesh_index!(node, ref_meshes = get_ref_meshes(node))
+function get_ref_mesh_index!(node, ref_meshes=get_ref_meshes(node))
 
     # If the reference node mesh is unknown, get it:
     if node[:geometry].ref_mesh_index === nothing
@@ -38,7 +38,7 @@ function get_ref_mesh_index!(node, ref_meshes = get_ref_meshes(node))
     return node[:geometry].ref_mesh_index
 end
 
-function get_ref_mesh_index(node, ref_meshes = get_ref_meshes(node))
+function get_ref_mesh_index(node, ref_meshes=get_ref_meshes(node))
     # If the reference node mesh is unknown, get it:
     if node[:geometry].ref_mesh_index === nothing
         return findfirst(x -> x === node[:geometry].ref_mesh, ref_meshes.meshes)
@@ -68,36 +68,26 @@ Parse the reference meshes of an OPF into RefMeshes.
 """
 function parse_ref_meshes(x)
     meshes = Dict{Int,RefMesh}()
-    meshBDD = meshBDD_to_meshes(x[:meshBDD])
+    meshBDD = x[:meshBDD]
 
     for (id, value) in x[:shapeBDD]
-        normals = meshBDD[value["meshIndex"]]["normals"]
-        normals = SVector{length(normals) ÷ 3}(Meshes.Point3(normals[[i, i + 1, i + 2]]) for i in 1:3:length(normals))
-
-
-        if haskey(meshBDD[value["meshIndex"]], "textureCoords")
-            text_coord = meshBDD[value["meshIndex"]]["textureCoords"]
-            text_coord = SVector{length(text_coord) ÷ 2}(Meshes.Point2(text_coord[[i, i + 1]]) for i in 1:2:length(text_coord))
-        else
-            text_coord = nothing
-        end
-
         push!(
             meshes,
             id => RefMesh(
-                value["name"],
-                meshBDD[value["meshIndex"]]["mesh"],
-                normals,
-                text_coord,
+                string(value["name"]),
+                meshBDD[value["meshIndex"]].mesh,
+                meshBDD[value["meshIndex"]].normals,
+                meshBDD[value["meshIndex"]].textureCoords,
                 x[:materialBDD][value["materialIndex"]],
-                meshBDD[value["meshIndex"]]["enableScale"]
+                meshBDD[value["meshIndex"]].enableScale
             )
         )
     end
 
     # We create RefMeshes just now in case they were not sorted in the opf file
     refmeshes = RefMeshes(RefMesh[])
-
+    #! Do we really need to sort them? If not, we directly build it above instead of using
+    #! an intermediary Dict
     for i in sort(collect(keys(meshes)))
         push!(refmeshes.meshes, meshes[i])
     end

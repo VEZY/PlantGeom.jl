@@ -80,7 +80,7 @@ RefMesh type. Stores all information about a Mesh:
 The reference meshes are then transformed on each node of the MTG using a transformation matrix
 to match the actual mesh.
 """
-struct RefMesh{S<:Union{String,SubString},ME<:Meshes.SimpleMesh,M<:Union{Material,Colorant},N<:SVector,T<:Union{SVector,Nothing}}
+struct RefMesh{S<:String,ME<:Meshes.SimpleMesh,M<:Union{Material,Colorant},N<:AbstractVector,T<:Union{AbstractVector,Nothing}}
     name::S
     mesh::ME
     normals::N
