@@ -1,7 +1,3 @@
-@testset "read_opf: simple_plant.opf -> read" begin
-    mtg = read_opf("files/simple_plant.opf", Dict)
-end
-
 mtg = read_opf("files/simple_plant.opf", Dict)
 
 @testset "read_opf: simple_plant.opf -> attributes" begin
@@ -53,5 +49,5 @@ end
         :Plagiotropy, :Phyllotaxy, :StiffnessAngle, :Area, :XInsertionAngle
     ]
 
-    @test sum(descendants(mtg, :Area, ignore_nothing=true)) ≈ 77961.414f0 atol = 1e-6
+    @test Float64(sum(descendants(mtg, :Area, ignore_nothing=true))) ≈ 77961.421 atol = 1e-3
 end

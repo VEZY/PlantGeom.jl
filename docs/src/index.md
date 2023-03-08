@@ -25,7 +25,7 @@ transform!(opf, refmesh_to_mesh!)
 # And compute the max z of each node based on their mesh:
 transform!(opf, zmax => :z_node, ignore_nothing = true)
 # Or the z coordinate of each vertez of each node mesh:
-transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.points]) => :z_vertex, ignore_nothing = true)
+transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.vertices]) => :z_vertex, ignore_nothing = true)
 
 
 # Then we make a Makie figure:
@@ -65,7 +65,7 @@ transform!(opf, refmesh_to_mesh!)
 # And compute the max z of each node based on their mesh:
 transform!(opf, zmax => :z_node, ignore_nothing = true)
 # Or the z coordinate of each vertez of each node mesh:
-transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.points]) => :z_vertex, ignore_nothing = true)
+transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.vertices]) => :z_vertex, ignore_nothing = true)
 
 
 # Then we make a Makie figure:

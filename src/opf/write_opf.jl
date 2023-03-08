@@ -46,7 +46,7 @@ function write_opf(file, mtg)
         addelement!(
             mesh_elm,
             "points",
-            string("\n", join([vcat([p.coords for p in mesh.mesh.points]...)...], "\t"), "\n")
+            string("\n", join([vcat([p.coords for p in mesh.mesh.vertices]...)...], "\t"), "\n")
         )
 
         if length(mesh.normals) == Meshes.nelements(mesh) && length(mesh.normals) != Meshes.nvertices(mesh)

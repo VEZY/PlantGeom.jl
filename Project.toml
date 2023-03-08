@@ -13,6 +13,7 @@ Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 MeshViz = "9ecf9c4f-6e5a-4b5e-83ae-06f2c7a661d8"
 Meshes = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
 MultiScaleTreeGraph = "dd4a991b-8a45-4075-bede-262ee62d5583"
+Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
@@ -23,18 +24,14 @@ CoordinateTransformations = "0.6"
 EzXML = "1"
 Makie = "0.15, 0.16, 0.17, 0.18, 0.19"
 MeshViz = "0.4, 0.5, 0.6, 0.7"
-Meshes = "0.19, 0.20, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28"
+Meshes = "0.26, 0.27, 0.28"
 MultiScaleTreeGraph = "0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9"
 RecipesBase = "1"
 StaticArrays = "1"
 julia = "1.6"
 
 [extras]
-CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-ReferenceTests = "324d217c-45ce-50fc-942e-d289b448e8cf"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "CairoMakie", "Plots", "ReferenceTests", "LinearAlgebra"]
+test = ["Test"]

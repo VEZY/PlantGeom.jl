@@ -5,7 +5,7 @@ Tapering a mesh transforms it into a tapered version (*i.e.* pointy) or enlarged
 """
 function taper(mesh, dUp, dDwn)
     if dUp != 1.0 && dDwn != 1.0 && !isnan(dUp) && !isnan(dDwn)
-        mesh_points = mesh.points
+        mesh_points = mesh.vertices
         delta = dDwn - dUp
         Xs = map(x -> x.coords[1], mesh_points)
         xmin = minimum(Xs)

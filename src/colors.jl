@@ -4,7 +4,9 @@
 Get the colormap as a ColorScheme if it is a named color or ColorScheme
 """
 function get_colormap(colormap)
-    if typeof(colormap) <: ColorScheme
+    if colormap === nothing
+        return colorschemes[:viridis]
+    elseif typeof(colormap) <: ColorScheme
         return colormap
     elseif typeof(colormap) <: Symbol
         return colorschemes[colormap]

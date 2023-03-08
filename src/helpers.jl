@@ -19,7 +19,7 @@ end
 function normals(mesh::RefMesh{S,ME,M,N,T}) where {S,ME<:Meshes.SimpleMesh,M,N,T}
     if length(mesh.normals) == 0
         return SVector{length(Meshes.topology(mesh.mesh).connec)}(
-            Meshes.Point3(Meshes.normal(Meshes.Triangle(mesh.mesh.points[[tri.indices...]]))) for tri in Meshes.topology(mesh.mesh).connec
+            Meshes.Point3(Meshes.normal(Meshes.Triangle(mesh.mesh.vertices[[tri.indices...]]))) for tri in Meshes.topology(mesh.mesh).connec
         )
     else
         return mesh.normals
@@ -51,7 +51,7 @@ end
 function normals_vertex(mesh::Meshes.SimpleMesh)
     vertex_normals = fill(Meshes.Point3(0.0, 0.0, 0.0), Meshes.nvertices(mesh))
     for (i, tri) in enumerate(Meshes.topology(mesh).connec)
-        tri_norm = Meshes.normal(Meshes.Triangle(mesh.points[[tri.indices...]]))
+        tri_norm = Meshes.normal(Meshes.Triangle(mesh.vertices[[tri.indices...]]))
         vertex_normals[tri.indices[1]] = tri_norm
         vertex_normals[tri.indices[2]] = tri_norm
         vertex_normals[tri.indices[3]] = tri_norm

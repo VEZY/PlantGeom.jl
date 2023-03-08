@@ -37,5 +37,5 @@ Apply function `f` over the mesh coordinates `coord`.
 Values for `coord` can be 1 for x, 2 for y and 3 for z.
 """
 function map_coord(f, mesh, coord)
-    f([i.coords[coord] for i in mesh.points])
+    f([i.coords[coord] for i in mesh.vertices])
 end

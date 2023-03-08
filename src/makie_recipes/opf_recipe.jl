@@ -45,7 +45,7 @@ transform!(opf, :geometry => (x -> zmax(x.mesh)) => :z_max, ignore_nothing = tru
 viz(opf, color = :z_max)
 
 # Or even coloring by the value of the Z coordinates of each vertex:
-transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.points]) => :z, ignore_nothing = true)
+transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.vertices]) => :z, ignore_nothing = true)
 viz(opf, color = :z, showfacets = true)
 ```
 

@@ -24,7 +24,7 @@ function colorbar(parent, plotobject; kwargs...)
     Makie.Colorbar(
         parent,
         label=string(plotobject.attributes.color[]),
-        colormap=plotobject.attributes.colorscheme,
+        colormap=get_colormap(Observables.to_value(plotobject.attributes.colorscheme)),
         limits=Float64.(range_val);
         kwargs...
     )

@@ -2,7 +2,7 @@ module PlantGeom
 
 using MultiScaleTreeGraph
 import MeshViz: viz, viz!, Viz
-
+import Observables # For to_value (get an observable value)
 # For 3D (OPF):
 import Meshes
 # import GeometryBasics
