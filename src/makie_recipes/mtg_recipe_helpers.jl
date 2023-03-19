@@ -18,7 +18,7 @@ coordinates!(mtg)
 DataFrame(mtg, [:XX, :YY, :ZZ])
 ```
 """
-function coordinates!(mtg; angle = 45, force = false)
+function coordinates!(mtg; angle=45, force=false)
 
     coord_in_attributes = [:XX, :YY, :ZZ] .∈ Ref(get_attributes(mtg))
 
@@ -44,16 +44,16 @@ function coordinates_parent!(mtg)
     transform!(
         mtg,
         :XX => (x -> 1.0) => :ZZ,
-        (x -> get(ancestors(x, :XX, recursivity_level = 1), 1, nothing)) => :XX_from,
-        (x -> get(ancestors(x, :YY, recursivity_level = 1), 1, nothing)) => :YY_from,
-        (x -> get(ancestors(x, :ZZ, recursivity_level = 1), 1, nothing)) => :ZZ_from
+        (x -> get(ancestors(x, :XX, recursivity_level=1), 1, nothing)) => :XX_from,
+        (x -> get(ancestors(x, :YY, recursivity_level=1), 1, nothing)) => :YY_from,
+        (x -> get(ancestors(x, :ZZ, recursivity_level=1), 1, nothing)) => :ZZ_from
     )
 end
 
 function new_pos(node, angle, phyllotaxy)
 
     if isroot(node)
-        append!(node, (XX = 0.0, YY = 0.0, ZZ = 0.0))
+        append!(node, (XX=0.0, YY=0.0, ZZ=0.0))
         return nothing
     end
 
@@ -139,11 +139,11 @@ output DataFrame too by passing its name as a symbol to `attr`.
 The coordinates are computed using [`coordinates!`](@ref) if missing, or if
 `force = true`.
 """
-function mtg_coordinates_df(mtg, attr = :YY; force = false)
-    mtg_coordinates_df!(deepcopy(mtg), attr; force = force)
+function mtg_coordinates_df(mtg, attr=:YY; force=false)
+    mtg_coordinates_df!(deepcopy(mtg), attr; force=force)
 end
 
-function mtg_coordinates_df!(mtg, attr = :YY; force = false)
+function mtg_coordinates_df!(mtg, attr=:YY; force=false)
     coord_in_attributes = [:XX, :YY, :ZZ] .∈ Ref(get_attributes(mtg))
     if !all(coord_in_attributes) || force
         if coord_in_attributes == [true, true, false] && !force
@@ -154,7 +154,7 @@ function mtg_coordinates_df!(mtg, attr = :YY; force = false)
             )
         else
             # :XX and/or :YY missing, recompute them
-            coordinates!(mtg; force = force)
+            coordinates!(mtg; force=force)
         end
     end
 
@@ -164,15 +164,15 @@ function mtg_coordinates_df!(mtg, attr = :YY; force = false)
     DataFrame(mtg, unique([:XX, :YY, :ZZ, :XX_from, :YY_from, :ZZ_from, attr]))
 end
 
-function mtg_XYZ_color(mtg, color, edge_color, colormap; color_missing = RGBA(0, 0, 0, 0.3))
+function mtg_XYZ_color(mtg, color, edge_color, colormap; color_missing=RGBA(0, 0, 0, 0.3))
     if Symbol(color) in get_attributes(mtg)
         # Color is an attribute from the mtg:
-        df_coordinates = mtg_coordinates_df(mtg, color, force = true)
+        df_coordinates = mtg_coordinates_df(mtg, color, force=true)
         max_color = maximum(skipmissing(df_coordinates[:, color]))
         color_var = [i === missing ? color_missing : RGBA(get(colormap, i / max_color)) for i in df_coordinates[:, color]]
         text_color = color_var
     elseif typeof(color) <: Colorant || typeof(color) <: String || typeof(color) <: Symbol
-        df_coordinates = mtg_coordinates_df(mtg, force = true)
+        df_coordinates = mtg_coordinates_df(mtg, force=true)
         color_var = fill(color, size(df_coordinates, 1))
         text_color = color_var
     else
@@ -190,7 +190,7 @@ function mtg_XYZ_color(mtg, color, edge_color, colormap; color_missing = RGBA(0,
             pushfirst!(edge_color_var, edge_color_var[1])
         else
             # If edge_color is different than color, and is an attribute from the mtg
-            df_coordinates = mtg_coordinates_df(mtg, edge_color, force = true)
+            df_coordinates = mtg_coordinates_df(mtg, edge_color, force=true)
 
             ecol = df_coordinates[:, edge_color]
             max_edge_color = maximum(skipmissing(ecol))
@@ -220,11 +220,12 @@ end
 
 
 function attribute_range(mtg, attr)
+    attr_name = attr.color
     vals =
         descendants(
             mtg,
-            attr,
-            ignore_nothing = true
+            attr_name,
+            ignore_nothing=true
         )
 
     if length(vals[1]) == 1
