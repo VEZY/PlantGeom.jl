@@ -8,7 +8,22 @@ Vizualise the 3D geometry of an MTG (usually read from an OPF). This function se
 the `:geometry` attribute in each node of the MTG, and build the vizualisation using the
 `mesh` field, or the reference meshes and the associated transformation matrix if missing.
 
-This function needs 3D information first.
+The `:geometry` attribute is usually added by the `refmesh_to_mesh!` function first, which
+can be called with the `transform!` function. See the examples below.
+
+# Arguments
+
+- `opf`: The MTG to be vizualised.
+- `kwargs`: Additional arguments to be passed to `viz!`, wich includes: 
+    - `color`: The color to be used for the plot. Can be a colorant, an attribute of the MTG (given as a Symbol), or a dictionary of colors for each reference mesh.
+    - `colorscheme`: The colorscheme to be used for the plot. Can be a Symbol or a ColorScheme. 
+    - `facetcolor`: The color to be used for the facets. Should be a colorant or a symbol of color.
+    - `showfacets`: A boolean indicating whether the facets should be shown or not.
+    - `color_missing`: The color to be used for missing values. Should be a colorant or a symbol of color.
+    - `color_vertex`: A boolean indicating whether the values in `color` (if colored by attributes) are defined for each vertex of the mesh, or for each mesh.
+    - `index`: An integer giving the index of the attribute value to be vizualised. This is useful when the attribute is a vector of values for *e.g.* each timestep.
+
+Note that `color_vertex` is set to `false` by default.
 
 # Examples
 
@@ -78,8 +93,6 @@ viz(meshes, color = Dict(1 => :burlywood4, 2 => :springgreen4, 3 => :burlywood4)
 viz(meshes, color = Dict(1 => :burlywood4, 3 => :burlywood4))
 # One color for each vertex of the refmesh 0:
 viz(meshes, color = Dict(2 => 1:nvertices(meshes)[2]))
-# Colors as a vector (no missing values allowed here):
-viz(meshes, color = [:burlywood4, :springgreen4, :burlywood4])
 ```
 """
 viz, viz!

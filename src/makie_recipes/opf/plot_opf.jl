@@ -105,10 +105,20 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
     colorscheme_ = plot[:colorscheme]
     colorscheme = Makie.@lift get_colormap($colorscheme_)
 
-    # Because we extend the `Viz` type, we need to check if the user has given color_missing or 
-    # color_range as an argument to the plotting function. If not, we use our default values.
+    # Because we extend the `Viz` type, we cannot use the standard way of getting the attribute
+    # from the plot. Instead, we need to check here if the argument is given, and give the default
+    # value if not.
     # Note: If we defined our own e.g. `PlantViz` type, we could have defined a `color_missing` and 
     # `color_range` fields in it directly.
+
+    # Are the colors given for each vertex in the meshes, or for each reference mesh?
+    # Note that we can have several values if we have several timesteps too.
+    if hasproperty(plot, :color_vertex)
+        color_vertex = plot[:color_vertex]
+    else
+        # Get the attribute values without nothing values:    
+        color_vertex = Observables.Observable(false)
+    end
     if hasproperty(plot, :color_missing)
         color_missing = plot[:color_missing]
     else
@@ -122,6 +132,15 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
         color_range = Makie.@lift attribute_range($opf, $colorant)
     end
 
+    if hasproperty(plot, :index)
+        hasproperty(plot, :color_vertex) && error("The `index` argument can only be used when the colors are given for each mesh, not each vertex.")
+        index = plot[:index]
+    else
+        # The plotting index is always nothing it the colors are given for each vertex
+        # in the meshes. Otherwise, it is always the first index:
+        index = Makie.lift(x -> x ? nothing : 1, color_vertex)
+    end
+
     # Make the plot, case where the color is a color for each reference mesh:
     traverse!(opf[]; filter_fun=node -> node[:geometry] !== nothing) do node
         color_attribute = Makie.@lift attr_colorant_name($colorant) # the attribute name used for coloring
@@ -130,7 +149,7 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
             node[color_attr_name] = color_missing
         else
             # get the color based on a colorscheme and the normalized attribute value
-            node[color_attr_name] = Makie.@lift get_color(node[$color_attribute], $color_range, colormap=$colorscheme)
+            node[color_attr_name] = Makie.@lift get_color(node[$color_attribute], $color_range, $index; colormap=$colorscheme)
         end
 
         viz!(
