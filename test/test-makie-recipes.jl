@@ -32,7 +32,8 @@ end
     @test_reference "reference_images/opf_one_color.png" viz(opf, color=:red)
     @test_reference "reference_images/opf_one_color_per_ref.png" viz(opf, color=Dict(1 => :burlywood4, 2 => :springgreen4))
     @test_reference "reference_images/opf_one_color_one_ref.png" viz(opf, color=Dict(1 => :burlywood4))
-    @test_reference "reference_images/opf_color_ref_vertex.png" viz(opf, color=Dict(1 => 1:nvertices(get_ref_meshes(opf))[1]))
+    vertex_color = get_color(1:nvertices(get_ref_meshes(opf))[1], [1, nvertices(get_ref_meshes(opf))[1]])
+    @test_reference "reference_images/opf_color_ref_vertex.png" viz(opf, color=Dict(1 => vertex_color))
     transform!(opf, zmax => :z_max, ignore_nothing=true)
     @test_reference "reference_images/opf_color_attribute.png" viz(opf, color=:z_max)
 
