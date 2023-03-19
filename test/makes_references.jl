@@ -13,20 +13,22 @@ transform!(opf, refmesh_to_mesh!)
 f, ax, p = viz(meshes)
 save("reference_images/refmesh_basic.png", f)
 
-f, ax, p = viz(meshes, color=[:burlywood4, :springgreen4, :burlywood4])
+f, ax, p = viz(meshes, color=Dict(1 => :burlywood4, 2 => :springgreen4, 3 => :burlywood4))
 save("reference_images/refmesh_allcolors.png", f)
 
 # Or just changing the color of some:
-f, ax, p = viz(meshes, color=Dict(1 => :burlywood4, 3 => :burlywood4))
+f, ax, p = viz(meshes, color=Dict(2 => :burlywood4))
 save("reference_images/refmesh_somecolors.png", f)
 
 # One color for each vertex of the refmesh 0:
+vertex_color1 = get_color(1:nvertices(get_ref_meshes(opf))[1], [1, nvertices(get_ref_meshes(opf))[1]])
+vertex_color2 = get_color(1:nvertices(get_ref_meshes(opf))[2], [1, nvertices(get_ref_meshes(opf))[1]])
+
 f, ax, p = viz(
     meshes,
     color=Dict(
-        1 => 1:nvertices(meshes)[1],
-        2 => 1:nvertices(meshes)[2],
-        3 => 1:nvertices(meshes)[3]
+        1 => vertex_color1,
+        2 => vertex_color2,
     )
 )
 save("reference_images/refmesh_vertex_colors.png", f)
@@ -50,7 +52,8 @@ f, ax, p = viz(opf, color=Dict(1 => :burlywood4))
 save("reference_images/opf_one_color_one_ref.png", f)
 
 # One color for each vertex of the refmesh 1:
-f, ax, p = viz(opf, color=Dict(1 => 1:nvertices(get_ref_meshes(opf))[1]))
+vertex_color = get_color(1:nvertices(get_ref_meshes(opf))[1], [1, nvertices(get_ref_meshes(opf))[1]])
+f, ax, p = viz(opf, color=Dict(1 => vertex_color))
 save("reference_images/opf_color_ref_vertex.png", f)
 
 # Or coloring by opf attribute, e.g. using the mesh max Z coordinates (NB: need to use
@@ -71,5 +74,20 @@ save("reference_images/opf_color_attribute_colorbar.png", f)
 f, ax, p = viz(opf, color=:z, color_range=(0, 50))
 colorbar(f[1, 2], p)
 save("reference_images/opf_color_attribute_colorbar_range.png", f)
+
+f, ax, p = viz(opf, color=:Length, color_range=(0, 0.2))
+leaf = get_node(opf, 5)
+leaf[:_cache_d9b4f7f3c3467a55ad26f362065777c471aee4c7][] = parse(Colorant, :red)
+save("reference_images/opf_color_attribute_observable_node.png", f)
+
+f, ax, p = viz(opf, color=:red)
+# Update with a green leaf:
+leaf = get_node(opf, 5)
+leaf[:_cache_d9b4f7f3c3467a55ad26f362065777c471aee4c7][] = parse(Colorant, :green)
+save("reference_images/opf_color_attribute_observable_node_red_green.png", f)
+
+# Making the whole plot blue:
+p.color = :blue
+save("reference_images/opf_color_attribute_observable_node_blue.png", f)
 
 nothing # to avoid returning anything.

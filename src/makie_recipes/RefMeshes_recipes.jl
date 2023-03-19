@@ -8,42 +8,42 @@ function Makie.plot!(plot::Viz{<:Tuple{RefMeshes}})
     n_meshes = length(p)
 
     # Plot options:
-    color = plot[:color][]
+    color = plot[:color]
 
     # use the color from the reference mesh if the default is used, else use the user-input color
-    if isa(color, Symbol) || typeof(color) <: Colorant
-        if color == :slategray3
+    if isa(color[], Symbol) || typeof(color[]) <: Colorant
+        if color[] == :slategray3
             # Overides the default color given by MeshViz (:slategray3) with value in the ref meshes
             # see here for default value in MeshViz:
             # https://github.com/JuliaGeometry/MeshViz.jl/blob/6e37908c78c06212f09229e3e8d92483535ffa16/src/MeshViz.jl#L50
-            color = get_ref_meshes_color(plot[:object][])
+            ref_colors = get_ref_meshes_color(plot[:object][])
+            colorant = Observables.Observable(Dict(zip(1:n_meshes, ref_colors)))
         else
-            color = Dict(zip(keys(p), repeat([color], n_meshes)))
+            colorant = Makie.lift(x -> Dict(zip(keys(p), repeat([x], n_meshes))), color)
         end
-    elseif length(color) != n_meshes && !isa(color, Dict)
+    elseif length(color[]) != n_meshes && !isa(color[], Dict)
         error(
             "color argument should be of type Colorant ",
             "(see [Colors.jl](https://juliagraphics.github.io/Colors.jl/stable/)), or ",
             "a vector of colors, or Dict{Int,T} such as Dict(1 => :green) or ",
             "Dict(2 => [colors...])"
         )
+    else
+        colorant = color
     end
 
-    if length(color) != n_meshes
-        new_color = Dict{Int,Any}(color)
+    # Parsing the colors in the dictionary into Colorants:
+    new_color = Dict{Int,Union{Colorant,Vector{<:Colorant}}}([k => isa(v, AbstractArray) ? parse.(Colorant, v) : parse(Colorant, v) for (k, v) in colorant[]])
+
+    if length(colorant[]) != n_meshes
         ref_cols = get_ref_meshes_color(plot[:object][])
-        missing_mesh_input = setdiff(collect(keys(ref_cols)), collect(keys(color)))
+        missing_mesh_input = setdiff(collect(keys(ref_cols)), collect(keys(colorant[])))
         for i in missing_mesh_input
             push!(new_color, i => ref_cols[i])
         end
-        color = new_color
     end
 
-    facetcolor = plot[:facetcolor][]
-    showfacets = plot[:showfacets][]
-    colorscheme = plot[:colorscheme][]
-
     for (key, value) in enumerate(p)
-        viz!(plot, value, color=color[key], facetcolor=facetcolor, showfacets=showfacets, colorscheme=colorscheme)
+        viz!(plot, value, color=new_color[key], facetcolor=plot[:facetcolor], showfacets=plot[:showfacets], colorscheme=plot[:colorscheme])
     end
 end

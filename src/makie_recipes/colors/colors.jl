@@ -22,7 +22,7 @@ end
 Map value(s) to colors from a colormap based on a range of values
 """
 function get_color(var::T, range_var; colormap=colorschemes[:viridis]) where {T<:AbstractArray}
-    x2 = (range_var[2] - range_var[1])
+    x2 = (range_var[end] - range_var[1])
     # get the color based on a colormap and the normalized attribute value
     [get(colormap, (i - range_var[1]) / x2) for i in var]
 end

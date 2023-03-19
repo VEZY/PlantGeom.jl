@@ -15,13 +15,17 @@ end
 
 @testset "Makie recipes: reference meshes -> image references" begin
     @test_reference "reference_images/refmesh_basic.png" viz(meshes)
-    @test_reference "reference_images/refmesh_allcolors.png" viz(meshes, color=[:burlywood4, :springgreen4])
+    @test_reference "reference_images/refmesh_allcolors.png" viz(meshes, color=Dict(1 => :burlywood4, 2 => :springgreen4))
     @test_reference "reference_images/refmesh_somecolors.png" viz(meshes, color=Dict(2 => :burlywood4))
+
+    vertex_color1 = get_color(1:nvertices(get_ref_meshes(opf))[1], [1, nvertices(get_ref_meshes(opf))[1]])
+    vertex_color2 = get_color(1:nvertices(get_ref_meshes(opf))[2], [1, nvertices(get_ref_meshes(opf))[1]])
+
     @test_reference "reference_images/refmesh_vertex_colors.png" viz(
         meshes,
         color=Dict(
-            1 => 1:nvertices(meshes)[1],
-            2 => 1:nvertices(meshes)[2]
+            1 => vertex_color1,
+            2 => vertex_color2,
         )
     )
 end
@@ -47,4 +51,33 @@ end
     fig, ax, p = viz(opf, color=:z, color_range=(0, 50))
     colorbar(fig[1, 2], p)
     @test_reference "reference_images/opf_color_attribute_colorbar_range.png" fig
+end
+
+
+@testset "Makie recipes: observables, change colorscale range" begin
+    fig, ax, p = viz(opf, color=:Length, color_range=(0, 0.2))
+    @test p.attributes.color_range[] == (0, 0.2)
+    colorbar(fig[1, 2], p)
+    p.color_range = (0, 0.1)
+end
+
+@testset "Makie recipes: change node color" begin
+    fig, ax, p = viz(opf, color=:Length, color_range=(0, 0.2))
+
+    leaf = get_node(opf, 5)
+    leaf[:_cache_d9b4f7f3c3467a55ad26f362065777c471aee4c7][] = parse(Colorant, :red)
+
+    @test_reference "reference_images/opf_color_attribute_observable_node.png" fig
+
+    # Making the whole plot red:
+    fig, ax, p = viz(opf, color=:red)
+    # Update with a green leaf:
+    leaf = get_node(opf, 5)
+    leaf[:_cache_d9b4f7f3c3467a55ad26f362065777c471aee4c7][] = parse(Colorant, :green)
+
+    @test_reference "reference_images/opf_color_attribute_observable_node_red_green.png" fig
+
+    # Making the whole plot blue:
+    p.color = :blue
+    @test_reference "reference_images/opf_color_attribute_observable_node_blue.png" fig
 end

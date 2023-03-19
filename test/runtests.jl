@@ -1,8 +1,7 @@
 using PlantGeom
 using Test
 using ReferenceTests
-
-using ColorSchemes
+using Colors, ColorSchemes
 using Meshes
 using StaticArrays
 using MultiScaleTreeGraph

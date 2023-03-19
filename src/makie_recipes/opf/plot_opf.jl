@@ -50,9 +50,6 @@ function plot_opf(plot)
     # Get the colors for the meshes:
     colorant = Makie.@lift get_mtg_color($color, $opf)
 
-    # Update values inside the plot whenever `color` or `colorscheme` changes
-    # Makie.Observables.onany(update_plot, times, stockvalues)
-
     plot_opf(colorant, plot)
     #? NB: implement scale / symbol / link / filter_fun filtering to be able to plot only
     #? a subset of the plant/scene. This will be especially usefull when we have different
@@ -61,11 +58,16 @@ end
 
 # Case where the color is a colorant (e.g. `:red`, or `RGB(0.1,0.5,0.1)`):
 function plot_opf(colorant::Observables.Observable{T}, plot) where {T<:Colorant}
+    color_attr_name = MultiScaleTreeGraph.cache_name("Color name")
+
     traverse!(plot[:object][]; filter_fun=node -> node[:geometry] !== nothing) do node
+        # get the color based on a colorscheme and the normalized attribute value
+        node[color_attr_name] = Makie.lift(x -> x, colorant)
+
         viz!(
             plot,
             node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
-            color=colorant,
+            color=node[color_attr_name],
             facetcolor=plot[:facetcolor],
             showfacets=plot[:showfacets],
         )
@@ -74,16 +76,18 @@ end
 
 # Case where the color is a color for each reference mesh:
 function plot_opf(colorant::Observables.Observable{T}, plot) where {T<:Union{RefMeshColorant,DictRefMeshColorant,DictVertexRefMeshColorant}}
+    color_attr_name = MultiScaleTreeGraph.cache_name("Color name")
+
     opf = plot[:object]
 
     ref_meshes = get_ref_meshes(opf[])
     # Make the plot, case where the color is a color for each reference mesh:
     traverse!(opf[]; filter_fun=node -> node[:geometry] !== nothing) do node
-        colorant_node = Makie.@lift color_from_refmeshes($colorant, node, ref_meshes)
+        node[color_attr_name] = Makie.@lift color_from_refmeshes($colorant, node, ref_meshes)
         viz!(
             plot,
             node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
-            color=colorant_node,
+            color=node[color_attr_name],
             facetcolor=plot[:facetcolor],
             showfacets=plot[:showfacets],
         )
@@ -96,6 +100,7 @@ end
 
 # Case where the color is an attribute of the MTG:
 function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
+    color_attr_name = MultiScaleTreeGraph.cache_name("Color name")
     opf = plot[:object]
     colorscheme_ = plot[:colorscheme]
     colorscheme = Makie.@lift get_colormap($colorscheme_)
@@ -119,19 +124,19 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
 
     # Make the plot, case where the color is a color for each reference mesh:
     traverse!(opf[]; filter_fun=node -> node[:geometry] !== nothing) do node
-        color_attribute = colorant[].color # the attribute name used for coloring
+        color_attribute = Makie.@lift attr_colorant_name($colorant) # the attribute name used for coloring
 
-        if node[color_attribute] === nothing
-            colorant_node = color_missing
+        if node[color_attribute[]] === nothing
+            node[color_attr_name] = color_missing
         else
             # get the color based on a colorscheme and the normalized attribute value
-            colorant_node = Makie.@lift get_color(node[color_attribute], $color_range, colormap=$colorscheme)
+            node[color_attr_name] = Makie.@lift get_color(node[$color_attribute], $color_range, colormap=$colorscheme)
         end
 
         viz!(
             plot,
             node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
-            color=colorant_node,
+            color=node[color_attr_name],
             facetcolor=plot[:facetcolor],
             showfacets=plot[:showfacets],
             colorscheme=colorscheme,
