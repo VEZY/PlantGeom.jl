@@ -231,7 +231,11 @@ function attribute_range(mtg, attr)
     if length(vals[1]) == 1
         range_val = extrema(vals)
     else
-        range_val = (minimum(minimum.(vals)), maximum(maximum.(vals)))
+        vals_no_nothing = filter(x -> x !== nothing, vals)
+        if length(vals_no_nothing) == 0
+            error("No value for attribute $attr_name (all values are nothing).")
+        end
+        range_val = (minimum(minimum.(vals_no_nothing)), maximum(maximum.(vals_no_nothing)))
     end
 
     return range_val

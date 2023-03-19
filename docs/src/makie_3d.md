@@ -39,6 +39,7 @@ CairoMakie.activate!()
 mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf"))
 transform!(mtg, refmesh_to_mesh!)
 ref_meshes = get_ref_meshes(mtg);
+transform!(mtg, :Area => (x -> [x*i for i in 1:12]) => :dummy_var, ignore_nothing = true)
 ```
 
 ### Note about the backend
@@ -115,13 +116,13 @@ get_ref_meshes_color(ref_meshes)
 
 Now we know the first reference mesh is the cylinder (it is brown) and the second one is the leaf (it is green).
 
-To update their colors we can simply pass the new colors as a vector like so:
+To update their colors we can simply pass the new colors as a dictionary mapping colors to reference meshes like so:
 
 ```@example 2
-viz(mtg, color = [:gray87, "#42A25ABD"])
+viz(mtg, color = Dict(1 => :gray87, 2 => "#42A25ABD"))
 ```
 
-But we can also use a dictionary if we only want to update one and not the others. For example if we want to update the second one only (the leaves), we would do:
+If we want to update the second reference mesh only (the leaves), we would do:
 
 ```@example 2
 viz(mtg, color = Dict(2 => "#42A25ABD"))
@@ -139,7 +140,7 @@ You can see which attributes are available in an MTG using:
 print(names(mtg))
 ```
 
-We can see that we have an attribute call `:Area`. Let's color each organ by its area:
+We can see that we have an attribute called `:Area`. Let's color each organ by its area:
 
 ```@example 2
 viz(mtg, color = :Area)
@@ -154,7 +155,7 @@ CairoMakie.Colorbar(f[1,2], label = "Area")
 f
 ```
 
-We can see that the colorbar is only in relative values (0-1). If you need absolute values, you can use PlantGeom's own colorbar instead:
+We can see that the colorbar is only in relative values (0-1). If you need absolute values, you can use PlantGeom's colorbar instead:
 
 ```@example 2
 f, ax, p = viz(mtg, color = :Area)
@@ -167,8 +168,38 @@ f
 ```julia
 # Compute the z position of each vertices in each mesh:
 transform!(mtg, :geometry => (x -> [i.coords[3] for i in x.mesh.vertices]) => :z, ignore_nothing = true)
-viz(mtg, color = :z, showfacets = true)
+viz(mtg, color = :z, showfacets = true, color_vertex = true)
 ```
 
 !!! note
-    This one is not shown because CairoMakie is not compatible with coloring each vertices differently. But you can still see the results on your computer using GLMakie.
+    This one is not shown because CairoMakie and WGLMakie are not compatible with coloring each vertices differently. But you can still see the results on your computer using GLMakie.
+
+### Map time step to color
+
+The MTG attributes can have several values, for example a value for each time step of a simulation. For example, let's make a dummy variable with 12 time-steps, each value being the area time the time step:
+
+```@example 2
+transform!(mtg, :Area => (x -> [x*i for i in 1:12]) => :dummy_var, ignore_nothing = true)
+```
+
+Now we can plot the plant with the color of each organ being the value of the dummy variable at time step 1 using the `index` keyword argument:
+
+```@example 2
+f, ax, p = viz(mtg, color = :dummy_var, index = 1)
+colorbar(f[1, 2], p)
+f
+```
+
+We can even make a video out of it:
+
+```@example 2
+f, ax, p = viz(mtg, color = :dummy_var, index = 1)
+colorbar(f[1, 2], p)
+
+record(f, "coffee_steps.mp4", 1:12, framerate=2) do timestep
+    p.index[] = timestep
+end
+```
+
+![](coffee_steps.mp4)
+
