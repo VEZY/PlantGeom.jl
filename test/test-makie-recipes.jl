@@ -42,4 +42,8 @@ end
     fig, ax, p = viz(opf, color=:z)
     colorbar(fig[1, 2], p)
     @test_reference "reference_images/opf_color_attribute_colorbar.png" fig
+
+    fig, ax, p = viz(opf, color=:z, color_range=(0, 50))
+    colorbar(fig[1, 2], p)
+    @test_reference "reference_images/opf_color_attribute_colorbar_range.png" fig
 end

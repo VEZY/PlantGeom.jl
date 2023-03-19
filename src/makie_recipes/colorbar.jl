@@ -19,13 +19,20 @@ function colorbar(parent, plotobject; kwargs...)
         )
     end
 
-    range_val = attribute_range(plotobject.converted[1][], plotobject.attributes.color[])
+    # Because we extend the `Viz` type, we need to check if the user has given a color range.
+    # If we defined our own e.g. `PlantViz` type, we could have defined a `color_range` field in it directly.
+    if hasproperty(plotobject.attributes, :color_range)
+        colorbar_limits = plotobject.attributes.color_range[]
+    else
+        # Get the attribute values without nothing values:    
+        colorbar_limits = attribute_range(plotobject.converted[1][], plotobject.attributes.color[])
+    end
 
     Makie.Colorbar(
         parent,
         label=string(plotobject.attributes.color[]),
         colormap=get_colormap(Observables.to_value(plotobject.attributes.colorscheme)),
-        limits=Float64.(range_val);
+        limits=Float64.(colorbar_limits);
         kwargs...
     )
 end

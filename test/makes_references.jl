@@ -66,7 +66,10 @@ save("reference_images/opf_color_attribute_vertex.png", f)
 
 f, ax, p = viz(opf, color=:z)
 colorbar(f[1, 2], p)
-f
 save("reference_images/opf_color_attribute_colorbar.png", f)
+
+f, ax, p = viz(opf, color=:z, color_range=(0, 50))
+colorbar(f[1, 2], p)
+save("reference_images/opf_color_attribute_colorbar_range.png", f)
 
 nothing # to avoid returning anything.

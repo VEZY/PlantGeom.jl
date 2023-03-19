@@ -88,6 +88,7 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
 
     # Plot options:
     color = plot[:color][]
+
     colorscheme = get_colormap(plot[:colorscheme][])
     color_missing = RGBA(0, 0, 0, 0.3)
     ref_meshes = get_ref_meshes(opf)
@@ -106,8 +107,16 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
             # The user provides the name of an attribute from the MTG, coloring using the attribute:
             attr_color = true
             colorbar = true
-            # Get the attribute values without nothing values:
-            range_val = attribute_range(opf, color)
+
+            # Because we extend the `Viz` type, we need to check if the user has given a color range.
+            # If we defined our own e.g. `PlantViz` type, we could have defined a `color_range` field in it directly.
+            if hasproperty(plot, :color_range)
+                colorbar_limits = plot[:color_range][]
+            else
+                # Get the attribute values without nothing values:    
+                colorbar_limits = attribute_range(opf, color)
+            end
+
             # Make a temporary name for our color to use as attribute:
             key_cache = MultiScaleTreeGraph.cache_name(color)
 
@@ -120,7 +129,7 @@ function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
                         color_missing
                     else
                         # get the color based on a colorscheme and the normalized attribute value
-                        get_color(colorscheme, x, range_val)
+                        get_color(colorscheme, x, colorbar_limits)
                     end
                     ) => key_cache
             )
