@@ -220,7 +220,7 @@ end
 
 
 function attribute_range(mtg, attr)
-    attr_name = attr.color
+    attr_name = attr_colorant_name(attr)
     vals =
         descendants(
             mtg,
@@ -236,3 +236,6 @@ function attribute_range(mtg, attr)
 
     return range_val
 end
+
+attr_colorant_name(x::AttributeColorant) = x.color
+attr_colorant_name(x) = x

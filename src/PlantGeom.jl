@@ -38,11 +38,12 @@ include("makie_recipes/opf/plot_opf.jl")
 include("makie_recipes/opf_recipe.jl")
 include("makie_recipes/mtg_recipe_helpers.jl")
 include("makie_recipes/mtg_tree_recipe.jl")
+include("makie_recipes/colors/colorbar.jl")
 include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
 include("ref_meshes/cylinder_refmesh.jl")
 include("plots_recipes/plots_recipe.jl")
-include("makie_recipes/colorbar.jl")
+
 
 # 3D Plotting (OPF):
 export get_ref_meshes
@@ -60,5 +61,6 @@ export (==), names
 export Diagram, diagram, diagram!
 export ref_cylinder
 export colorbar
+export get_color
 
 end
