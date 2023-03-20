@@ -36,24 +36,25 @@ function write_opf(file, mtg)
         error("No reference meshes found in the MTG.")
     end
 
-    for (key, mesh) in enumerate(mtg[:ref_meshes].meshes)
+    for (key, mesh_) in enumerate(mtg[:ref_meshes].meshes)
+        # key = 1; mesh_ = mtg[:ref_meshes].meshes[key]
         mesh_elm = addelement!(meshBDD, "mesh")
-        mesh_elm["name"] = mesh.name
+        mesh_elm["name"] = mesh_.name
         mesh_elm["shape"] = ""
         mesh_elm["Id"] = key - 1 # opf uses 0-based indexing
-        mesh_elm["enableScale"] = mesh.taper
+        mesh_elm["enableScale"] = mesh_.taper
 
         addelement!(
             mesh_elm,
             "points",
-            string("\n", join([vcat([p.coords for p in mesh.mesh.vertices]...)...], "\t"), "\n")
+            string("\n", join(vcat([p.coords for p in mesh_.mesh.vertices]...), "\t"), "\n")
         )
 
-        if length(mesh.normals) == Meshes.nelements(mesh) && length(mesh.normals) != Meshes.nvertices(mesh)
+        if length(mesh_.normals) == Meshes.nelements(mesh_) && length(mesh_.normals) != Meshes.nvertices(mesh_)
             # If the normals are per triangle, re-compute them per vertex:
-            vertex_normals = normals_vertex(mesh)
+            vertex_normals = normals_vertex(mesh_)
         else
-            vertex_normals = mesh.normals
+            vertex_normals = mesh_.normals
         end
 
         norm_elm = addelement!(
@@ -63,38 +64,37 @@ function write_opf(file, mtg)
         )
 
 
-        if mesh.texture_coords !== nothing && length(mesh.texture_coords) > 0
+        if mesh_.texture_coords !== nothing && length(mesh_.texture_coords) > 0
             # texture_coords are optional
             norm_elm = addelement!(
                 mesh_elm,
                 "textureCoords",
-                string("\n", join(vcat([[p.coords...] for p in mesh.texture_coords]...), "\t"), "\n")
+                string("\n", join(vcat([[p.coords...] for p in mesh_.texture_coords]...), "\t"), "\n")
             )
         end
 
         faces_elm = addelement!(mesh_elm, "faces")
 
         face_id = [0]
-        for i = 1:Meshes.nelements(Meshes.topology(mesh.mesh))
+        for i = 1:Meshes.nelements(Meshes.topology(mesh_.mesh))
             face_elm = addelement!(
                 faces_elm,
                 "face",
-                string("\n", join(Meshes.topology(mesh.mesh).connec[i].indices .- 1, "\t"), "\n")
+                string("\n", join(Meshes.topology(mesh_.mesh).connec[i].indices .- 1, "\t"), "\n")
             )
             #? NB: we remove one because face index are 0-based in the opf
             face_elm["Id"] = face_id[1]
             face_id[1] = face_id[1] + 1
         end
-
     end
 
     # Parsing the materialBDD section.
     materialBDD = addelement!(opf_elm, "materialBDD")
-    for (key, mesh) in enumerate(mtg[:ref_meshes].meshes)
+    for (key, mesh_) in enumerate(mtg[:ref_meshes].meshes[2:end])
         mat_elm = addelement!(materialBDD, "material")
         mat_elm["Id"] = key - 1 # opf uses 0-based indexing
 
-        mat = material_to_opf_string(mesh.material)
+        mat = material_to_opf_string(mesh_.material)
         addelement!(
             mat_elm,
             "emission",
@@ -128,14 +128,14 @@ function write_opf(file, mtg)
 
     # Parsing the shapeBDD section.
     shapeBDD = addelement!(opf_elm, "shapeBDD")
-    for (key, mesh) in enumerate(mtg[:ref_meshes].meshes)
+    for (key, mesh_) in enumerate(mtg[:ref_meshes].meshes)
         shape_elm = addelement!(shapeBDD, "shape")
         shape_elm["Id"] = key - 1 # opf uses 0-based indexing
 
         addelement!(
             shape_elm,
             "name",
-            mesh.name
+            mesh_.name
         )
 
         addelement!(
@@ -207,7 +207,7 @@ function mtg_topology_to_xml!(node, xml_parent, xml_gtparent=nothing, ref_meshes
     end
 
     if !isleaf(node)
-        for chnode in MultiScaleTreeGraph.ordered_children(node)
+        for chnode in children(node)
             xml_node = attributes_to_xml(chnode, xml_parent, xml_gtparent, ref_meshes)
             mtg_topology_to_xml!(chnode, xml_node, xml_parent, ref_meshes)
         end
