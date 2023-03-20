@@ -90,7 +90,7 @@ function write_opf(file, mtg)
 
     # Parsing the materialBDD section.
     materialBDD = addelement!(opf_elm, "materialBDD")
-    for (key, mesh_) in enumerate(mtg[:ref_meshes].meshes[2:end])
+    for (key, mesh_) in enumerate(mtg[:ref_meshes].meshes)
         mat_elm = addelement!(materialBDD, "material")
         mat_elm["Id"] = key - 1 # opf uses 0-based indexing
 
@@ -153,8 +153,10 @@ function write_opf(file, mtg)
 
     # Parsing the attributeBDD section:
     attrBDD = addelement!(opf_elm, "attributeBDD")
-    attrs = MultiScaleTreeGraph.get_features(mtg)
+    attrs = unique(MultiScaleTreeGraph.get_features(mtg))
     for i = 1:size(attrs, 1)
+        (string(attrs[i, 1]) == "ref_meshes" || string(attrs[i, 1]) == "geometry") && continue
+
         shape_elm = addelement!(attrBDD, "attribute")
         shape_elm["name"] = string(attrs[i, 1])
         attr_type = attrs[i, 2]
