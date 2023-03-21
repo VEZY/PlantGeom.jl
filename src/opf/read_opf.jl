@@ -68,7 +68,7 @@ function read_opf(
     editable = parse(Bool, xroot["editable"])
 
     opf_attr = Dict{Symbol,Any}()
-    # node = elements(xroot)[1]
+    # node = elements(xroot)[end]
     for node in eachelement(xroot)
         if node.name == "meshBDD"
             push!(opf_attr, :meshBDD => parse_meshBDD!(node))
@@ -376,10 +376,6 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
     # node_i.children
     attrs = Dict{Symbol,Any}()
 
-    # Array with the last node computed. This is used for the "follow" nodes, because they always
-    # refer to the last computed node...
-    last_node = Node[node_i]
-
     # Handle the children, can be attributes of children nodes:
     # elem = elements(node)[1]
     for elem in eachelement(node)
@@ -419,11 +415,8 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
                     )
                 )
             end
-        elseif elem.name in ["decomp", "branch"]
-            last_node[1] = parse_opf_topology!(elem, node_i, features, attr_type, mtg_type, ref_meshes)
-        elseif elem.name == "follow"
-            # We use last_node here instead of node_i because a following node refers to the last computed node
-            last_node[1] = parse_opf_topology!(elem, last_node[1], features, attr_type, mtg_type, ref_meshes)
+        elseif elem.name in ["decomp", "branch", "follow"]
+            parse_opf_topology!(elem, node_i, features, attr_type, mtg_type, ref_meshes)
         else
             error("Attribute $(elem.name) not found in attributeBDD (or badly written?)")
         end

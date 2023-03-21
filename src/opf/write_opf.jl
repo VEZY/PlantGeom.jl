@@ -224,12 +224,7 @@ Write an MTG node into an XML node.
 function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
     opf_link = isroot(node) ? "topology" : mtg_to_opf_link(node.MTG.link)
 
-    if opf_link == "follow"
-        xml_gtparent === nothing ? error("Root node should start with a '/' link") : nothing
-        xml_node = addelement!(xml_gtparent, opf_link)
-    else
-        xml_node = addelement!(xml_parent, opf_link)
-    end
+    xml_node = addelement!(xml_parent, opf_link)
 
     xml_node["class"] = node.MTG.symbol
     xml_node["scale"] = node.MTG.scale
