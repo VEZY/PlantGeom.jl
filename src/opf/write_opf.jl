@@ -37,7 +37,7 @@ function write_opf(file, mtg)
     end
 
     for (key, mesh_) in enumerate(mtg[:ref_meshes].meshes)
-        # key = 9; mesh_ = mtg[:ref_meshes].meshes[key]
+        # key = 1; mesh_ = mtg[:ref_meshes].meshes[key]
         mesh_elm = addelement!(meshBDD, "mesh")
         mesh_elm["name"] = mesh_.name
         mesh_elm["shape"] = ""
@@ -47,7 +47,7 @@ function write_opf(file, mtg)
         addelement!(
             mesh_elm,
             "points",
-            string("\n", join(reduce(vcat, [Meshes.coordinates(p) for p in Meshes.vertices(mesh_.mesh)]), "\t"), "\n")
+            string("\n", join(Iterators.flatten(Meshes.coordinates(p) for p in Meshes.vertices(mesh_.mesh)), "\t"), "\n")
         )
 
         if length(mesh_.normals) == Meshes.nelements(mesh_) && length(mesh_.normals) != Meshes.nvertices(mesh_)
@@ -60,7 +60,8 @@ function write_opf(file, mtg)
         norm_elm = addelement!(
             mesh_elm,
             "normals",
-            string("\n", join(reduce(vcat, [Meshes.coordinates(p) for p in vertex_normals]), "\t"), "\n")
+            # string("\n", join(reduce(vcat, [Meshes.coordinates(p) for p in vertex_normals]), "\t"), "\n")
+            string("\n", join(Iterators.flatten(Meshes.coordinates(p) for p in vertex_normals), "\t"), "\n")
         )
 
 
@@ -69,7 +70,7 @@ function write_opf(file, mtg)
             norm_elm = addelement!(
                 mesh_elm,
                 "textureCoords",
-                string("\n", join(reduce(vcat, [Meshes.coordinates(p) for p in mesh_.texture_coords]), "\t"), "\n")
+                string("\n", join(Iterators.flatten(Meshes.coordinates(p) for p in mesh_.texture_coords), "\t"), "\n")
             )
         end
 
