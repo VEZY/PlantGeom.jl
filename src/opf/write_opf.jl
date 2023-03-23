@@ -154,19 +154,23 @@ function write_opf(file, mtg)
     # Parsing the attributeBDD section:
     attrBDD = addelement!(opf_elm, "attributeBDD")
     attrs = unique(MultiScaleTreeGraph.get_features(mtg))
-    for i = 1:size(attrs, 1)
-        (string(attrs[i, 1]) == "ref_meshes" || string(attrs[i, 1]) == "geometry") && continue
+    for row in eachrow(attrs)
+        (string(row.NAME) == "ref_meshes" || string(row.NAME) == "geometry") && continue
 
         shape_elm = addelement!(attrBDD, "attribute")
-        shape_elm["name"] = string(attrs[i, 1])
-        attr_type = attrs[i, 2]
+        shape_elm["name"] = string(row.NAME)
+        attr_type = row.TYPE
 
-        if attr_type == "STRING"
-            attr_type_opf = "String"
+        if attr_type == "STRING" # Type in the MTG
+            attr_type_opf = "String" # Type in the OPF
         elseif attr_type == "REAL"
             attr_type_opf = "Double"
         elseif attr_type == "INT"
             attr_type_opf = "Integer"
+        elseif attr_type == "BOOLEAN"
+            attr_type_opf = "Boolean"
+        else
+            error("Unknown attribute type: $(attr_type) for attribute $(row.NAME)")
         end
 
         shape_elm["class"] = attr_type_opf
