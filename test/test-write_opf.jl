@@ -4,7 +4,7 @@ tmp_file = tempname()
     PlantGeom.write_opf(tmp_file, mtg)
     mtg2 = read_opf(tmp_file, Dict)
     # Compare each node one by one:
-    @test traverse(mtg, node -> node) == traverse(mtg2, node -> node)
+    @test MultiScaleTreeGraph.traverse(mtg, node -> node) == MultiScaleTreeGraph.traverse(mtg2, node -> node)
 end
 
 @testset "write_opf: read, write, read again and compare -> coffee" begin
@@ -12,5 +12,5 @@ end
     PlantGeom.write_opf(tmp_file, mtg)
     mtg2 = read_opf(tmp_file, Dict)
     # Compare each node one by one:
-    @test traverse(mtg, node -> node) == traverse(mtg2, node -> node)
+    @test MultiScaleTreeGraph.traverse(mtg, node -> node) == MultiScaleTreeGraph.traverse(mtg2, node -> node)
 end
