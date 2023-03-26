@@ -14,7 +14,9 @@ The plot object can have the following optional arguments:
 - `facetcolor`: The color to be used for the facets. Should be a colorant or a symbol of color.
 - `showfacets`: A boolean indicating whether the facets should be shown or not.
 - `color_missing`: The color to be used for missing values. Should be a colorant or a symbol of color.
-
+- `color_vertex`: A boolean indicating whether the values in `color` (if colored by attributes) are defined for each vertex of the mesh, or for each mesh.
+- `index`: An integer giving the index of the attribute value to be vizualised. This is useful when the attribute is a vector of values for *e.g.* each timestep.
+- `color_cache_name`: The name of the color cache. Should be a string (default to a random string).
 
 # Examples
 
@@ -100,7 +102,14 @@ end
 
 # Case where the color is an attribute of the MTG:
 function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
-    color_attr_name = MultiScaleTreeGraph.cache_name("Color name")
+    if hasproperty(plot, :color_cache_name)
+        color_attr_name = plot[:color_cache_name]
+    else
+        # Set the value of the cached color attribute (will be written in the MTG!)
+        # This is usefull when we make several plots at once and need different colors at the same time (e.g. plotting the same plant on two different days).
+        color_attr_name = MultiScaleTreeGraph.cache_name(string(UUIDs.uuid4()))
+    end
+
     opf = plot[:object]
     colorscheme_ = plot[:colorscheme]
     colorscheme = Makie.@lift get_colormap($colorscheme_)

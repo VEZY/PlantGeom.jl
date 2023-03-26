@@ -22,7 +22,8 @@ can be called with the `transform!` function. See the examples below.
     - `color_missing`: The color to be used for missing values. Should be a colorant or a symbol of color.
     - `color_vertex`: A boolean indicating whether the values in `color` (if colored by attributes) are defined for each vertex of the mesh, or for each mesh.
     - `index`: An integer giving the index of the attribute value to be vizualised. This is useful when the attribute is a vector of values for *e.g.* each timestep.
-
+    - `color_cache_name`: The name of the color cache. Should be a string (default to a random string).
+    
 Note that `color_vertex` is set to `false` by default.
 
 # Examples

@@ -22,6 +22,9 @@ import CoordinateTransformations: Transformation, Translation, LinearMap, ∘, I
 import RecipesBase
 import Base
 
+# For random name of the color attribute for caching:
+import UUIDs
+
 include("structs.jl")
 include("equality.jl")
 include("helpers.jl")
