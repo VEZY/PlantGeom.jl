@@ -8,7 +8,7 @@ an MTG colored by an attribute. Use Makie.Colorbar for any other use case instea
 
 - `parent`: parent scene
 - `plotobject`: plot object to add the colorbar to
-- `kwargs`: keyword arguments to pass to Makie.Colorbar
+- `kwargs`: keyword arguments to pass to Makie.Colorbar, *e.g.* `label="Length (m)"`
 
 # Example
 
@@ -45,14 +45,12 @@ function colorbar(parent, plotobject; kwargs...)
         colorbar_limits = Makie.@lift attribute_range($mtg, $color)
     end
 
-    colorbar_label = Makie.lift(x -> string(x), plotobject.attributes.color)
     colormap = Makie.lift(get_colormap, plotobject.attributes.colorscheme)
-    println(colorbar_limits)
+
     Makie.Colorbar(
         parent,
-        label=colorbar_label,
         colormap=colormap,
-        limits=colorbar_limits[];
+        limits=colorbar_limits;
         kwargs...
     )
 end
