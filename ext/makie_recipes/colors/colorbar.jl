@@ -21,7 +21,7 @@ f, ax, p = viz(opf, color=:Length)
 colorbar(f[1, 2], p)
 f
 """
-function colorbar(parent, plotobject; kwargs...)
+function PlantGeom.colorbar(parent, plotobject; kwargs...)
     color = plotobject.attributes.color
     mtg = plotobject.converted[1]
 
@@ -39,7 +39,11 @@ function colorbar(parent, plotobject; kwargs...)
     # Because we extend the `Viz` type, we need to check if the user has given a color range.
     # If we defined our own e.g. `PlantViz` type, we could have defined a `color_range` field in it directly.
     if hasproperty(plotobject.attributes, :color_range)
-        colorbar_limits = Observables.Observable(plotobject.attributes.color_range)
+        if isa(plotobject.attributes.color_range, Observables.Observable)
+            colorbar_limits = plotobject.attributes.color_range
+        else
+            colorbar_limits = Observables.Observable(plotobject.attributes.color_range)
+        end
     else
         # Get the attribute values without nothing values:    
         colorbar_limits = Makie.@lift attribute_range($mtg, $color)
