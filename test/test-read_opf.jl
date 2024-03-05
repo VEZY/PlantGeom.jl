@@ -3,7 +3,7 @@ mtg = read_opf("files/simple_plant.opf", Dict)
 @testset "read_opf: simple_plant.opf -> attributes" begin
     @test length(mtg) == 7
     @test haskey(mtg.attributes, :ref_meshes)
-    @test names(mtg) == [:ref_meshes, :FileName, :geometry, :Length, :Width, :XEuler]
+    @test sort(names(mtg)) == [:FileName, :Length, :Width, :XEuler, :geometry, :ref_meshes]
     @test descendants(mtg, :Length) == Any[nothing, nothing, 0.1f0, 0.2f0, 0.1f0, 0.2f0]
     @test descendants(mtg, :Width) == Any[nothing, nothing, 0.02f0, 0.1f0, 0.02f0, 0.1f0]
     @test descendants(mtg, :FileName) == Any["ArchiTree", nothing, nothing, nothing, nothing, nothing]
@@ -42,12 +42,11 @@ end
 @testset "read_opf: read coffee.opf" begin
     mtg = read_opf("files/coffee.opf", Dict)
     @test length(mtg) == 4191
-    @test get_attributes(mtg) ==
+    @test sort(get_attributes(mtg)) ==
           [
-        :FileName, :Variety, :ref_meshes, :Plot, :Treatment, :File,
-        :Name, :geometry, :XEuler, :Length, :Width, :Stifness, :YInsertionAngle,
-        :Plagiotropy, :Phyllotaxy, :StiffnessAngle, :Area, :XInsertionAngle
-    ]
+        :Area, :File, :FileName, :Length, :Name, :Phyllotaxy, :Plagiotropy, :Plot, :StiffnessAngle,
+        :Stifness, :Treatment, :Variety, :Width, :XEuler, :XInsertionAngle, :YInsertionAngle,
+        :geometry, :ref_meshes]
 
     @test Float64(sum(descendants(mtg, :Area, ignore_nothing=true))) ≈ 77961.421 atol = 1e-3
 end

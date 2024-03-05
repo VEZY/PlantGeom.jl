@@ -29,7 +29,7 @@ Return the type of the color, whether it is an attribute, a colorant, or a RefMe
 
 # Returns
 
-- `RefMeshColorant`: If the color is :slategray3, then it is the default color given by MeshViz,
+- `RefMeshColorant`: If the color is :slategray3, then it is the default color given by Meshes,
 so we assume nothing was passed by the user and color by reference mesh instead.
 - `AttributeColorant`: If the color is an attribute of the MTG, then we color by that attribute.
 - `T`: If the color is a colorant, then we color everything by that color.
@@ -58,7 +58,7 @@ color_type(Dict(1=>RGB(0.1,0.5,0.1), 2=>RGB(0.5,0.1,0.1)), opf)
 ```
 """
 function color_type(color::T, opf) where {T<:Symbol}
-    # If the color is :slategray3, then it is the default color given by MeshViz,
+    # If the color is :slategray3, then it is the default color given by Meshes,
     # so we assume nothing was passed by the user and color by reference mesh instead.
     if color == :slategray3
         return RefMeshColorantType

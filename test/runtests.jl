@@ -8,7 +8,6 @@ using MultiScaleTreeGraph
 using CoordinateTransformations
 using LinearAlgebra
 using CairoMakie
-using MeshViz
 
 # Update the reference plots (do only when you know awhat you are doing!):
 # include("makes_references.jl")

@@ -1,9 +1,10 @@
-Makie.plottype(::RefMeshes) = Viz{<:Tuple{RefMeshes}}
+Makie.plottype(::RefMeshes) = MeshesMakieExt.Viz{<:Tuple{RefMeshes}}
+Makie.args_preferred_axis(::RefMeshes) = Makie.LScene
 
 # Documentation is in opf_recipe.jl
-function Makie.plot!(plot::Viz{<:Tuple{RefMeshes}})
+function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{RefMeshes}})
     # Mesh list:
-    p = align_ref_meshes(plot[:object][])
+    p = PlantGeom.align_ref_meshes(plot[:object][])
 
     n_meshes = length(p)
 
@@ -44,6 +45,6 @@ function Makie.plot!(plot::Viz{<:Tuple{RefMeshes}})
     end
 
     for (key, value) in enumerate(p)
-        viz!(plot, value, color=new_color[key], facetcolor=plot[:facetcolor], showfacets=plot[:showfacets], colorscheme=plot[:colorscheme])
+        MeshesMakieExt.viz!(plot, value, color=new_color[key], facetcolor=plot[:facetcolor], showfacets=plot[:showfacets], colorscheme=plot[:colorscheme])
     end
 end

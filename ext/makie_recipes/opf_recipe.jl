@@ -1,4 +1,6 @@
-Makie.plottype(::MultiScaleTreeGraph.Node) = Viz{<:Tuple{MultiScaleTreeGraph.Node}}
+Makie.plottype(::MultiScaleTreeGraph.Node) = MeshesMakieExt.Viz{<:Tuple{MultiScaleTreeGraph.Node}}
+Makie.args_preferred_axis(::MultiScaleTreeGraph.Node) = Makie.LScene
+
 
 """
     viz(opf::MultiScaleTreeGraph.Node; kwargs...)
@@ -98,6 +100,6 @@ viz(meshes, color = Dict(2 => 1:nvertices(meshes)[2]))
 """
 viz, viz!
 
-function Makie.plot!(plot::Viz{<:Tuple{MultiScaleTreeGraph.Node}})
+function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{MultiScaleTreeGraph.Node}})
     plot_opf(plot)
 end

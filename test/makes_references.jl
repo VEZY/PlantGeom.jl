@@ -1,7 +1,7 @@
 # using MultiScaleTreeGraph
 # using PlantGeom
 # using CairoMakie
-
+# Base.retry_load_extensions()
 # Import / pre-compute
 file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
 opf = read_opf(file)
@@ -10,7 +10,7 @@ meshes = get_ref_meshes(opf)
 transform!(opf, refmesh_to_mesh!)
 
 # Make reference for ref meshes:
-f, ax, p = viz(meshes)
+f, ax, p = PlantGeom.viz(meshes)
 save("reference_images/refmesh_basic.png", f)
 
 f, ax, p = viz(meshes, color=Dict(1 => :burlywood4, 2 => :springgreen4, 3 => :burlywood4))

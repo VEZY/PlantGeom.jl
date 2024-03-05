@@ -17,7 +17,7 @@ node = opf[1][1][1]
 
 new_mesh = refmesh_to_mesh(node)
 
-using MeshViz, GLMakie
+using GLMakie
 viz(new_mesh)
 ```
 """

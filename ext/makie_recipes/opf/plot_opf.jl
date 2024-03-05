@@ -62,11 +62,11 @@ end
 function plot_opf(colorant::Observables.Observable{T}, plot) where {T<:Colorant}
     color_attr_name = MultiScaleTreeGraph.cache_name("Color name")
 
-    traverse!(plot[:object][]; filter_fun=node -> node[:geometry] !== nothing) do node
+    MultiScaleTreeGraph.traverse!(plot[:object][]; filter_fun=node -> node[:geometry] !== nothing) do node
         # get the color based on a colorscheme and the normalized attribute value
         node[color_attr_name] = Makie.lift(x -> x, colorant)
 
-        viz!(
+        MeshesMakieExt.viz!(
             plot,
             node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
             color=node[color_attr_name],
@@ -84,9 +84,9 @@ function plot_opf(colorant::Observables.Observable{T}, plot) where {T<:Union{Ref
 
     ref_meshes = get_ref_meshes(opf[])
     # Make the plot, case where the color is a color for each reference mesh:
-    traverse!(opf[]; filter_fun=node -> node[:geometry] !== nothing) do node
+    MultiScaleTreeGraph.traverse!(opf[]; filter_fun=node -> node[:geometry] !== nothing) do node
         node[color_attr_name] = Makie.@lift color_from_refmeshes($colorant, node, ref_meshes)
-        viz!(
+        MeshesMakieExt.viz!(
             plot,
             node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
             color=node[color_attr_name],
@@ -97,7 +97,7 @@ function plot_opf(colorant::Observables.Observable{T}, plot) where {T<:Union{Ref
 end
 
 function color_from_refmeshes(color::Union{RefMeshColorant,DictRefMeshColorant,DictVertexRefMeshColorant}, node, ref_meshes)
-    color.colors[get_ref_mesh_index!(node, ref_meshes)]
+    color.colors[PlantGeom.get_ref_mesh_index!(node, ref_meshes)]
 end
 
 # Case where the color is an attribute of the MTG:
@@ -151,7 +151,7 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
     end
 
     # Make the plot, case where the color is a color for each reference mesh:
-    traverse!(opf[]; filter_fun=node -> node[:geometry] !== nothing) do node
+    MultiScaleTreeGraph.traverse!(opf[]; filter_fun=node -> node[:geometry] !== nothing) do node
         color_attribute = Makie.@lift attr_colorant_name($colorant) # the attribute name used for coloring
 
         if node[color_attribute[]] === nothing
@@ -161,7 +161,7 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
             node[color_attr_name] = Makie.@lift get_color(node[$color_attribute], $color_range, $index; colormap=$colorscheme)
         end
 
-        viz!(
+        MeshesMakieExt.viz!(
             plot,
             node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
             color=node[color_attr_name],

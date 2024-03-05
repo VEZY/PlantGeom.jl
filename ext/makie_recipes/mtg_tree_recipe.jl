@@ -1,10 +1,10 @@
 # This is a makie recipe to plot the mtg nodes and connections.
-@Makie.recipe(Diagram) do scene
+Makie.@recipe(Diagram) do scene
     Makie.Attributes(
-        color = :black,
-        colormap = :viridis,
-        edge_color = nothing,
-        color_missing = RGBA(0, 0, 0, 0.3)
+        color=:black,
+        colormap=:viridis,
+        edge_color=nothing,
+        color_missing=RGBA(0, 0, 0, 0.3)
     )
 end
 
@@ -47,7 +47,7 @@ diagram(opf, color = :ZZ)
 """
 diagram, diagram!
 
-function Makie.plot!(p::Diagram{<:Tuple{MultiScaleTreeGraph.Node{<:AbstractNodeMTG,T}} where {T}})
+function Makie.plot!(p::Diagram{<:Tuple{MultiScaleTreeGraph.Node{<:MultiScaleTreeGraph.AbstractNodeMTG,T}} where {T}})
 
     mtg = p[1][]
     color = p[:color][]
@@ -59,23 +59,23 @@ function Makie.plot!(p::Diagram{<:Tuple{MultiScaleTreeGraph.Node{<:AbstractNodeM
     end
 
     df_coordinates, color, edge_color, text_color =
-        mtg_XYZ_color(mtg, color, edge_color, colormap, color_missing = p[:color_missing][])
+        mtg_XYZ_color(mtg, color, edge_color, colormap, color_missing=p[:color_missing][])
 
     Makie.scatter!(
         p,
         df_coordinates.XX,
         df_coordinates.YY,
         df_coordinates.ZZ,
-        color = color,
-        colormap = colormap
+        color=color,
+        colormap=colormap
     )
 
     Makie.text!(
         p,
         string.(df_coordinates.id),
-        position = [Makie.Point3f(df_coordinates.XX[i], df_coordinates.YY[i], df_coordinates.ZZ[i]) for i in 1:size(df_coordinates, 1)],
-        color = text_color,
-        offset = (5, 5)
+        position=[Makie.Point3f(df_coordinates.XX[i], df_coordinates.YY[i], df_coordinates.ZZ[i]) for i in 1:size(df_coordinates, 1)],
+        color=text_color,
+        offset=(5, 5)
     )
 
     for i in 2:size(df_coordinates, 1)
@@ -84,7 +84,7 @@ function Makie.plot!(p::Diagram{<:Tuple{MultiScaleTreeGraph.Node{<:AbstractNodeM
             [df_coordinates.XX_from[i], df_coordinates.XX[i]],
             [df_coordinates.YY_from[i], df_coordinates.YY[i]],
             [df_coordinates.ZZ_from[i], df_coordinates.ZZ[i]],
-            color = edge_color[i]
+            color=edge_color[i]
         )
     end
 
