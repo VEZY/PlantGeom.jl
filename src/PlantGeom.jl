@@ -37,6 +37,7 @@ include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
 include("ref_meshes/cylinder_refmesh.jl")
 include("plots_recipes/plots_recipe.jl")
+include("colors.jl")
 
 
 # function viz2 end
@@ -45,7 +46,7 @@ include("plots_recipes/plots_recipe.jl")
 # 3D Plotting (OPF):
 export get_ref_meshes
 export viz, viz!
-export nvertices, nelements
+# export nvertices, nelements
 export read_opf, write_opf
 export taper
 export refmesh_to_mesh, get_ref_meshes_color
@@ -55,9 +56,9 @@ export transform_mesh!
 export Material, Phong
 export RefMesh, RefMeshes
 export (==), names
-export Diagram, diagram, diagram!
-export ref_cylinder
+export get_color, get_colormap
+
+function colorbar end # Extended in PlantGeomMakie extension
 export colorbar
-export get_color
 
 end

@@ -1,7 +1,7 @@
 # using MultiScaleTreeGraph
 # using PlantGeom
 # using CairoMakie
-# Base.retry_load_extensions()
+
 # Import / pre-compute
 file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
 opf = read_opf(file)

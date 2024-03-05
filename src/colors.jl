@@ -54,5 +54,3 @@ function get_color(var, range_var, index::I=1; colormap=colorschemes[:viridis]) 
     # get the color based on a colormap and the normalized attribute value
     get(colormap, (var - range_var[1]) / (range_var[2] - range_var[1]))
 end
-
-

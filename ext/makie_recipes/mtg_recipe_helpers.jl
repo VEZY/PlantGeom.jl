@@ -222,7 +222,7 @@ end
 function attribute_range(mtg, attr)
     attr_name = attr_colorant_name(attr)
     vals =
-        descendants(
+        MultiScaleTreeGraph.descendants(
             mtg,
             attr_name,
             ignore_nothing=true
