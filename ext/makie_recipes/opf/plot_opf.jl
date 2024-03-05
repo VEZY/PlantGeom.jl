@@ -50,7 +50,7 @@ function plot_opf(plot)
     color = plot[:color]
 
     # Get the colors for the meshes:
-    colorant = Makie.@lift get_mtg_color($color, $opf)
+    colorant = Makie.@lift PlantGeom.get_mtg_color($color, $opf)
 
     plot_opf(colorant, plot)
     #? NB: implement scale / symbol / link / filter_fun filtering to be able to plot only
@@ -138,7 +138,7 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
         color_range = plot[:color_range]
     else
         # Get the attribute values without nothing values:    
-        color_range = Makie.@lift attribute_range($opf, $colorant)
+        color_range = Makie.@lift PlantGeom.attribute_range($opf, $colorant)
     end
 
     if hasproperty(plot, :index)
@@ -152,7 +152,7 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
 
     # Make the plot, case where the color is a color for each reference mesh:
     MultiScaleTreeGraph.traverse!(opf[]; filter_fun=node -> node[:geometry] !== nothing) do node
-        color_attribute = Makie.@lift attr_colorant_name($colorant) # the attribute name used for coloring
+        color_attribute = Makie.@lift PlantGeom.attr_colorant_name($colorant) # the attribute name used for coloring
 
         if node[color_attribute[]] === nothing
             node[color_attr_name] = color_missing

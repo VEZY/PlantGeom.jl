@@ -37,8 +37,10 @@ include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
 include("ref_meshes/cylinder_refmesh.jl")
 include("plots_recipes/plots_recipe.jl")
-include("colors.jl")
-
+include("colors/get_color_type.jl")
+include("colors/colors.jl")
+include("colors/get_mtg_color.jl")
+include("opf/mtg_recipe_helpers.jl")
 
 # function viz2 end
 # function viz2! end
