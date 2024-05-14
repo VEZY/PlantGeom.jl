@@ -13,6 +13,10 @@ using CairoMakie
 # include("makes_references.jl")
 
 @testset "Read OPF" begin
+    include("test-refmesh.jl")
+end
+
+@testset "Read OPF" begin
     include("test-read_opf.jl")
 end
 
