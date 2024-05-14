@@ -51,7 +51,7 @@ end
 function normals_vertex(mesh::Meshes.SimpleMesh)
     vertex_normals = fill(Meshes.Point3(0.0, 0.0, 0.0), Meshes.nvertices(mesh))
     for (i, tri) in enumerate(Meshes.topology(mesh).connec)
-        tri_norm = Meshes.normal(Meshes.Triangle(mesh.vertices[[tri.indices...]]))
+        tri_norm = Meshes.normal(Meshes.Triangle(mesh.vertices[[tri.indices...]]...))
         vertex_normals[tri.indices[1]] = tri_norm
         vertex_normals[tri.indices[2]] = tri_norm
         vertex_normals[tri.indices[3]] = tri_norm
