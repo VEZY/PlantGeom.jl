@@ -18,7 +18,7 @@ The plot object can have the following optional arguments:
 - `segmentsize`: The size of the segments. Should be a float.
 - `showpoints`: A boolean indicating whether the points should be shown or not.
 - `color_missing`: The color to be used for missing values. Should be a colorant or a symbol of color.
-- `pointcolor`: A boolean indicating whether the values in `color` (if colored by attributes) are defined for each vertex of the mesh, or for each mesh.
+- `color_vertex`: A boolean indicating whether the values in `color` (if colored by attributes) are defined for each vertex of the mesh, or for each mesh.
 - `pointsize`: The size of the points. Should be a float.
 - `index`: An integer giving the index of the attribute value to be vizualised. This is useful when the attribute is a vector of values for *e.g.* each timestep.
 - `color_cache_name`: The name of the color cache. Should be a string (default to a random string).
@@ -80,9 +80,6 @@ function plot_opf(colorant::Observables.Observable{T}, plot) where {T<:Colorant}
             segmentsize=plot[:segmentsize],
             alpha=plot[:alpha],
             colormap=plot[:colormap],
-            showpoints=plot[:showpoints],
-            pointcolor=plot[:pointcolor],
-            pointsize=plot[:pointsize],
         )
     end
 end
@@ -106,9 +103,6 @@ function plot_opf(colorant::Observables.Observable{T}, plot) where {T<:Union{Ref
             segmentsize=plot[:segmentsize],
             alpha=plot[:alpha],
             colormap=plot[:colormap],
-            showpoints=plot[:showpoints],
-            pointcolor=plot[:pointcolor],
-            pointsize=plot[:pointsize],
         )
     end
 end
@@ -139,11 +133,11 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
 
     # Are the colors given for each vertex in the meshes, or for each reference mesh?
     # Note that we can have several values if we have several timesteps too.
-    if hasproperty(plot, :pointcolor)
-        pointcolor = plot[:pointcolor]
+    if hasproperty(plot, :color_vertex)
+        color_vertex = plot[:color_vertex]
     else
         # Get the attribute values without nothing values:    
-        pointcolor = Observables.Observable(false)
+        color_vertex = Observables.Observable(false)
     end
     if hasproperty(plot, :color_missing)
         color_missing = plot[:color_missing]
@@ -159,12 +153,12 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
     end
 
     if hasproperty(plot, :index)
-        hasproperty(plot, :pointcolor) && error("The `index` argument can only be used when the colors are given for each mesh, not each vertex.")
+        hasproperty(plot, :color_vertex) && error("The `index` argument can only be used when the colors are given for each mesh, not each vertex.")
         index = plot[:index]
     else
-        # The plotting index is always nothing it the colors are given for each vertex
+        # The plotting index is always nothing if the colors are given for each vertex
         # in the meshes. Otherwise, it is always the first index:
-        index = Makie.lift(x -> x ? nothing : 1, pointcolor)
+        index = Makie.lift(x -> x ? nothing : 1, color_vertex)
     end
 
     # Make the plot, case where the color is a color for each reference mesh:
@@ -187,9 +181,6 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
             showsegments=plot[:showsegments],
             colormap=colormap,
             segmentsize=plot[:segmentsize],
-            showpoints=plot[:showpoints],
-            pointcolor=pointcolor,
-            pointsize=plot[:pointsize],
         )
     end
 end

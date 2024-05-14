@@ -49,7 +49,7 @@ function PlantGeom.colorbar(parent, plotobject; kwargs...)
         colorbar_limits = Makie.@lift PlantGeom.attribute_range($mtg, $color)
     end
 
-    colormap = Makie.lift(get_colormap, plotobject.attributes.colorscheme)
+    colormap = Makie.lift(get_colormap, plotobject.attributes.colormap)
 
     Makie.Colorbar(
         parent,

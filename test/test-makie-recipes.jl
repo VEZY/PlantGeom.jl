@@ -36,12 +36,12 @@ end
     @test_reference "reference_images/opf_one_color_per_ref.png" viz(opf, color=Dict(1 => :burlywood4, 2 => :springgreen4))
     @test_reference "reference_images/opf_one_color_one_ref.png" viz(opf, color=Dict(1 => :burlywood4))
     vertex_color = get_color(1:nvertices(get_ref_meshes(opf))[1], [1, nvertices(get_ref_meshes(opf))[1]])
-    @test_reference "reference_images/opf_color_ref_vertex.png" viz(opf, color=Dict(1 => vertex_color), pointcolor=true)
+    @test_reference "reference_images/opf_color_ref_vertex.png" viz(opf, color=Dict(1 => vertex_color), color_vertex=true)
     transform!(opf, zmax => :z_max, ignore_nothing=true)
     @test_reference "reference_images/opf_color_attribute.png" viz(opf, color=:z_max)
 
     transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.vertices]) => :z, ignore_nothing=true)
-    @test_reference "reference_images/opf_color_attribute_vertex.png" viz(opf, color=:z, showsegments=true, pointcolor=true)
+    @test_reference "reference_images/opf_color_attribute_vertex.png" viz(opf, color=:z, showsegments=true, color_vertex=true)
 
     fig, ax, p = viz(opf, color=:z)
     colorbar(fig[1, 2], p)
