@@ -45,6 +45,6 @@ function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{RefMeshes}})
     end
 
     for (key, value) in enumerate(p)
-        MeshesMakieExt.viz!(plot, value, color=new_color[key], facetcolor=plot[:facetcolor], showfacets=plot[:showfacets], colorscheme=plot[:colorscheme])
+        MeshesMakieExt.viz!(plot, value, color=new_color[key], segmentcolor=plot[:segmentcolor], showsegments=plot[:showsegments], colorscheme=plot[:colorscheme])
     end
 end

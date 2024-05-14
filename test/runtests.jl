@@ -1,13 +1,13 @@
-using PlantGeom
+using Meshes
+using CairoMakie
 using Test
 using ReferenceTests
 using Colors, ColorSchemes
-using Meshes
 using StaticArrays
 using MultiScaleTreeGraph
 using CoordinateTransformations
 using LinearAlgebra
-using CairoMakie
+using PlantGeom
 
 # Update the reference plots (do only when you know awhat you are doing!):
 # include("makes_references.jl")

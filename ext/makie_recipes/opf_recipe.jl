@@ -18,15 +18,15 @@ can be called with the `transform!` function. See the examples below.
 - `opf`: The MTG to be vizualised.
 - `kwargs`: Additional arguments to be passed to `viz!`, wich includes: 
     - `color`: The color to be used for the plot. Can be a colorant, an attribute of the MTG (given as a Symbol), or a dictionary of colors for each reference mesh.
-    - `colorscheme`: The colorscheme to be used for the plot. Can be a Symbol or a ColorScheme. 
-    - `facetcolor`: The color to be used for the facets. Should be a colorant or a symbol of color.
-    - `showfacets`: A boolean indicating whether the facets should be shown or not.
+    - `colormap`: The colorscheme to be used for the plot. Can be a Symbol or a ColorScheme. 
+    - `segmentcolor`: The color to be used for the facets. Should be a colorant or a symbol of color.
+    - `showsegments`: A boolean indicating whether the facets should be shown or not.
     - `color_missing`: The color to be used for missing values. Should be a colorant or a symbol of color.
-    - `color_vertex`: A boolean indicating whether the values in `color` (if colored by attributes) are defined for each vertex of the mesh, or for each mesh.
+    - `pointcolor`: A boolean indicating whether the values in `color` (if colored by attributes) are defined for each vertex of the mesh, or for each mesh.
     - `index`: An integer giving the index of the attribute value to be vizualised. This is useful when the attribute is a vector of values for *e.g.* each timestep.
     - `color_cache_name`: The name of the color cache. Should be a string (default to a random string).
     
-Note that `color_vertex` is set to `false` by default.
+Note that `pointcolor` is set to `false` by default.
 
 # Examples
 
@@ -67,9 +67,9 @@ viz(opf, color = Dict(1 => vertex_color))
 
 # Or even coloring by the value of the Z coordinates of each vertex:
 transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.vertices]) => :z, ignore_nothing = true)
-viz(opf, color = :z, showfacets = true)
+viz(opf, color = :z, showsegments = true)
 
-f,a,p = viz(opf, color = :z, showfacets = true)
+f,a,p = viz(opf, color = :z, showsegments = true)
 p[:color] = :Length
 ```
 

@@ -10,11 +10,16 @@ Actual workhorse function for plotting an OPF / MTG with geometry.
 The plot object can have the following optional arguments:
 
 - `color`: The color to be used for the plot. Can be a colorant, an attribute of the MTG, or a dictionary of colors for each reference mesh.
-- `colorscheme`: The colorscheme to be used for the plot. Can be a Symbol or a ColorScheme.
-- `facetcolor`: The color to be used for the facets. Should be a colorant or a symbol of color.
-- `showfacets`: A boolean indicating whether the facets should be shown or not.
+- `alpha`: The alpha value to be used for the plot. Should be a float between 0 and 1.
+- `colormap`: The colorscheme to be used for the plot. Can be a Symbol or a ColorScheme.
+- `color_range`: The range of values to be used for the colormap. Should be a tuple of floats.
+- `segmentcolor`: The color to be used for the facets. Should be a colorant or a symbol of color.
+- `showsegments`: A boolean indicating whether the facets should be shown or not.
+- `segmentsize`: The size of the segments. Should be a float.
+- `showpoints`: A boolean indicating whether the points should be shown or not.
 - `color_missing`: The color to be used for missing values. Should be a colorant or a symbol of color.
-- `color_vertex`: A boolean indicating whether the values in `color` (if colored by attributes) are defined for each vertex of the mesh, or for each mesh.
+- `pointcolor`: A boolean indicating whether the values in `color` (if colored by attributes) are defined for each vertex of the mesh, or for each mesh.
+- `pointsize`: The size of the points. Should be a float.
 - `index`: An integer giving the index of the attribute value to be vizualised. This is useful when the attribute is a vector of values for *e.g.* each timestep.
 - `color_cache_name`: The name of the color cache. Should be a string (default to a random string).
 
@@ -38,9 +43,9 @@ plot_opf(plot)
 
 plot_opf(opf; color=Dict(1=>RGB(0.1,0.5,0.1), 2=>RGB(0.1,0.1,0.5)))
 
-plot_opf(opf; color=:red, colorscheme=:viridis)
+plot_opf(opf; color=:red, colormap=:viridis)
 
-plot_opf(opf; color=:red, colorscheme=:viridis, facetcolor=:red, showfacets=true)
+plot_opf(opf; color=:red, colormap=:viridis, segmentcolor=:red, showsegments=true)
 
 
 """
@@ -63,15 +68,21 @@ function plot_opf(colorant::Observables.Observable{T}, plot) where {T<:Colorant}
     color_attr_name = MultiScaleTreeGraph.cache_name("Color name")
 
     MultiScaleTreeGraph.traverse!(plot[:object][]; filter_fun=node -> node[:geometry] !== nothing) do node
-        # get the color based on a colorscheme and the normalized attribute value
+        # get the color based on a colormap and the normalized attribute value
         node[color_attr_name] = Makie.lift(x -> x, colorant)
 
         MeshesMakieExt.viz!(
             plot,
             node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
             color=node[color_attr_name],
-            facetcolor=plot[:facetcolor],
-            showfacets=plot[:showfacets],
+            segmentcolor=plot[:segmentcolor],
+            showsegments=plot[:showsegments],
+            segmentsize=plot[:segmentsize],
+            alpha=plot[:alpha],
+            colormap=plot[:colormap],
+            showpoints=plot[:showpoints],
+            pointcolor=plot[:pointcolor],
+            pointsize=plot[:pointsize],
         )
     end
 end
@@ -90,8 +101,14 @@ function plot_opf(colorant::Observables.Observable{T}, plot) where {T<:Union{Ref
             plot,
             node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
             color=node[color_attr_name],
-            facetcolor=plot[:facetcolor],
-            showfacets=plot[:showfacets],
+            segmentcolor=plot[:segmentcolor],
+            showsegments=plot[:showsegments],
+            segmentsize=plot[:segmentsize],
+            alpha=plot[:alpha],
+            colormap=plot[:colormap],
+            showpoints=plot[:showpoints],
+            pointcolor=plot[:pointcolor],
+            pointsize=plot[:pointsize],
         )
     end
 end
@@ -111,8 +128,8 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
     end
 
     opf = plot[:object]
-    colorscheme_ = plot[:colorscheme]
-    colorscheme = Makie.@lift get_colormap($colorscheme_)
+    colormap_ = plot[:colormap]
+    colormap = Makie.@lift get_colormap($colormap_)
 
     # Because we extend the `Viz` type, we cannot use the standard way of getting the attribute
     # from the plot. Instead, we need to check here if the argument is given, and give the default
@@ -122,11 +139,11 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
 
     # Are the colors given for each vertex in the meshes, or for each reference mesh?
     # Note that we can have several values if we have several timesteps too.
-    if hasproperty(plot, :color_vertex)
-        color_vertex = plot[:color_vertex]
+    if hasproperty(plot, :pointcolor)
+        pointcolor = plot[:pointcolor]
     else
         # Get the attribute values without nothing values:    
-        color_vertex = Observables.Observable(false)
+        pointcolor = Observables.Observable(false)
     end
     if hasproperty(plot, :color_missing)
         color_missing = plot[:color_missing]
@@ -142,12 +159,12 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
     end
 
     if hasproperty(plot, :index)
-        hasproperty(plot, :color_vertex) && error("The `index` argument can only be used when the colors are given for each mesh, not each vertex.")
+        hasproperty(plot, :pointcolor) && error("The `index` argument can only be used when the colors are given for each mesh, not each vertex.")
         index = plot[:index]
     else
         # The plotting index is always nothing it the colors are given for each vertex
         # in the meshes. Otherwise, it is always the first index:
-        index = Makie.lift(x -> x ? nothing : 1, color_vertex)
+        index = Makie.lift(x -> x ? nothing : 1, pointcolor)
     end
 
     # Make the plot, case where the color is a color for each reference mesh:
@@ -157,17 +174,22 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
         if node[color_attribute[]] === nothing
             node[color_attr_name] = color_missing
         else
-            # get the color based on a colorscheme and the normalized attribute value
-            node[color_attr_name] = Makie.@lift get_color(node[$color_attribute], $color_range, $index; colormap=$colorscheme)
+            # get the color based on a colormap and the normalized attribute value
+            node[color_attr_name] = Makie.@lift get_color(node[$color_attribute], $color_range, $index; colormap=$colormap)
         end
 
         MeshesMakieExt.viz!(
             plot,
             node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
             color=node[color_attr_name],
-            facetcolor=plot[:facetcolor],
-            showfacets=plot[:showfacets],
-            colorscheme=colorscheme,
+            alpha=plot[:alpha],
+            segmentcolor=plot[:segmentcolor],
+            showsegments=plot[:showsegments],
+            colormap=colormap,
+            segmentsize=plot[:segmentsize],
+            showpoints=plot[:showpoints],
+            pointcolor=pointcolor,
+            pointsize=plot[:pointsize],
         )
     end
 end
