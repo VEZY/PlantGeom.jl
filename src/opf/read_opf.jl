@@ -114,7 +114,7 @@ function read_opf(
 
             append!(
                 mtg,
-                MultiScaleTreeGraph.node_attributes(
+                MultiScaleTreeGraph.parse_node_attributes(
                     attr_type,
                     Dict(:ref_meshes => ref_meshes)
                 )
@@ -422,7 +422,7 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
         end
     end
 
-    node_i.attributes = MultiScaleTreeGraph.node_attributes(attr_type, attrs)
+    append!(node_i, MultiScaleTreeGraph.parse_node_attributes(attr_type, attrs))
 
     return node_i
 end

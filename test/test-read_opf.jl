@@ -2,7 +2,7 @@ mtg = read_opf("files/simple_plant.opf", Dict)
 
 @testset "read_opf: simple_plant.opf -> attributes" begin
     @test length(mtg) == 7
-    @test haskey(mtg.attributes, :ref_meshes)
+    @test haskey(mtg, :ref_meshes)
     @test sort(names(mtg)) == [:FileName, :Length, :Width, :XEuler, :geometry, :ref_meshes]
     @test descendants(mtg, :Length) == Any[nothing, nothing, 0.1f0, 0.2f0, 0.1f0, 0.2f0]
     @test descendants(mtg, :Width) == Any[nothing, nothing, 0.02f0, 0.1f0, 0.02f0, 0.1f0]
@@ -28,7 +28,8 @@ end
 @testset "read_opf: simple_plant.opf -> meshes" begin
     Internode = get_node(mtg, 4)
 
-    @test collect(keys(Internode.attributes)) == [:geometry, :Length, :Width]
+    @test sort(collect(keys(Internode))) == [:Length, :Width, :geometry]
+    @test sort(names(Internode)) == [:Length, :Width, :XEuler, :geometry]
     @test isa(Internode[:geometry], PlantGeom.geometry)
 
     geom = Internode[:geometry]

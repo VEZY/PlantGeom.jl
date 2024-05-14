@@ -1,8 +1,8 @@
 
 # # This is a working script to plot an MTG using GraphMakie
 # using NetworkLayout, GraphMakie, GeometryBasics, LightGraphs
-# node_names = String[traverse(mtg, x -> join([string("(", x.id, ")"), x.MTG.symbol, x.MTG.index], " "))...]
-# links = String[traverse(mtg, x -> x.MTG.link)[2:end]...]
+# node_names = String[traverse(mtg, x -> join([string("(", node_id(x), ")"), symbol(x), index(x)], " "))...]
+# links = String[traverse(mtg, x -> link(x))[2:end]...]
 # f, ax, p = graphplot(MetaGraph(mtg); layout = Buchheim(), nlabels = node_names, elabels = links)
 
 # # We can also use a custom Layout (like we use with other plots):

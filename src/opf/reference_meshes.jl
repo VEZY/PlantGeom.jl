@@ -24,7 +24,7 @@ function get_ref_meshes(mtg)
         x = mtg
     end
 
-    return x.attributes[:ref_meshes]
+    return x[:ref_meshes]
 end
 
 function get_ref_mesh_index!(node, ref_meshes=get_ref_meshes(node))
@@ -105,7 +105,7 @@ end
 using MultiScaleTreeGraph
 file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))),"test","files","simple_plant.opf")
 opf = read_opf(file)
-meshBDD_to_meshes(opf.attributes[:meshBDD])
+meshBDD_to_meshes(opf[:meshBDD])
 ```
 """
 function meshBDD_to_meshes(x)

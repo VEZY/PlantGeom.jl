@@ -68,7 +68,7 @@ function new_pos(node, angle, phyllotaxy)
         great_parent_node_YY = great_parent_node[:YY]
     end
 
-    if node.MTG.link == "/"
+    if link(node) == "/"
         extend_length = 0.2
     else
         extend_length = 1
@@ -76,7 +76,7 @@ function new_pos(node, angle, phyllotaxy)
 
     point = extend_pos(great_parent_node_XX, great_parent_node_YY, parent_node[:XX], parent_node[:YY], extend_length)
 
-    if node.MTG.link == "+"
+    if link(node) == "+"
         point =
             rotate_point(
                 parent_node[:XX],

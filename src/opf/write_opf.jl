@@ -227,15 +227,15 @@ end
 Write an MTG node into an XML node.
 """
 function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
-    opf_link = isroot(node) ? "topology" : mtg_to_opf_link(node.MTG.link)
+    opf_link = isroot(node) ? "topology" : mtg_to_opf_link(link(node))
 
     xml_node = addelement!(xml_parent, opf_link)
 
-    xml_node["class"] = node.MTG.symbol
-    xml_node["scale"] = node.MTG.scale
-    xml_node["id"] = node.id #! maybe this should be `node.MTG.index` instead ? But I think is is unique
+    xml_node["class"] = symbol(node)
+    xml_node["scale"] = scale(node)
+    xml_node["id"] = node_id(node)
 
-    for key in keys(node.attributes)
+    for key in keys(node)
         if key == :geometry
             geom = addelement!(xml_node, string(key))
             geom["class"] = "Mesh"
