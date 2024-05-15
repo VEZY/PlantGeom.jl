@@ -41,6 +41,7 @@ include("colors/get_color_type.jl")
 include("colors/colors.jl")
 include("colors/get_mtg_color.jl")
 include("opf/mtg_recipe_helpers.jl")
+include("opf/diagram.jl")
 
 # function viz2 end
 # function viz2! end
@@ -48,6 +49,9 @@ include("opf/mtg_recipe_helpers.jl")
 # 3D Plotting (OPF):
 export get_ref_meshes
 export viz, viz!
+
+export diagram, diagram!
+
 # export nvertices, nelements
 export read_opf, write_opf
 export taper

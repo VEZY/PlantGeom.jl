@@ -1,7 +1,8 @@
 module PlantGeomMakie
 
 using PlantGeom
-import PlantGeom: RefMeshColorant, DictRefMeshColorant, DictVertexRefMeshColorant, AttributeColorant
+import PlantGeom: RefMeshColorant, DictRefMeshColorant, DictVertexRefMeshColorant, AttributeColorant, diagram, diagram!
+import PlantGeom: viz, viz!
 import Makie
 import Meshes
 import Colors: RGBA, Colorant, RGB
@@ -21,5 +22,6 @@ include("makie_recipes/colorbar.jl")
 
 export viz, viz!
 export colorbar
+export diagram, diagram!
 
 end

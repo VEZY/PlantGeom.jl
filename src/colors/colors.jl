@@ -65,7 +65,7 @@ function mtg_XYZ_color(mtg, color, edge_color, colormap; color_missing=RGBA(0, 0
         text_color = color_var
     elseif typeof(color) <: Colorant || typeof(color) <: String || typeof(color) <: Symbol
         df_coordinates = mtg_coordinates_df(mtg, force=true)
-        color_var = fill(color, size(df_coordinates, 1))
+        color_var = color
         text_color = color_var
     else
         error(

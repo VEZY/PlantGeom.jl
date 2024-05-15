@@ -12,11 +12,11 @@ The package is designed around [MultiScaleTreeGraph](https://github.com/VEZY/Mul
 
 The package provides different functionalities, the main ones being:
 
-- IO for the OPF file format (see [`read_opf`](@ref) and [`write_opf`](@ref));
-- plotting using [`viz`](@ref) and [`viz!`](@ref), optionally using coloring by attribute;
-- mesh transformations using [`transform_mesh!`](@ref)
+- IO for the OPF file format (see `read_opf` and `write_opf`);
+- plotting using `viz` and `viz!`, optionally using coloring by attribute;
+- mesh transformations using `transform_mesh!`
 
-Note that `:geometry` is a reserved attribute in nodes (*e.g.* organs) used for the 3D geometry. It is stored as a special structure ([`geometry`](@ref)).
+Note that `:geometry` is a reserved attribute in nodes (*e.g.* organs) used for the 3D geometry. It is stored as a special structure (`geometry`).
 
 ## Example usage
 

@@ -22,11 +22,9 @@ very often, *e.g.* recompute an attribute value...
 adding/removing attributes a lot
 
 The `MultiScaleTreeGraph` package provides two types for `mtg_type`, one immutable
-([`MultiScaleTreeGraph.NodeMTG`](@ref)), and one mutable
-([`MultiScaleTreeGraph.MutableNodeMTG`](@ref)). If you're planning on modifying the mtg
-encoding of some of your nodes, you should use [`MultiScaleTreeGraph.MutableNodeMTG`](@ref),
-and if you don't want to modify anything, use [`MultiScaleTreeGraph.NodeMTG`](@ref) instead
-as it should be faster.
+(`NodeMTG`), and one mutable (`MutableNodeMTG`). If you're planning on modifying the mtg
+encoding of some of your nodes, you should use `MutableNodeMTG`, and if you don't want to modify 
+anything, use `NodeMTG` instead as it should be faster.
 
 # Note
 

@@ -11,13 +11,13 @@ The package is designed around [MultiScaleTreeGraph](https://github.com/VEZY/Mul
 The package provides different functionalities, the main ones being:
 
 - IO for the OPF file format (see [`read_opf`](@ref) and [`write_opf`](@ref));
-- plotting using [`viz`](@ref) and [`viz!`](@ref), optionally using coloring by attribute;
+- plotting using `viz` and `viz!`, optionally using coloring by attribute;
 - mesh transformations using [`transform_mesh!`](@ref)
 
 Note that PlantGeom reserves the `:geometry` attribute in the nodes (*e.g.* organs). It uses it to store the 3D geometry as a special structure ([`geometry`](@ref)).
 
 ```@setup animation
-using PlantGeom, MultiScaleTreeGraph, CairoMakie
+using CairoMakie, PlantGeom, MultiScaleTreeGraph # Note: CairoMakie must be loaded before PlantGeom to access the extensions
 opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 
 # First, we compute the 3D coordinates for each node in the MTG:
