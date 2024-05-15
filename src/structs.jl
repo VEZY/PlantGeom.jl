@@ -115,15 +115,15 @@ Base.names(m::RefMeshes) = [i.name for i in m.meshes]
 
 """
     geometry(
-        ref_mesh::M
+        ref_mesh<:RefMesh
         ref_mesh_index::Union{Int,Nothing}
-        transformation::T
+        transformation::Function
         dUp::S
         dDwn::S
         mesh::Union{SimpleMesh,Nothing}
     )
 
-A Node geometry with the reference mesh, its transformation matrix and optionnally the
+A Node geometry with the reference mesh, its transformation (as a function) and optionnally the
 index of the reference mesh in the reference meshes data base (see notes) and the resulting
 mesh (optional to save memory).
 
@@ -137,14 +137,14 @@ writing of the MTG as an OPF to disk.
 
 If no transformation matrix is needed, you can use `I` from the Linear Algebra package (lazy)
 
-The `transformation` field should be a `CoordinateTransformations.jl`'s transformation. In case
-no transformation is needed, use `IdentityTransformation()`. If you already have the
-transformation matrix, you can pass it to `LinearMap()`.
+The `transformation` field should be a function, such as a `Meshes.jl`'s transformation. In case
+no transformation is needed, use `TransformsBase.Identity` or `CoordinateTransformations.IdentityTransformation()`. If you already have the
+transformation matrix, you can pass it to `Meshes.Affine()`.
 """
-mutable struct geometry{M<:RefMesh,S}
+mutable struct geometry{M<:RefMesh,S,T<:Union{Function,GeometricTransform},}
     ref_mesh::M
     ref_mesh_index::Union{Int,Nothing}
-    transformation::Transformation #! replace by concrete types ?
+    transformation::T
     dUp::S
     dDwn::S
     mesh::Union{Meshes.SimpleMesh,Nothing}

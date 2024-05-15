@@ -13,7 +13,9 @@ Meshes = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
 MultiScaleTreeGraph = "dd4a991b-8a45-4075-bede-262ee62d5583"
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
+Rotations = "6038ab10-8711-5258-84ad-4b1120ba62dc"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+TransformsBase = "28dd2a49-a57a-4bfb-84ca-1a49db9b96b8"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [weakdeps]

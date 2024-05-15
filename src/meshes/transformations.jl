@@ -1,28 +1,26 @@
 #! Transformations of the meshes. Uses:
-#! LinearAlgebra.UniformScaling for scaling
-#! Rotation.jl for rotation
-#! CoordinateTransformations.jl for translation
+#! Meshes.jl for scaling and translation
+#! Meshes.jl + Rotations.jl for rotations
+#! CoordinateTransformations.jl for IdentityTransformation or `TransformsBase.Identity`
+#! Or a wrapper around CoordinateTransformations.jl for translation and scaling (see https://github.com/VEZY/PlantGeom.jl/issues/53)
 # Voir https://stackoverflow.com/questions/10546320/remove-rotation-from-a-4x4-homogeneous-transformation-matrix
 # pour extraire la rotation et la translation depuis la matrice 4*4, puis transformer
-# cette matrice 4*4 en CoordinateTransformations.jl transformations et après on ne gèrera
-# que ces transformations là.
+# cette matrice 4*4 en Meshes.jl transformations et après on ne gèrera que ces transformations là.
 
 """
     transform_mesh!(node::Node, transformation)
 
-Add a new `CoordinateTransformations.jl` transformation to the node geometry
-`transformation` field. The transformation is composed with the previous
-transformation if any.
+Add a new transformation to the node geometry `transformation` field. 
+The transformation is composed with the previous transformation if any.
 
-`transformation` must be a `CoordinateTransformations.jl` transformation.
+`transformation` must be a function.
 
-It is also possible to invert a transformation using `inv` from
-`CoordinateTransformations.jl`.
+It is also possible to invert a transformation using `revert` from `Meshes.jl`.
 
 # Examples
 
 ```julia
-using PlantGeom, MultiScaleTreeGraph, GLMakie, Rotations, CoordinateTransformations
+using PlantGeom, MultiScaleTreeGraph, GLMakie, Rotations, Meshes
 
 file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
 opf = read_opf(file)
@@ -32,12 +30,12 @@ viz(opf)
 
 # Copy the OPF, and translate the whole plant by 15 in the y direction (this is in cm, the mesh comes from XPlo):
 opf2 = deepcopy(opf)
-transform!(opf2, x -> transform_mesh!(x, Translation(0, 15, 0)))
+transform!(opf2, x -> transform_mesh!(x, Translate(0, 15, 0)))
 viz!(opf2) # Visualize it again in the same figure
 
 # Same but rotate the whole plant around the X axis:
 opf3 = deepcopy(opf)
-transform!(opf3, x -> transform_mesh!(x, LinearMap(RotX(0.3))))
+transform!(opf3, x -> transform_mesh!(x, Rotate(RotX(0.3))))
 # NB: we use Rotations.jl's RotX here. Input in radian, use rad2deg and deg2rad if needed.
 viz!(opf3)
 
@@ -53,7 +51,7 @@ leaf_node = get_node(opf4, 8)
 parent_zmax = zmax(leaf_node.parent)
 
 # Define a rotation of the mesh around the Z axis defined by the parent node max Z:
-transformation = recenter(LinearMap(RotZ(1.0)), Point3(0.0, 0.0, parent_zmax))
+transformation = recenter(Rotate(RotZ(1.0)), Point3(0.0, 0.0, parent_zmax))
 
 # Update the transformation matrix of the leaf and its mesh:
 transform_mesh!(leaf_node, transformation)
