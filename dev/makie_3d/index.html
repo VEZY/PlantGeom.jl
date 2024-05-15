@@ -3,25 +3,25 @@
 Page(exportable=true, offline=true)</code></pre><p>Then we can plot our interactive 3D plant:</p><pre><code class="language-julia hljs">using PlantGeom, WGLMakie
 mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),&quot;test&quot;,&quot;files&quot;,&quot;simple_plant.opf&quot;))
 viz(mtg)</code></pre><div>
-  <div class="bonito-fragment" id="29528a98-2ca1-4692-97a8-5988cc398f15" data-jscall-id="root">
+  <div class="bonito-fragment" id="5f5d1edb-4ebc-419e-a83f-169b0f4b0775" data-jscall-id="root">
     <div>
       <script src="../../../../.julia/packages/Bonito/mxgrs/js_dependencies/Bonito.bundled.js" type="module"></script>
       <style></style>
       <div></div>
     </div>
     <div>
-      <script type="module">Bonito.lock_loading(() => Bonito.init_session('29528a98-2ca1-4692-97a8-5988cc398f15', null, 'root'))</script>
+      <script type="module">Bonito.lock_loading(() => Bonito.init_session('5f5d1edb-4ebc-419e-a83f-169b0f4b0775', null, 'root'))</script>
       <span></span>
     </div>
   </div>
-  <div class="bonito-fragment" id="6c5588fe-e39e-45f3-8dd1-83b28e21dff4" data-jscall-id="subsession-application-dom">
+  <div class="bonito-fragment" id="e954c716-88f1-4efe-a459-823803ac467b" data-jscall-id="subsession-application-dom">
     <div>
       <style></style>
       <div></div>
     </div>
     <div>
       <script type="module">    Bonito.lock_loading(() => {
-        return Bonito.fetch_binary('bonito/bin/68acedc9d51efef16679fa9550342a96e16967d9-11229056603593706508.bin').then(msgs=> Bonito.init_session('6c5588fe-e39e-45f3-8dd1-83b28e21dff4', msgs, 'sub'));
+        return Bonito.fetch_binary('bonito/bin/5630d976a59fb1181caf23e284292d47c0f654e9-10083159829222680389.bin').then(msgs=> Bonito.init_session('e954c716-88f1-4efe-a459-823803ac467b', msgs, 'sub'));
     })
 </script>
       <div style="width: 100%; height: 100%" data-jscall-id="1">
@@ -43,12 +43,12 @@ ref_meshes = get_ref_meshes(mtg)</code></pre><pre class="documenter-example-outp
      width="50mm" height="25mm" viewBox="0 0 2 1" stroke="none"
      preserveAspectRatio="none" shape-rendering="crispEdges">
 <defs>
-    <pattern id="pat_20K00R" width=".2" height=".2"
+    <pattern id="pat_4ZrSnc" width=".2" height=".2"
              patternUnits="userSpaceOnUse" >
         <path d="M.1,0h.1v.1h-.2v.1h.1z" fill="%23999" opacity=".5" />
     </pattern>
 </defs>
-<rect width="2" height="1" fill="url(%23pat_20K00R)" />
+<rect width="2" height="1" fill="url(%23pat_4ZrSnc)" />
 <path d="M1,0v1h-1z" fill="%23594C00" />
 <path d="M0,0h1v1h-1z" fill="%23594C00" fill-opacity="1" />
 <path d="M2,0v1h-1z" fill="%231AB21A" />
@@ -67,4 +67,4 @@ colorbar(f[1, 2], p)
 
 record(f, &quot;coffee_steps.mp4&quot;, 1:12, framerate=2) do timestep
     p.index[] = timestep
-end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">&quot;coffee_steps.mp4&quot;</code></pre><p><video src="../coffee_steps.mp4" controls="true" title><a href="../coffee_steps.mp4"></a></video></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../plot_diagram/plots_diagram/">« Plots.jl</a><a class="docs-footer-nextpage" href="../API/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Wednesday 15 May 2024 10:24">Wednesday 15 May 2024</span>. Using Julia version 1.10.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">&quot;coffee_steps.mp4&quot;</code></pre><p><video src="../coffee_steps.mp4" controls="true" title><a href="../coffee_steps.mp4"></a></video></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../plot_diagram/plots_diagram/">« Plots.jl</a><a class="docs-footer-nextpage" href="../API/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Wednesday 15 May 2024 10:46">Wednesday 15 May 2024</span>. Using Julia version 1.10.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
