@@ -11,11 +11,11 @@
     @test recipe[1].args == ([0.0, 0.0], [0.0, 0.2]) # coordinates of the two vertex for the edge
     @test recipe[6].args == ([0.0, 0.7071067811865475], [1.6, 2.3071067811865476]) # same, last one
 
-    df_coordinates = PlantGeom.mtg_coordinates_df(mtg, force = true)
+    df_coordinates = PlantGeom.mtg_coordinates_df(mtg, force=true)
 
     @test recipe[7].args[1] == df_coordinates.XX
     @test recipe[7].plotattributes == Dict{Symbol,Any}(
-        :color => [:black, :black, :black, :black, :black, :black, :black],
+        :color => :black,
         :palette => colorschemes[:viridis],
         :label => "",
         :hover => [
