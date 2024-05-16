@@ -282,11 +282,11 @@ function get_transformation_matrix(trans)
 end
 
 function get_transformation_matrix(::T) where {T<:UniformScaling}
-    Matrix{Float64}(I, 3, 4)
+    Matrix{Float64}(I, 4, 4)
 end
 
 function get_transformation_matrix(::IdentityTransformation)
-    Matrix{Float64}(I, 3, 4)
+    Matrix{Float64}(I, 4, 4)
 end
 
 #! This was used to write CoordinateTransformations transformation matrices that had linear+translation 
@@ -296,22 +296,21 @@ end
 
 function get_transformation_matrix(trans::Affine)
     A, b = parameters(trans)
-    hcat(A, b)
+    vcat(hcat(A, b), [0 0 0 1])
 end
 
 function get_transformation_matrix(trans::Translate{D,T}) where {D,T}
-    hcat(Matrix{T}(I, D, D), [trans.offsets...])
+    [1.0 0.0 0.0 trans.offsets[1]; 0.0 1.0 0.0 trans.offsets[2]; 0.0 0.0 1.0 trans.offsets[3]; 0.0 0.0 0.0 1.0]
 end
 
 function get_transformation_matrix(trans::Rotate{T}) where {T<:Rotation}
-    trans.rot
+    vcat(hcat(trans.rot, [0 0 0]), [0 0 0 1])
 end
 
 function get_transformation_matrix(trans::Scale{D,T}) where {D,T}
-    Diagonal([trans.factors...])
+    Diagonal([trans.factors..., 1.0])
 end
 
-#! CONTINUE HERE, make this method work for ComposedFunctions:
 function get_transformation_matrix(trans::ComposedFunction)
-    get_transformation_matrix(trans.inner) * get_transformation_matrix(trans.outer)
+    get_transformation_matrix(trans.outer) * get_transformation_matrix(trans.inner)
 end
