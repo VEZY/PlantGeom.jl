@@ -285,7 +285,7 @@ function get_transformation_matrix(::T) where {T<:UniformScaling}
     Matrix{Float64}(I, 4, 4)
 end
 
-function get_transformation_matrix(::IdentityTransformation)
+function get_transformation_matrix(::Identity)
     Matrix{Float64}(I, 4, 4)
 end
 

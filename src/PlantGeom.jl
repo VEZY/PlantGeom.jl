@@ -6,7 +6,7 @@ import Observables # For to_value (get an observable value)
 import Meshes
 import Meshes: GeometricTransform, Translate, Affine, Rotate, Scale, Vec3
 import Meshes: viz, viz!
-import TransformsBase: parameters
+import TransformsBase: parameters, Identity
 import Rotations: Rotation
 
 # import GeometryBasics
@@ -21,7 +21,6 @@ import EzXML: XMLDocument, ElementNode, setroot!, addelement!, hasnodename
 import EzXML: prettyprint # to remove
 import StaticArrays: SMatrix, SVector
 import LinearAlgebra: I, UniformScaling, Diagonal # Used for geometry parsing in OPF
-import CoordinateTransformations: IdentityTransformation #! to replace by TransformsBase.Identity
 import RecipesBase
 import Base
 

@@ -1,7 +1,7 @@
 #! Transformations of the meshes. Uses:
 #! Meshes.jl for scaling and translation
 #! Meshes.jl + Rotations.jl for rotations
-#! CoordinateTransformations.jl for IdentityTransformation or `TransformsBase.Identity`
+#! `TransformsBase.Identity`
 #! Or a wrapper around CoordinateTransformations.jl for translation and scaling (see https://github.com/VEZY/PlantGeom.jl/issues/53)
 # Voir https://stackoverflow.com/questions/10546320/remove-rotation-from-a-4x4-homogeneous-transformation-matrix
 # pour extraire la rotation et la translation depuis la matrice 4*4, puis transformer
