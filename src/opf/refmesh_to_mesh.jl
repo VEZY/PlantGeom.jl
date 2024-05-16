@@ -53,12 +53,7 @@ function refmesh_to_mesh!(node)
             ref_mesh = taper(ref_mesh, node[:geometry].dUp, node[:geometry].dDwn)
         end
 
-        scaled_mesh = Array{Meshes.Point3}(undef, Meshes.nvertices(ref_mesh))
-        for (i, p) in enumerate(ref_mesh.vertices)
-            scaled_mesh[i] = Meshes.Point3(node[:geometry].transformation(p.coords))
-        end
-
-        node[:geometry].mesh = Meshes.SimpleMesh(scaled_mesh, Meshes.topology(ref_mesh))
+        node[:geometry].mesh = apply_transformation(node[:geometry].transformation, ref_mesh)
         return node[:geometry].mesh
     else
         return nothing
