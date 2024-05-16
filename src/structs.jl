@@ -141,15 +141,14 @@ transformation = x -> Meshes.Point3((Translation(@view mat[1:3, 4]) ∘ LinearMa
 Note that the wrapping serves two purposes: use the point coordinates directly because `CoordinateTransformations.jl`
 does not have a method for `Meshes.jl` types, and to return the result as a `Meshes.Point3` type.
 """
-mutable struct geometry{M<:RefMesh,S,T<:Union{Function,GeometricTransform},}
+mutable struct geometry{M<:RefMesh,S}
     ref_mesh::M
     ref_mesh_index::Union{Int,Nothing}
-    transformation::T
+    transformation::Union{Function,GeometricTransform,Identity}
     dUp::S
     dDwn::S
     mesh::Union{Meshes.SimpleMesh,Nothing}
 end
-
 
 function geometry(; ref_mesh, ref_mesh_index=nothing, transformation=Identity(), dUp=1.0, dDwn=1.0, mesh=nothing)
     geometry(
@@ -160,4 +159,8 @@ function geometry(; ref_mesh, ref_mesh_index=nothing, transformation=Identity(),
         dDwn,
         mesh
     )
+end
+
+function geometry(ref_mesh, ref_mesh_index=nothing)
+    geometry(; ref_mesh=ref_mesh, ref_mesh_index=ref_mesh_index)
 end
