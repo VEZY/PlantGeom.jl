@@ -6,7 +6,6 @@ using Documenter # for doctests
 using Colors, ColorSchemes
 using StaticArrays
 using MultiScaleTreeGraph
-using CoordinateTransformations
 using LinearAlgebra
 using PlantGeom
 

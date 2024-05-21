@@ -4,7 +4,10 @@ using MultiScaleTreeGraph
 import Observables # For to_value (get an observable value)
 # For 3D (OPF):
 import Meshes
+import Meshes: GeometricTransform, Translate, Affine, Rotate, Scale, Vec3
 import Meshes: viz, viz!
+import TransformsBase: parameters, Identity
+import Rotations: Rotation
 
 # import GeometryBasics
 # import PlyIO
@@ -17,8 +20,7 @@ import EzXML: eachelement, nodename, nodecontent, elements
 import EzXML: XMLDocument, ElementNode, setroot!, addelement!, hasnodename
 import EzXML: prettyprint # to remove
 import StaticArrays: SMatrix, SVector
-import LinearAlgebra: I, UniformScaling # Used for geometry parsing in OPF
-import CoordinateTransformations: Transformation, Translation, LinearMap, ∘, IdentityTransformation
+import LinearAlgebra: I, UniformScaling, Diagonal # Used for geometry parsing in OPF
 import RecipesBase
 import Base
 
@@ -66,5 +68,7 @@ export get_color, get_colormap
 
 function colorbar end # Extended in PlantGeomMakie extension
 export colorbar
+
+export get_transformation_matrix
 
 end

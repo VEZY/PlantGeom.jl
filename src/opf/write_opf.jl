@@ -248,7 +248,7 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
 
             # Make the homogeneous matrix from the transformations:
 
-            mat4x4 = mat_to_opf_string(node[key].transformation)
+            mat4x4 = get_transformation_matrix(node[key].transformation)
 
             addelement!(
                 geom,
@@ -277,14 +277,40 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
     return xml_node
 end
 
-function mat_to_opf_string(trans::T) where {T<:UniformScaling}
-    Matrix{Float64}(I, 3, 4)
+function get_transformation_matrix(trans)
+    error("Transformation type not supported: $(typeof(trans)). Please implement a new method to get the matrix out of this type of transformation.")
 end
 
-function mat_to_opf_string(trans::IdentityTransformation)
-    Matrix{Float64}(I, 3, 4)
+function get_transformation_matrix(::T) where {T<:UniformScaling}
+    Matrix{Float64}(I, 4, 4)
 end
 
-function mat_to_opf_string(trans)
-    hcat(trans.linear, trans.translation)
+function get_transformation_matrix(::Identity)
+    Matrix{Float64}(I, 4, 4)
+end
+
+#! This was used to write CoordinateTransformations transformation matrices that had linear+translation 
+# function get_transformation_matrix(trans)
+#     hcat(trans.linear, trans.translation)
+# end
+
+function get_transformation_matrix(trans::Affine)
+    A, b = parameters(trans)
+    vcat(hcat(A, b), [0 0 0 1])
+end
+
+function get_transformation_matrix(trans::Translate{D,T}) where {D,T}
+    [1.0 0.0 0.0 trans.offsets[1]; 0.0 1.0 0.0 trans.offsets[2]; 0.0 0.0 1.0 trans.offsets[3]; 0.0 0.0 0.0 1.0]
+end
+
+function get_transformation_matrix(trans::Rotate{T}) where {T<:Rotation}
+    vcat(hcat(trans.rot, [0 0 0]), [0 0 0 1])
+end
+
+function get_transformation_matrix(trans::Scale{D,T}) where {D,T}
+    Diagonal([trans.factors..., 1.0])
+end
+
+function get_transformation_matrix(trans::ComposedFunction)
+    get_transformation_matrix(trans.outer) * get_transformation_matrix(trans.inner)
 end
