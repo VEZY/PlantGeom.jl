@@ -396,7 +396,7 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
                 #! OK what I could do is use my own transformation function that adds w (=1)
                 #! to the Point3 when transforming it with the 4x4 matrix?
 
-                transformation = Translate(@view(geom[:mat][1:3, 4])...) ∘ Affine(@view(geom[:mat][1:3, 1:3]), b)
+                transformation = Affine(@view(geom[:mat][1:3, 1:3]), b) → Translate(@view(geom[:mat][1:3, 4])...)
                 # transformation = Translation(geom[:mat][1:3, 4]) ∘ LinearMap(geom[:mat][1:3, 1:3]) # CoordinateTransformations
                 # NB: We read an homogeneous transformation matrix from the OPF, but we work
                 # with cartesian coordinates in PlantGeom by design. So we deconstruct our
@@ -413,7 +413,7 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
                         transformation,
                         geom[:dUp],
                         geom[:dDwn],
-                        nothing
+                        nothing,
                     )
                 )
             end
