@@ -343,7 +343,7 @@ parse_opf_topology!(
 function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes)
 
     link = "/" # default, for "topology" and "decomp"
-
+    b = Vec3(0, 0, 0)
     if node.name == "branch"
         link = "+"
     elseif node.name == "follow"
@@ -393,12 +393,13 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
                 #! OK what I could do is use my own transformation function that adds w (=1)
                 #! to the Point3 when transforming it with the 4x4 matrix?
 
-                transformation = Translation(geom[:mat][1:3, 4]) ∘ LinearMap(geom[:mat][1:3, 1:3])
+                transformation = Translate(@view(geom[:mat][1:3, 4])...) ∘ Affine(@view(geom[:mat][1:3, 1:3]), b)
+                # transformation = Translation(geom[:mat][1:3, 4]) ∘ LinearMap(geom[:mat][1:3, 1:3]) # CoordinateTransformations
                 # NB: We read an homogeneous transformation matrix from the OPF, but we work
                 # with cartesian coordinates in PlantGeom by design. So we deconstruct our
                 # homogeneous matrix into the two corresponding rotation and translation
                 # matrices, and create a transformation from them using transformation
-                # composition from CoordinateTransformations.jl. Note that our homogeneous
+                # composition from Meshes.jl. Note that our homogeneous
                 # matrix is rotate first, then translate (hence the order of transformation)
 
                 push!(

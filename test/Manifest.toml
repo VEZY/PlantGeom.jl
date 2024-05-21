@@ -2,7 +2,7 @@
 
 julia_version = "1.10.2"
 manifest_format = "2.0"
-project_hash = "f1bac2a11ef24bcf739f845c6f34b70e5612e6e7"
+project_hash = "9c86a9d2a9efe990b8ba4974bc5d6a2e99be2f9a"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -304,12 +304,6 @@ weakdeps = ["IntervalSets", "StaticArrays"]
 [[deps.Contour]]
 git-tree-sha1 = "439e35b0b36e2e5881738abc8857bd92ad6ff9a8"
 uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
-version = "0.6.3"
-
-[[deps.CoordinateTransformations]]
-deps = ["LinearAlgebra", "StaticArrays"]
-git-tree-sha1 = "f9d7112bfff8a19a3a4ea4e03a8e6a91fe8456bf"
-uuid = "150eb455-5306-5404-9cee-2592286d6298"
 version = "0.6.3"
 
 [[deps.Crayons]]
