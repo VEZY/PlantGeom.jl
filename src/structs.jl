@@ -112,6 +112,20 @@ mutable struct RefMeshes
 end
 
 Base.names(m::RefMeshes) = [i.name for i in m.meshes]
+Base.push!(m::RefMeshes, x::RefMesh) = push!(m.meshes, x)
+Base.append!(m::RefMeshes, x::RefMesh) = append!(m.meshes, x)
+Base.push!(m::RefMeshes, x::RefMeshes) = push!(m.meshes, x.meshes)
+Base.append!(m::RefMeshes, x::RefMeshes) = append!(m.meshes, x.meshes)
+Base.getindex(m::RefMeshes, i::Int) = m.meshes[i]
+Base.getindex(m::RefMeshes, i::String) = m.meshes[findfirst(x -> x.name == i, m.meshes)]
+Base.getindex(m::RefMeshes, i::AbstractVector) = RefMeshes([m.meshes[j] for j in i])
+Base.getindex(m::RefMeshes, i::AbstractVector{Bool}) = RefMeshes([m.meshes[j] for j in findall(i)])
+Base.getindex(m::RefMeshes, i::AbstractVector{<:AbstractString}) = RefMeshes([m.meshes[j] for j in findfirst(x -> x.name == i, m.meshes)])
+Base.in(m::RefMeshes, i::RefMesh) = i in m.meshes
+Base.length(m::RefMeshes) = length(m.meshes)
+Base.pop!(m::RefMeshes) = pop!(m.meshes)
+Base.popfirst!(m::RefMeshes) = popfirst!(m.meshes)
+Base.findfirst(m::RefMeshes, x) = findfirst(x, m.meshes)
 
 """
     geometry(; ref_mesh<:RefMesh, ref_mesh_index=nothing, transformation=Identity(), dUp=1.0, dDwn=1.0, mesh::Union{SimpleMesh,Nothing}=nothing)

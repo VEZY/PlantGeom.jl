@@ -1,4 +1,4 @@
-mtg = read_opf("files/simple_plant.opf", Dict)
+mtg = read_opf("files/simple_plant.opf", attr_type=Dict)
 
 @testset "read_opf: simple_plant.opf -> attributes" begin
     @test length(mtg) == 7
@@ -42,7 +42,7 @@ end
 end
 
 @testset "read_opf: read coffee.opf" begin
-    mtg = read_opf("files/coffee.opf", Dict)
+    mtg = read_opf("files/coffee.opf", attr_type=Dict)
     @test length(mtg) == 4191
     @test sort(get_attributes(mtg)) ==
           [

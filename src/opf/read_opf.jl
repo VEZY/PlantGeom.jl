@@ -1,5 +1,5 @@
 """
-    read_opf(file, attr_type = Dict, mtg_type = MutableNodeMTG)
+    read_opf(file; attr_type = Dict, mtg_type = MutableNodeMTG)
 
 Read an OPF file, and returns an MTG.
 
@@ -9,6 +9,8 @@ Read an OPF file, and returns an MTG.
 - `attr_type::DataType = Dict`: the type used to hold the attribute values for each node.
 - `mtg_type = MutableNodeMTG`: the type used to hold the mtg encoding for each node (*i.e.*
 link, symbol, index, scale). See details section below.
+- `read_id::Bool = true`: whether to read the ID from the OPF or recompute it on the fly.
+- `max_id::RefValue{Int64}=Ref(1)`: the ID of the first node, if `read_id==false`.
 
 # Details
 
@@ -45,15 +47,15 @@ opf = read_opf(file)
 ```
 """
 function read_opf(
-    file,
+    file;
     attr_type=Dict,
     mtg_type=MultiScaleTreeGraph.MutableNodeMTG,
-    geom_type=Meshes.SimpleMesh
+    read_id=true,
+    max_id=Ref(1)
 )
 
     doc = readxml(file)
     xroot = root(doc)
-    line = [2]
 
     if xroot.name != "opf"
         error("The file is not an OPF")
@@ -100,14 +102,15 @@ function read_opf(
 
         if node.name == "topology"
             ref_meshes = parse_ref_meshes(opf_attr)
-
             mtg = parse_opf_topology!(
                 node,
                 nothing,
                 get_attr_type(opf_attr[:attributeBDD]),
                 attr_type,
                 mtg_type,
-                ref_meshes
+                ref_meshes,
+                read_id,
+                max_id
             )
 
             append!(
@@ -316,32 +319,27 @@ end
 
 
 """
-Parser for OPF topology.
+
+    parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes, id_set=Set{Int}())
+
+Parser of the OPF topology.
+
+# Arguments
+
+- `node::ElementNode`: the XML node to parse.
+- `mtg::Union{Nothing,Node}`: the parent MTG node.
+- `features::Dict`: the features of the OPF.
+- `attr_type::DataType`: the type of the attributes to use.
+- `mtg_type::DataType`: the type of the MTG to use.
+- `ref_meshes::Dict`: the reference meshes.
+- `read_id::Bool`: whether to read the ID from the OPF or recompute it on the fly.
+- `max_id::RefValue{Int64}=Ref(1)`: the ID of the first node, if `read_id==false`.
 
 # Note
 
 The transformation matrices in `geometry` are 3*4.
-parse_opf_topology!(elem, node_i, features)
-node = elem
-mtg = node_i
-features = get_attr_type(opf_attr[:attributeBDD])
-
-# Debugging:
-mtg = nothing
-
-node = elem
-mtg = node_i
-parse_opf_topology!(
-                node,
-                nothing,
-                get_attr_type(opf_attr[:attributeBDD]),
-                attr_type,
-                mtg_type,
-                ref_meshes
-            )
 """
-function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes)
-
+function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes, read_id=true, max_id=Ref(1))
     link = "/" # default, for "topology" and "decomp"
     b = Vec3(0, 0, 0)
     if node.name == "branch"
@@ -350,7 +348,12 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
         link = "<"
     end
 
-    id = parse(Int, node["id"])
+    if read_id
+        id = parse(Int, node["id"])
+    else
+        id = max_id[]
+        max_id[] += 1
+    end
 
     MTG = mtg_type(
         link,
@@ -415,7 +418,7 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
                 )
             end
         elseif elem.name in ["decomp", "branch", "follow"]
-            parse_opf_topology!(elem, node_i, features, attr_type, mtg_type, ref_meshes)
+            parse_opf_topology!(elem, node_i, features, attr_type, mtg_type, ref_meshes, read_id, max_id)
         else
             error("Attribute $(elem.name) not found in attributeBDD (or badly written?)")
         end

@@ -38,6 +38,7 @@ include("tapering.jl")
 include("opf/refmesh_to_mesh.jl")
 include("opf/write_opf.jl")
 include("ops/read_ops_file.jl")
+include("ops/read_ops.jl")
 include("ops/write_ops.jl")
 include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
@@ -60,7 +61,7 @@ export diagram, diagram!
 
 # export nvertices, nelements
 export read_opf, write_opf
-export read_ops_file, write_ops
+export read_ops_file, read_ops, write_ops
 export taper
 export refmesh_to_mesh, get_ref_meshes_color
 export xmax, ymax, zmax, xmin, ymin, zmin
