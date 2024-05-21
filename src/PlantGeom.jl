@@ -6,6 +6,8 @@ import Observables # For to_value (get an observable value)
 import Meshes
 import Meshes: viz, viz!
 
+import Tables
+
 # import GeometryBasics
 # import PlyIO
 import Colors: RGBA, Colorant, RGB
@@ -33,6 +35,8 @@ include("opf/reference_meshes.jl")
 include("tapering.jl")
 include("opf/refmesh_to_mesh.jl")
 include("opf/write_opf.jl")
+include("ops/read_ops_file.jl")
+include("ops/write_ops.jl")
 include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
 include("ref_meshes/cylinder_refmesh.jl")
@@ -54,6 +58,7 @@ export diagram, diagram!
 
 # export nvertices, nelements
 export read_opf, write_opf
+export read_ops_file, write_ops
 export taper
 export refmesh_to_mesh, get_ref_meshes_color
 export xmax, ymax, zmax, xmin, ymin, zmin

@@ -9,6 +9,7 @@ using MultiScaleTreeGraph
 using CoordinateTransformations
 using LinearAlgebra
 using PlantGeom
+using Tables
 
 # Update the reference plots (do only when you know awhat you are doing!):
 # include("makes_references.jl")
@@ -17,12 +18,14 @@ using PlantGeom
     include("test-refmesh.jl")
 end
 
-@testset "Read OPF" begin
+@testset "OPF files" begin
     include("test-read_opf.jl")
+    include("test-write_opf.jl")
 end
 
-@testset "Write OPF" begin
-    include("test-write_opf.jl")
+@testset "OPS files" begin
+    include("test-read_ops_file.jl")
+    include("test-write_ops.jl")
 end
 
 @testset "Makie recipes" begin
