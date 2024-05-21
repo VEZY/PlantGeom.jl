@@ -10,7 +10,7 @@ import TransformsBase: parameters, Identity, Transform, →, SequentialTransform
 import TransformsBase: isrevertible, isinvertible
 import TransformsBase: apply, revert, reapply, inverse
 import TransformsBase: parameters
-import Rotations: Rotation
+import Rotations: Rotation, RotZ
 
 import Tables
 
@@ -51,7 +51,6 @@ include("colors/colors.jl")
 include("colors/get_mtg_color.jl")
 include("opf/mtg_recipe_helpers.jl")
 include("opf/diagram.jl")
-include("transformations/transformation.jl")
 
 # function viz2 end
 # function viz2! end

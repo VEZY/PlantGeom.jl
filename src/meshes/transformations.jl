@@ -70,3 +70,13 @@ function transform_mesh!(node::MultiScaleTreeGraph.Node, transformation)
         end
     end
 end
+
+function apply(t, x::RefMesh)
+    RefMesh(x.name, apply(t, x.mesh), x.normals, x.texture_coords, x.material, x.taper)
+end
+
+function apply(t, x::RefMeshes)
+    for i in eachindex(x)
+        x[i] = apply(t, x[i])
+    end
+end

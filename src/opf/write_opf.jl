@@ -326,5 +326,5 @@ function get_transformation_matrix(trans::ComposedFunction)
 end
 
 function get_transformation_matrix(trans::SequentialTransform)
-    reduce(*, [get_transformation_matrix(transform) for transform in children(trans)])
+    reduce(*, [get_transformation_matrix(transform) for transform in Iterators.reverse(children(trans))])
 end

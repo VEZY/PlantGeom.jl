@@ -9,8 +9,8 @@ file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene
     @test object_table.filePath == ["coffee.opf", "simple_plant.opf", "simple_plant.opf", "simple_plant.opf", "simple_plant.opf", "simple_plant.opf"]
     @test object_table.inclinationAngle == fill(0.0, 6)
     @test object_table.inclinationAzimut == fill(0.0, 6)
-    @test object_table.rotation == fill(0.0, 6)
-    @test object_table.scale == fill(1.0, 6)
+    @test object_table.rotation == [0.0, 0.0, 0.0, 1.57, 1.57, 0.0]
+    @test object_table.scale == [1.0, 1.0, 1.5, 1.0, 1.5, 1.0]
     @test object_table.sceneID == fill(1, 6)
     @test object_table.pos == [
         Meshes.Point3(0.0, 0.0, 0.0),

@@ -24,6 +24,7 @@ end
 
 @testset "OPS files" begin
     include("test-read_ops_file.jl")
+    include("test-read_ops.jl")
     include("test-write_ops.jl")
 end
 
