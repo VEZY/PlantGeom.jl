@@ -182,6 +182,8 @@ function write_opf(file, mtg)
 
     # prettyprint(doc)
     write(file, doc)
+
+    return nothing
 end
 
 """
