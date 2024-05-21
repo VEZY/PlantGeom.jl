@@ -4,9 +4,12 @@ using MultiScaleTreeGraph
 import Observables # For to_value (get an observable value)
 # For 3D (OPF):
 import Meshes
-import Meshes: GeometricTransform, Translate, Affine, Rotate, Scale, Vec3
+import Meshes: Translate, Affine, Rotate, Scale, Vec3
 import Meshes: viz, viz!
-import TransformsBase: parameters, Identity
+import TransformsBase: parameters, Identity, Transform, →, SequentialTransform
+import TransformsBase: isrevertible, isinvertible
+import TransformsBase: apply, revert, reapply, inverse
+import TransformsBase: parameters
 import Rotations: Rotation
 
 import Tables
@@ -42,13 +45,13 @@ include("ops/read_ops.jl")
 include("ops/write_ops.jl")
 include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
-include("ref_meshes/cylinder_refmesh.jl")
 include("plots_recipes/plots_recipe.jl")
 include("colors/get_color_type.jl")
 include("colors/colors.jl")
 include("colors/get_mtg_color.jl")
 include("opf/mtg_recipe_helpers.jl")
 include("opf/diagram.jl")
+include("transformations/transformation.jl")
 
 # function viz2 end
 # function viz2! end
