@@ -32,6 +32,7 @@ Meshes = "0.42"
 MultiScaleTreeGraph = "0.14"
 Observables = "0.5"
 RecipesBase = "1"
+Rotations = "1"
 StaticArrays = "1"
 julia = "1.9"
 
