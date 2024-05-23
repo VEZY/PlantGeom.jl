@@ -27,7 +27,7 @@ function read_ops_file(file)
 
     # Extract scene dimensions
     # Match a line starting with "T " followed by 5 floats or integers and ending with " flat"
-    scene_dim_line = findfirst(x -> occursin(r"^T (\d+(\.\d+)?)(\s+\d+(\.\d+)?){4} flat", x), lines)
+    scene_dim_line = findfirst(x -> occursin(r"^T (\d+(\.\d+)?)(\s+\d+(\.\d+)?){4}\s+flat", x), lines)
     if scene_dim_line === nothing
         error("Scene dimensions not found in file $file")
     end
@@ -45,7 +45,7 @@ function read_ops_file(file)
             continue
         end
 
-        if occursin(r"^\d+\t\d+\t[\w/]+\.opf\t(-?\d+(\.\d+)?\t){6}-?\d+(\.\d+)?$", line)
+        if occursin(r"^\d+\t\d+\t.*\.opf\t(-?\d+(\.\d+)?\t){6}-?\d+(\.\d+)?$", line)
             if functional_group == ""
                 error("Functional group not found for line $(i+scene_dim_line+1): $line in file $file")
             end
