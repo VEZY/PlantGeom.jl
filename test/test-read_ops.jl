@@ -3,7 +3,7 @@ file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene
 @testset "read_ops" begin
     ops = @test_nowarn read_ops(file)
     @test ops.scene_dimensions == (Meshes.Point3(0.0, 0.0, 0.0), Meshes.Point3(2.0, 1.0, 0.0))
-    @test length(ops.ref_meshes) == 4
+    @test length(ops.ref_meshes) == 5
     #Note: there are only 4 ref_meshes because the same opf file is used for the simple_plants,
     # so we can optimize it by only using the common ones.
     opfs = children(ops)
