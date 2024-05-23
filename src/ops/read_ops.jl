@@ -39,19 +39,17 @@ joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene.ops") 
 ```
 """
 function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG)
-    scene = Node(mtg_type("/", "Scene", 1, 0), MultiScaleTreeGraph.init_empty_attr(attr_type))
-    ops = read_ops_file(file)
+    scene_dimensions, object_table = read_ops_file(file)
 
-    scene.scene_dimensions = ops.scene_dimensions
+    scene = Node(mtg_type("/", "Scene", 1, 0), MultiScaleTreeGraph.init_empty_attr(attr_type))
+    scene.scene_dimensions = scene_dimensions
 
     max_id = Ref(0)
     ref_meshes = RefMeshes(RefMesh[])
     # Dict to store the first index of the ref_meshes in the scene.ref_meshes according to the object_table.filePath
     # Note that if several plants share the same opf, the ref_meshes will not be duplicated with this method.
     ref_meshes_length_before = Dict{String,Int}()
-    #TODO: use the scene transformations (and add them to the scene node to remove them at writing).
-    #TOTO: when writing the OPF back to disk, first, filter the ref_meshes to keep only the ones that are in the OPF.
-    for row in Tables.rows(ops.object_table)
+    for row in Tables.rows(object_table)
         opf_file = row.filePath
         opf = read_opf(joinpath(dirname(file), opf_file), attr_type=attr_type, mtg_type=mtg_type, read_id=false, max_id=max_id)
 
@@ -105,6 +103,24 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG)
         addchild!(scene, opf)
     end
 
+    # Add the scene quadrangle to the scene:
+    p_0 = scene_dimensions[1].coords .* 100 # m (scene) to cm (OPF)
+    p_max = scene_dimensions[2].coords .* 100
+
+    p = Meshes.Point3.([
+        p_0,
+        (p_max[1], p_0[2], p_0[3]),
+        p_max,
+        (p_0[1], p_max[2], p_0[3])
+    ]
+    )
+    c = Meshes.connect.([(1, 2, 3), (3, 4, 1)], Meshes.Ngon)
+    scene_quadrangle = Meshes.SimpleMesh(p, c)
+
+    # Note: could also used `Meshes.Quadrangle` but then we need to discreatize it.
+    scene_refmesh = RefMesh("Scene", scene_quadrangle, RGBA(159 / 255, 182 / 255, 205 / 255, 0.1))
+    push!(ref_meshes, scene_refmesh)
+    scene.geometry = geometry(scene_refmesh, length(ref_meshes))
     scene.ref_meshes = ref_meshes
 
     return scene
