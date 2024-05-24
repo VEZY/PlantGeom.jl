@@ -63,10 +63,20 @@ viz!(opf4)
 """
 function transform_mesh!(node::MultiScaleTreeGraph.Node, transformation)
     if node[:geometry] !== nothing
-        node[:geometry].transformation = transformation ∘ node[:geometry].transformation
+        node[:geometry].transformation = node[:geometry].transformation → transformation
         # If the node has a computed mesh, update it:
         if node[:geometry].mesh !== nothing
             refmesh_to_mesh!(node)
         end
+    end
+end
+
+function apply(t, x::RefMesh)
+    RefMesh(x.name, apply(t, x.mesh), x.normals, x.texture_coords, x.material, x.taper)
+end
+
+function apply(t, x::RefMeshes)
+    for i in eachindex(x)
+        x[i] = apply(t, x[i])
     end
 end

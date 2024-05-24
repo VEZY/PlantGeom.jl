@@ -182,6 +182,8 @@ function write_opf(file, mtg)
 
     # prettyprint(doc)
     write(file, doc)
+
+    return nothing
 end
 
 """
@@ -299,8 +301,16 @@ function get_transformation_matrix(trans::Affine)
     vcat(hcat(A, b), [0 0 0 1])
 end
 
-function get_transformation_matrix(trans::Translate{D,T}) where {D,T}
+function get_transformation_matrix(trans::Translate{3,T}) where {T}
     [1.0 0.0 0.0 trans.offsets[1]; 0.0 1.0 0.0 trans.offsets[2]; 0.0 0.0 1.0 trans.offsets[3]; 0.0 0.0 0.0 1.0]
+end
+
+function get_transformation_matrix(trans::Translate{2,T}) where {T}
+    [1.0 0.0 0.0 trans.offsets[1]; 0.0 1.0 0.0 trans.offsets[2]; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
+end
+
+function get_transformation_matrix(trans::Translate{1,T}) where {T}
+    [1.0 0.0 0.0 trans.offsets[1]; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
 end
 
 function get_transformation_matrix(trans::Rotate{T}) where {T<:Rotation}
@@ -313,4 +323,8 @@ end
 
 function get_transformation_matrix(trans::ComposedFunction)
     get_transformation_matrix(trans.outer) * get_transformation_matrix(trans.inner)
+end
+
+function get_transformation_matrix(trans::SequentialTransform)
+    reduce(*, [get_transformation_matrix(transform) for transform in Iterators.reverse(children(trans))])
 end

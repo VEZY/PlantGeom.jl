@@ -80,7 +80,7 @@ RefMesh type. Stores all information about a Mesh:
 The reference meshes are then transformed on each node of the MTG using a transformation matrix
 to match the actual mesh.
 """
-struct RefMesh{S<:String,ME<:Meshes.SimpleMesh,M<:Union{Material,Colorant},N<:AbstractVector,T<:Union{AbstractVector,Nothing}}
+struct RefMesh{S<:String,ME<:Meshes.Mesh{3},M<:Union{Material,Colorant},N<:AbstractVector,T<:Union{AbstractVector,Nothing}}
     name::S
     mesh::ME
     normals::N
@@ -112,6 +112,20 @@ mutable struct RefMeshes
 end
 
 Base.names(m::RefMeshes) = [i.name for i in m.meshes]
+Base.push!(m::RefMeshes, x::RefMesh) = push!(m.meshes, x)
+Base.append!(m::RefMeshes, x::RefMesh) = append!(m.meshes, x)
+Base.push!(m::RefMeshes, x::RefMeshes) = push!(m.meshes, x.meshes)
+Base.append!(m::RefMeshes, x::RefMeshes) = append!(m.meshes, x.meshes)
+Base.getindex(m::RefMeshes, i::Int) = m.meshes[i]
+Base.getindex(m::RefMeshes, i::String) = m.meshes[findfirst(x -> x.name == i, m.meshes)]
+Base.getindex(m::RefMeshes, i::AbstractVector) = RefMeshes([m.meshes[j] for j in i])
+Base.getindex(m::RefMeshes, i::AbstractVector{Bool}) = RefMeshes([m.meshes[j] for j in findall(i)])
+Base.getindex(m::RefMeshes, i::AbstractVector{<:AbstractString}) = RefMeshes([m.meshes[j] for j in findfirst(x -> x.name == i, m.meshes)])
+Base.in(m::RefMeshes, i::RefMesh) = i in m.meshes
+Base.length(m::RefMeshes) = length(m.meshes)
+Base.pop!(m::RefMeshes) = pop!(m.meshes)
+Base.popfirst!(m::RefMeshes) = popfirst!(m.meshes)
+Base.findfirst(m::RefMeshes, x) = findfirst(x, m.meshes)
 
 """
     geometry(; ref_mesh<:RefMesh, ref_mesh_index=nothing, transformation=Identity(), dUp=1.0, dDwn=1.0, mesh::Union{SimpleMesh,Nothing}=nothing)
@@ -128,23 +142,13 @@ root node of the MTG.
 Although optional, storing the index of the reference mesh (`ref_mesh_index`) in the database allows a faster
 writing of the MTG as an OPF to disk.
 
-The `transformation` field should be a function, such as a `Meshes.jl`'s transformation. In case
-no transformation is needed, use `TransformsBase.Identity`. If you already have the
-transformation matrix, you can pass it to `Meshes.Affine()`. If you prefer using `CoordinateTransformations.jl`,
-you can wrap the transformation object in a function, *e.g.* `x -> transform(x)`.
-
-```julia
-mat = randn(4, 4)
-transformation = x -> Meshes.Point3((Translation(@view mat[1:3, 4]) ∘ LinearMap(@view mat[1:3, 1:3]))(x.coords))
-```
-
-Note that the wrapping serves two purposes: use the point coordinates directly because `CoordinateTransformations.jl`
-does not have a method for `Meshes.jl` types, and to return the result as a `Meshes.Point3` type.
+The `transformation` field should be a `TransformsBase.Transform`, such as `TransformsBase.Identity`, or the ones implemented in 
+`Meshes.jl`, *e.g.* `Translate`, `Scale`... If you already have the transformation matrix, you can pass it to `Meshes.Affine()`. 
 """
 mutable struct geometry{M<:RefMesh,S}
     ref_mesh::M
     ref_mesh_index::Union{Int,Nothing}
-    transformation::Union{Function,GeometricTransform,Identity}
+    transformation::Transform
     dUp::S
     dDwn::S
     mesh::Union{Meshes.SimpleMesh,Nothing}

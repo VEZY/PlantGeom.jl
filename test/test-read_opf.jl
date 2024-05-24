@@ -1,4 +1,4 @@
-mtg = read_opf("files/simple_plant.opf", Dict)
+mtg = read_opf("files/simple_plant.opf", attr_type=Dict)
 
 @testset "read_opf: simple_plant.opf -> attributes" begin
     @test length(mtg) == 7
@@ -35,14 +35,14 @@ end
     geom = Internode[:geometry]
     @test isnothing(geom.mesh)
     @test geom.ref_mesh === mtg[:ref_meshes].meshes[geom.ref_mesh_index]
-    @test isa(geom.transformation.inner, Affine{3,SMatrix{3,3,Float64,9},Meshes.Vec3})
-    @test isa(geom.transformation.outer, Translate{3,Float64})
+    @test isa(geom.transformation[1], Affine{3,SMatrix{3,3,Float64,9},Meshes.Vec3})
+    @test isa(geom.transformation[2], Translate{3,Float64})
     @test [geom.transformation(Meshes.Point3(1.0, 1.0, 1.0)).coords...] ≈ [-1.0, 1.0, 10.0] atol = 1.0e-6
     # NB: last one is 10 because there is some tappering
 end
 
 @testset "read_opf: read coffee.opf" begin
-    mtg = read_opf("files/coffee.opf", Dict)
+    mtg = read_opf("files/coffee.opf", attr_type=Dict)
     @test length(mtg) == 4191
     @test sort(get_attributes(mtg)) ==
           [
