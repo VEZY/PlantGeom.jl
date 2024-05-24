@@ -6,12 +6,13 @@ DocMeta.setdocmeta!(PlantGeom, :DocTestSetup, :(using PlantGeom; using MultiScal
 
 makedocs(;
     modules=[PlantGeom],
-    authors="remi.vezy <VEZY@users.noreply.github.com> and contributors",
-    repo="https://github.com/VEZY/PlantGeom.jl/blob/{commit}{path}#{line}",
+    authors="Rémi Vezy <VEZY@users.noreply.github.com> and contributors",
+    repo=Documenter.Remotes.GitHub("VEZY", "PlantGeom.jl"),
     sitename="PlantGeom.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
         canonical="https://VEZY.github.io/PlantGeom.jl",
+        edit_link="main",
         assets=String[]
     ),
     pages=[
@@ -28,6 +29,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/VEZY/PlantGeom.jl",
+    repo="github.com/VEZY/PlantGeom.jl.git",
     devbranch="main"
 )
