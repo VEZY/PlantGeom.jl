@@ -35,6 +35,7 @@ Observables = "0.5"
 RecipesBase = "1"
 Rotations = "1"
 StaticArrays = "1"
+Tables = "1"
 TransformsBase = "1"
 julia = "1.9"
 
