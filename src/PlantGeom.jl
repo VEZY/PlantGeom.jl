@@ -4,7 +4,7 @@ using MultiScaleTreeGraph
 import Observables # For to_value (get an observable value)
 # For 3D (OPF):
 import Meshes
-import Meshes: Translate, Affine, Rotate, Scale, Vec3
+import Meshes: Translate, Affine, Rotate, Scale, Vec
 import Meshes: viz, viz!
 import TransformsBase: parameters, Identity, Transform, →, SequentialTransform
 import TransformsBase: isrevertible, isinvertible

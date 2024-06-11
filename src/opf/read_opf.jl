@@ -341,7 +341,7 @@ The transformation matrices in `geometry` are 3*4.
 """
 function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes, read_id=true, max_id=Ref(1))
     link = "/" # default, for "topology" and "decomp"
-    b = Vec3(0, 0, 0)
+    b = Vec(0.0, 0.0, 0.0)
     if node.name == "branch"
         link = "+"
     elseif node.name == "follow"

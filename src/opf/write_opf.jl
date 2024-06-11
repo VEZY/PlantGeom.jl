@@ -314,7 +314,7 @@ function get_transformation_matrix(trans::Translate{1,T}) where {T}
 end
 
 function get_transformation_matrix(trans::Rotate{T}) where {T<:Rotation}
-    vcat(hcat(trans.rot, [0 0 0]), [0 0 0 1])
+    vcat(hcat(trans.rot, [0, 0, 0]), [0 0 0 1])
 end
 
 function get_transformation_matrix(trans::Scale{D,T}) where {D,T}
