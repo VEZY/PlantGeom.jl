@@ -47,20 +47,20 @@ end
     colorbar(fig[1, 2], p)
     @test_reference "reference_images/opf_color_attribute_colorbar.png" fig
 
-    fig, ax, p = viz(opf, color=:z, color_range=(0, 50))
+    fig, ax, p = viz(opf, color=:z, colorrange=(0u"m", 50u"m"))
     colorbar(fig[1, 2], p)
     @test_reference "reference_images/opf_color_attribute_colorbar_range.png" fig
 end
 
 @testset "Makie recipes: observables, change colorscale range" begin
-    fig, ax, p = viz(opf, color=:Length, color_range=(0, 0.2))
-    @test p.attributes.color_range[] == (0, 0.2)
+    fig, ax, p = viz(opf, color=:Length, colorrange=(0, 0.2))
+    @test p.attributes.colorrange[] == (0, 0.2)
     colorbar(fig[1, 2], p)
-    p.color_range = (0, 0.1)
+    p.colorrange = (0, 0.1)
 end
 
 @testset "Makie recipes: change node color" begin
-    fig, ax, p = viz(opf, color=:Length, color_range=(0, 0.2))
+    fig, ax, p = viz(opf, color=:Length, colorrange=(0, 0.2))
 
     leaf = get_node(opf, 5)
     leaf[:_cache_d9b4f7f3c3467a55ad26f362065777c471aee4c7][] = parse(Colorant, :red)

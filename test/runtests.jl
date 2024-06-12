@@ -9,6 +9,7 @@ using MultiScaleTreeGraph
 using LinearAlgebra
 using Tables
 using TransformsBase
+using Unitful
 using PlantGeom
 
 # Update the reference plots (do only when you know awhat you are doing!):

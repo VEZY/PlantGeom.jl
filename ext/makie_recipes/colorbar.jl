@@ -37,12 +37,12 @@ function PlantGeom.colorbar(parent, plotobject; kwargs...)
     end
 
     # Because we extend the `Viz` type, we need to check if the user has given a color range.
-    # If we defined our own e.g. `PlantViz` type, we could have defined a `color_range` field in it directly.
-    if hasproperty(plotobject.attributes, :color_range)
-        if isa(plotobject.attributes.color_range, Observables.Observable)
-            colorbar_limits = plotobject.attributes.color_range
+    # If we defined our own e.g. `PlantViz` type, we could have defined a `colorrange` field in it directly.
+    if hasproperty(plotobject.attributes, :colorrange)
+        if isa(plotobject.attributes.colorrange, Observables.Observable)
+            colorbar_limits = plotobject.attributes.colorrange
         else
-            colorbar_limits = Observables.Observable(plotobject.attributes.color_range)
+            colorbar_limits = Observables.Observable(plotobject.attributes.colorrange)
         end
     else
         # Get the attribute values without nothing values:    
@@ -50,7 +50,7 @@ function PlantGeom.colorbar(parent, plotobject; kwargs...)
     end
 
     colormap = Makie.lift(get_colormap, plotobject.attributes.colormap)
-
+    println(colorbar_limits)
     Makie.Colorbar(
         parent,
         colormap=colormap,
