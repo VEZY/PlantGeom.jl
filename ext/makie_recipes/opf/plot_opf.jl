@@ -149,7 +149,7 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
         color_range = plot[:colorrange]
     else
         # Get the attribute values without nothing values:    
-        color_range = Makie.@lift PlantGeom.attribute_range($opf, $colorant)
+        color_range = Makie.@lift PlantGeom.attribute_range($opf, $colorant, ustrip=true)
     end
 
     if hasproperty(plot, :index)
