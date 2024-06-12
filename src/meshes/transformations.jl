@@ -51,7 +51,7 @@ leaf_node = get_node(opf4, 8)
 parent_zmax = zmax(leaf_node.parent)
 
 # Define a rotation of the mesh around the Z axis defined by the parent node max Z:
-transformation = recenter(Rotate(RotZ(1.0)), Point3(0.0, 0.0, parent_zmax))
+transformation = recenter(Rotate(RotZ(1.0)), Point(0.0, 0.0, parent_zmax))
 
 # Update the transformation matrix of the leaf and its mesh:
 transform_mesh!(leaf_node, transformation)

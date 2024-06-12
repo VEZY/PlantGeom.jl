@@ -2,7 +2,7 @@
 
 julia_version = "1.10.3"
 manifest_format = "2.0"
-project_hash = "9c86a9d2a9efe990b8ba4974bc5d6a2e99be2f9a"
+project_hash = "f5a6e606dcea719692cd6e5d8b4c130a0c1285d5"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -1802,9 +1802,9 @@ version = "0.4.82"
 
 [[deps.TransformsBase]]
 deps = ["AbstractTrees"]
-git-tree-sha1 = "484610e9b25a45f015f3e695c6d307e91883f2d3"
+git-tree-sha1 = "ecc04cc47ba1e2c57dff819f8f5e15cd097ae249"
 uuid = "28dd2a49-a57a-4bfb-84ca-1a49db9b96b8"
-version = "1.4.1"
+version = "1.5.0"
 
 [[deps.TriplotBase]]
 git-tree-sha1 = "4d4ed7f294cda19382ff7de4c137d24d16adc89b"

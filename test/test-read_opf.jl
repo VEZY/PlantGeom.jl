@@ -18,10 +18,10 @@ end
     @test length(first_mesh.mesh) == 50
     @test isa(first_mesh.material, Phong)
     @test first_mesh.name == "Mesh0"
-    @test isa(first_mesh.normals, Vector{Meshes.Point3})
+    @test eltype(first_mesh.normals) <: Meshes.Vec
     @test length(first_mesh.normals) == 50
     @test first_mesh.taper == true
-    @test isa(first_mesh.texture_coords, Vector{Meshes.Point2})
+    @test eltype(first_mesh.texture_coords) <: Meshes.Point
     @test length(first_mesh.texture_coords) == 50
 end
 
@@ -35,9 +35,9 @@ end
     geom = Internode[:geometry]
     @test isnothing(geom.mesh)
     @test geom.ref_mesh === mtg[:ref_meshes].meshes[geom.ref_mesh_index]
-    @test isa(geom.transformation[1], Affine{3,SMatrix{3,3,Float64,9},Meshes.Vec{3}})
-    @test isa(geom.transformation[2], Translate{3,Float64})
-    @test [geom.transformation(Meshes.Point3(1.0, 1.0, 1.0)).coords...] ≈ [-1.0, 1.0, 10.0] atol = 1.0e-6
+    @test typeof(geom.transformation[1]) <: Affine{3,SMatrix{3,3,Float64,9},<:Meshes.Vec}
+    @test isa(geom.transformation[2], Translate{3})
+    @test [p.val for p in to(geom.transformation(Meshes.Point(1.0, 1.0, 1.0)))] ≈ [-1.0, 1.0, 10.0] atol = 1.0e-6
     # NB: last one is 10 because there is some tappering
 end
 

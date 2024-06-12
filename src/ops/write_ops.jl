@@ -39,7 +39,10 @@ object_table = [
 write_ops("scene.ops", scene_dimensions, object_table)
 """
 function write_ops(file, scene_dimensions, object_table)
-    dims = join([scene_dimensions[1].coords..., scene_dimensions[2].coords...][1:end-1], " ")
+    dims = join([
+            Unitful.ustrip.(Unitful.uconvert.(u"m", Meshes.to(scene_dimensions[1])))...,
+            Unitful.ustrip.(Unitful.uconvert.(u"m", Meshes.to(scene_dimensions[2])))...
+        ][1:end-1], " ")
     ops_lines = vcat("# T xOrigin yOrigin zOrigin xSize ySize flat", string("T ", dims..., " flat"))
 
     # Sort object_table by functional_group:
@@ -52,7 +55,7 @@ function write_ops(file, scene_dimensions, object_table)
                 "#[Archimed] $current_group",
                 "#sceneId plantId plantFileName x y z scale inclinationAzimut inclinationAngle stemTwist")
         end
-        x, y, z = row.pos.coords
+        x, y, z = Unitful.ustrip.(Unitful.uconvert.(u"m", Meshes.to(row.pos)))
         plant_scale = haskey(row, :scale) ? row.scale : 1.0
         plant_rotation = haskey(row, :rotation) ? row.rotation : 0.0
         plant_inclinationAzimut = haskey(row, :inclinationAzimut) ? row.inclinationAzimut : 0.0

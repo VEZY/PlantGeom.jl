@@ -63,7 +63,7 @@ f, ax, p = viz(opf, color=:z_max)
 save("reference_images/opf_color_attribute.png", f)
 
 # Or even coloring by the value of the Z coordinates of each vertex:
-transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.vertices]) => :z, ignore_nothing=true)
+transform!(opf, :geometry => (x -> [Meshes.coords(i).z for i in Meshes.vertices(x.mesh)]) => :z, ignore_nothing=true)
 f, ax, p = viz(opf, color=:z, showsegments=true, color_vertex=true)
 save("reference_images/opf_color_attribute_vertex.png", f)
 
