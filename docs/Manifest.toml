@@ -2,7 +2,7 @@
 
 julia_version = "1.10.3"
 manifest_format = "2.0"
-project_hash = "483f963a6eefbdc81bf82f0cec3f416394f6988c"
+project_hash = "b4ebe36f50a7e488c910e187ac746e8d4d6c971b"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"

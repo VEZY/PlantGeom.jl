@@ -17,7 +17,7 @@ The package provides different functionalities, the main ones being:
 Note that PlantGeom reserves the `:geometry` attribute in the nodes (*e.g.* organs). It uses it to store the 3D geometry as a special structure ([`geometry`](@ref)).
 
 ```@setup animation
-using CairoMakie, PlantGeom, MultiScaleTreeGraph # Note: CairoMakie must be loaded before PlantGeom to access the extensions
+using CairoMakie, Meshes, PlantGeom, MultiScaleTreeGraph # Note: CairoMakie must be loaded before PlantGeom to access the extensions
 opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 
 # First, we compute the 3D coordinates for each node in the MTG:
@@ -56,7 +56,7 @@ end
 If you want to reproduce the animation, you can look at the code below. Otherwise, please head to the next section.
 
 ```julia
-using PlantGeom, MultiScaleTreeGraph, CairoMakie
+using CairoMakie, Meshes, PlantGeom, MultiScaleTreeGraph
 opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 
 # First, we compute the 3D coordinates for each node in the MTG:
