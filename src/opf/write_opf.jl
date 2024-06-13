@@ -47,7 +47,7 @@ function write_opf(file, mtg)
         addelement!(
             mesh_elm,
             "points",
-            string("\n", join(Iterators.flatten(Meshes.coordinates(p) for p in Meshes.vertices(mesh_.mesh)), "\t"), "\n")
+            string("\n", join(Iterators.flatten(Unitful.ustrip.(Unitful.uconvert.(u"cm", Meshes.to(p))) for p in Meshes.vertices(mesh_.mesh)), "\t"), "\n")
         )
 
         if length(mesh_.normals) == Meshes.nelements(mesh_) && length(mesh_.normals) != Meshes.nvertices(mesh_)
@@ -60,8 +60,7 @@ function write_opf(file, mtg)
         norm_elm = addelement!(
             mesh_elm,
             "normals",
-            # string("\n", join(reduce(vcat, [Meshes.coordinates(p) for p in vertex_normals]), "\t"), "\n")
-            string("\n", join(Iterators.flatten(Meshes.coordinates(p) for p in vertex_normals), "\t"), "\n")
+            string("\n", join(Iterators.flatten(Unitful.ustrip.(Unitful.uconvert.(u"cm", p)) for p in vertex_normals), "\t"), "\n")
         )
 
 
@@ -70,7 +69,7 @@ function write_opf(file, mtg)
             norm_elm = addelement!(
                 mesh_elm,
                 "textureCoords",
-                string("\n", join(Iterators.flatten(Meshes.coordinates(p) for p in mesh_.texture_coords), "\t"), "\n")
+                string("\n", join(Iterators.flatten(Unitful.ustrip.(Unitful.uconvert.(u"cm", Meshes.to(p))) for p in mesh_.texture_coords), "\t"), "\n")
             )
         end
 
@@ -298,23 +297,27 @@ end
 
 function get_transformation_matrix(trans::Affine)
     A, b = parameters(trans)
+    b = Unitful.ustrip.(Unitful.uconvert.(u"cm", b))
     vcat(hcat(A, b), [0 0 0 1])
 end
 
 function get_transformation_matrix(trans::Translate{3,T}) where {T}
-    [1.0 0.0 0.0 trans.offsets[1]; 0.0 1.0 0.0 trans.offsets[2]; 0.0 0.0 1.0 trans.offsets[3]; 0.0 0.0 0.0 1.0]
+    x, y, z = Unitful.ustrip.(Unitful.uconvert.(u"cm", trans.offsets))
+    [1.0 0.0 0.0 x; 0.0 1.0 0.0 y; 0.0 0.0 1.0 z; 0.0 0.0 0.0 1.0]
 end
 
 function get_transformation_matrix(trans::Translate{2,T}) where {T}
-    [1.0 0.0 0.0 trans.offsets[1]; 0.0 1.0 0.0 trans.offsets[2]; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
+    x, y = Unitful.ustrip.(Unitful.uconvert.(u"cm", trans.offsets))
+    [1.0 0.0 0.0 x; 0.0 1.0 0.0 y; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
 end
 
 function get_transformation_matrix(trans::Translate{1,T}) where {T}
-    [1.0 0.0 0.0 trans.offsets[1]; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
+    x = Unitful.ustrip.(Unitful.uconvert(u"cm", trans.offsets[1]))
+    [1.0 0.0 0.0 x; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
 end
 
 function get_transformation_matrix(trans::Rotate{T}) where {T<:Rotation}
-    vcat(hcat(trans.rot, [0 0 0]), [0 0 0 1])
+    vcat(hcat(trans.rot, [0, 0, 0]), [0 0 0 1])
 end
 
 function get_transformation_matrix(trans::Scale{D,T}) where {D,T}

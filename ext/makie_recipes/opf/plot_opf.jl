@@ -12,7 +12,7 @@ The plot object can have the following optional arguments:
 - `color`: The color to be used for the plot. Can be a colorant, an attribute of the MTG, or a dictionary of colors for each reference mesh.
 - `alpha`: The alpha value to be used for the plot. Should be a float between 0 and 1.
 - `colormap`: The colorscheme to be used for the plot. Can be a Symbol or a ColorScheme.
-- `color_range`: The range of values to be used for the colormap. Should be a tuple of floats.
+- `colorrange`: The range of values to be used for the colormap. Should be a tuple of floats (optionally with units if *e.g.* z position).
 - `segmentcolor`: The color to be used for the facets. Should be a colorant or a symbol of color.
 - `showsegments`: A boolean indicating whether the facets should be shown or not.
 - `segmentsize`: The size of the segments. Should be a float.
@@ -129,7 +129,7 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
     # from the plot. Instead, we need to check here if the argument is given, and give the default
     # value if not.
     # Note: If we defined our own e.g. `PlantViz` type, we could have defined a `color_missing` and 
-    # `color_range` fields in it directly.
+    # `colorrange` fields in it directly.
 
     # Are the colors given for each vertex in the meshes, or for each reference mesh?
     # Note that we can have several values if we have several timesteps too.
@@ -145,11 +145,11 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot)
         # Get the attribute values without nothing values:    
         color_missing = Observables.Observable(RGBA(0, 0, 0, 0.3))
     end
-    if hasproperty(plot, :color_range)
-        color_range = plot[:color_range]
+    if hasproperty(plot, :colorrange) && (!isa(plot[:colorrange], Observables.Observable) || plot[:colorrange][] !== nothing)
+        color_range = plot[:colorrange]
     else
         # Get the attribute values without nothing values:    
-        color_range = Makie.@lift PlantGeom.attribute_range($opf, $colorant)
+        color_range = Makie.@lift PlantGeom.attribute_range($opf, $colorant, ustrip=true)
     end
 
     if hasproperty(plot, :index)

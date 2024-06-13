@@ -9,12 +9,12 @@ Read the content of an `.ops` file and return a tuple with the scene dimensions 
 
 # Returns
 
-The scene dimensions and the object table as a tuple. The scene dimensions are a tuple of two `Meshes.Point3` with the origin point and opposite point of the scene. 
+The scene dimensions and the object table as a tuple. The scene dimensions are a tuple of two `Meshes.Point` with the origin point and opposite point of the scene. 
 The object table is an array of `NamedTuple` with the following fields:
 - `sceneID::Int`: Scene ID.
 - `plantID::Int`: Plant ID.
 - `filePath::String`: Path to the `.opf` file.
-- `pos::Meshes.Point3`: Position of the object.
+- `pos::Meshes.Point`: Position of the object.
 - `scale::Float64`: Scale of the object.
 - `inclinationAzimut::Float64`: Inclination azimut of the object.
 - `inclinationAngle::Float64`: Inclination angle of the object.
@@ -34,7 +34,7 @@ function read_ops_file(file)
     scene_dim_values = lines[scene_dim_line] |> x -> replace(x, "T" => "") |> strip |> split
     length(scene_dim_values) == 6 || error("Scene dimensions incomplete in file $file, expected `xOrigin yOrigin zOrigin xSize ySize flat`, got: $scene_dim_values")
     scene_dim_values = parse.(Float64, scene_dim_values[1:5])
-    scene_dimensions = (Meshes.Point3(scene_dim_values[1:3]...), Meshes.Point3(scene_dim_values[4:5]..., scene_dim_values[3]))
+    scene_dimensions = (Meshes.Point(scene_dim_values[1:3]...), Meshes.Point(scene_dim_values[4:5]..., scene_dim_values[3]))
 
     # Extract object table
     object_table = NamedTuple[]
@@ -50,7 +50,7 @@ function read_ops_file(file)
                 error("Functional group not found for line $(i+scene_dim_line+1): $line in file $file")
             end
             sceneID, plantID, filePath, x, y, z, scale, inclinationAzimut, inclinationAngle, rotation = split(line, "\t")
-            pos = Meshes.Point3(parse.(Float64, [x, y, z])...)
+            pos = Meshes.Point(parse.(Float64, [x, y, z])...)
             sceneID = parse(Int, sceneID)
             plantID = parse(Int, plantID)
             scale = parse(Float64, scale)

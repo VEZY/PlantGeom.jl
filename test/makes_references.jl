@@ -63,7 +63,7 @@ f, ax, p = viz(opf, color=:z_max)
 save("reference_images/opf_color_attribute.png", f)
 
 # Or even coloring by the value of the Z coordinates of each vertex:
-transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.vertices]) => :z, ignore_nothing=true)
+transform!(opf, :geometry => (x -> [Meshes.coords(i).z for i in Meshes.vertices(x.mesh)]) => :z, ignore_nothing=true)
 f, ax, p = viz(opf, color=:z, showsegments=true, color_vertex=true)
 save("reference_images/opf_color_attribute_vertex.png", f)
 
@@ -71,11 +71,11 @@ f, ax, p = viz(opf, color=:z, color_vertex=true)
 colorbar(f[1, 2], p)
 save("reference_images/opf_color_attribute_colorbar.png", f)
 
-f, ax, p = viz(opf, color=:z, color_range=(0, 50), color_vertex=true)
+f, ax, p = viz(opf, color=:z, colorrange=(0u"m", 50u"m"), color_vertex=true)
 colorbar(f[1, 2], p)
 save("reference_images/opf_color_attribute_colorbar_range.png", f)
 
-f, ax, p = viz(opf, color=:Length, color_range=(0, 0.2), color_cache_name=:test_color)
+f, ax, p = viz(opf, color=:Length, colorrange=(0, 0.2), color_cache_name=:test_color)
 leaf = get_node(opf, 5)
 leaf[Symbol("Observable{Any}(:test_color)")][] = RGB{Float64}(1.0, 0.0, 0.0)
 save("reference_images/opf_color_attribute_observable_node.png", f)

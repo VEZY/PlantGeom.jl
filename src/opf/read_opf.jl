@@ -178,23 +178,31 @@ function parse_meshBDD!(node)
                 content = parse_opf_array(i.content, Int) .+ 1
                 # NB: adding 1 to the faces because the opf is 0-based but Julia is 1-based
 
-                faces3d = Meshes.Connectivity[
+                faces3d = [
                     Meshes.connect((content[p], content[p+1], content[p+2]), Meshes.Triangle) for p = 1:3:length(content)
                 ]
 
                 push!(mesh, "faces" => faces3d)
             elseif i.name == "textureCoords"
-                content = parse_opf_array(i.content)
-                content = Meshes.Point2[
-                    Meshes.Point2(content[[i, i + 1]]) for i in 1:2:length(content)
+                content = parse_opf_array(i.content) ./ 100 * u"m"
+                content = [
+                    Meshes.Point(content[[p, p + 1]]...) for p in 1:2:length(content)
                 ]
                 push!(mesh, "textureCoords" => content)
-            else
-                content = parse_opf_array(i.content)
-                content = Meshes.Point3[
-                    Meshes.Point3(content[[i, i + 1, i + 2]]) for i in 1:3:length(content)
+            elseif i.name == "normals"
+                content = parse_opf_array(i.content) ./ 100 * u"m"
+                content = [
+                    Meshes.Vec(content[[p, p + 1, p + 2]]...) for p in 1:3:length(content)
+                ]
+                push!(mesh, "normals" => content)
+            elseif i.name == "points"
+                content = parse_opf_array(i.content) ./ 100 * u"m"
+                content = [
+                    Meshes.Point(content[[p, p + 1, p + 2]]...) for p in 1:3:length(content)
                 ]
                 push!(mesh, i.name => content)
+            else
+                error("Unknown node element for mesh$(i.Id) in mesh BDD: $(i.name)")
             end
         end
 
@@ -341,7 +349,7 @@ The transformation matrices in `geometry` are 3*4.
 """
 function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes, read_id=true, max_id=Ref(1))
     link = "/" # default, for "topology" and "decomp"
-    b = Vec3(0, 0, 0)
+    b = Vec(0.0u"m", 0.0u"m", 0.0u"m")
     if node.name == "branch"
         link = "+"
     elseif node.name == "follow"
@@ -394,9 +402,9 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
                 # See also this for decomposition: https://colab.research.google.com/drive/1ImBB-N6P9zlNMCBH9evHD6tjk0dzvy1_
 
                 #! OK what I could do is use my own transformation function that adds w (=1)
-                #! to the Point3 when transforming it with the 4x4 matrix?
+                #! to the Point when transforming it with the 4x4 matrix?
 
-                transformation = Affine(@view(geom[:mat][1:3, 1:3]), b) → Translate(@view(geom[:mat][1:3, 4])...)
+                transformation = Affine(@view(geom[:mat][1:3, 1:3]), b) → Translate((@view(geom[:mat][1:3, 4]) ./ 100 * u"m")...)
                 # transformation = Translation(geom[:mat][1:3, 4]) ∘ LinearMap(geom[:mat][1:3, 1:3]) # CoordinateTransformations
                 # NB: We read an homogeneous transformation matrix from the OPF, but we work
                 # with cartesian coordinates in PlantGeom by design. So we deconstruct our

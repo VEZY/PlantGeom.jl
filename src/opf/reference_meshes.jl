@@ -116,7 +116,7 @@ function meshBDD_to_meshes(x)
         mesh_points = pop!(value, "points")
         mesh_faces = pop!(value, "faces")
 
-        points3d = Meshes.Point3[mesh_points[p:(p+2)] for p = 1:3:length(mesh_points)]
+        points3d = Meshes.Point[mesh_points[p:(p+2)] for p = 1:3:length(mesh_points)]
         faces3d = [Meshes.connect((mesh_faces[p:(p+2)]...,), Meshes.Ngon) for p = 1:3:length(mesh_faces)]
 
         push!(mesh, "mesh" => Meshes.SimpleMesh(points3d, faces3d))
@@ -150,17 +150,15 @@ Align all reference meshes along the X axis. Used for visualisation only.
 """
 function align_ref_meshes(meshes::RefMeshes)
     meshes_vec = Meshes.SimpleMesh[]
-    translation_vec = [0.0, 0.0, 0.0]
+    trans = Translate(0.0, 0.0, 0.0)
 
     for i in meshes.meshes
-        translated_vertices = [i + Meshes.Vec(translation_vec...) for i in Meshes.vertices(i.mesh)]
-
-        push!(meshes_vec, Meshes.SimpleMesh(translated_vertices, Meshes.topology(i.mesh)))
-
+        push!(meshes_vec, trans(i.mesh))
         # Maximum X coordinates of the newly translated mesh:
-        xmax_ = maximum([Meshes.coordinates(i)[1] for i in translated_vertices])
+        xmax_ = Meshes.coords(maximum(Meshes.boundingbox(i.mesh))).x
+
         # Update the translation for the next mesh to begin at xmax*1.1 from the last one
-        translation_vec[1] = xmax_ * 1.1
+        trans = Translate(xmax_.val * 1.1, 0.0, 0.0)
     end
 
     return meshes_vec

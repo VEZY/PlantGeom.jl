@@ -1,5 +1,5 @@
-using Meshes
 using CairoMakie
+using Meshes
 using Test
 using ReferenceTests
 using Documenter # for doctests
@@ -7,8 +7,10 @@ using Colors, ColorSchemes
 using StaticArrays
 using MultiScaleTreeGraph
 using LinearAlgebra
-using PlantGeom
 using Tables
+using TransformsBase
+using Unitful
+using PlantGeom
 
 # Update the reference plots (do only when you know awhat you are doing!):
 # include("makes_references.jl")

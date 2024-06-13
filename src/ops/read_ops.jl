@@ -20,7 +20,7 @@ and write the scene back to disk. The OPF root node also has the following attri
 - `sceneID::Int`: Scene ID.
 - `plantID::Int`: Plant ID.
 - `filePath::String`: Path to the original `.opf` file.
-- `pos::Meshes.Point3`: Position of the object.
+- `pos::Meshes.Point`: Position of the object.
 - `scale::Float64`: Scale of the object.
 - `inclinationAzimut::Float64`: Inclination azimut of the object.
 - `inclinationAngle::Float64`: Inclination angle of the object.
@@ -78,8 +78,9 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG)
             @warn "InclinationAngle is not yet implemented."
         end
 
-        if row.pos !== Meshes.Point3(0.0, 0.0, 0.0)
-            pos = Meshes.coordinates(row.pos) .* 100.0 # x100.0 because the scene is in m and the OPF in cm.
+        if row.pos !== Meshes.Point(0.0, 0.0, 0.0)
+
+            pos = Unitful.uconvert.(u"cm", Meshes.to(row.pos)) # the OPF is in cm.
             scene_transformation = scene_transformation → Translate(pos...)
         end
 
@@ -104,17 +105,12 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG)
     end
 
     # Add the scene quadrangle to the scene:
-    p_0 = scene_dimensions[1].coords .* 100 # m (scene) to cm (OPF)
-    p_max = scene_dimensions[2].coords .* 100
 
-    p = Meshes.Point3.([
-        p_0,
-        (p_max[1], p_0[2], p_0[3]),
-        p_max,
-        (p_0[1], p_max[2], p_0[3])
-    ]
-    )
-    c = Meshes.connect.([(1, 2, 3), (3, 4, 1)], Meshes.Ngon)
+    p_0 = Unitful.uconvert.(u"cm", Meshes.to(scene_dimensions[1])) # m (scene) to cm (OPF)
+    p_max = Unitful.uconvert.(u"cm", Meshes.to(scene_dimensions[2]))
+
+    p = Meshes.Point.([(p_0...,), (p_max[1], p_0[2], p_0[3]), (p_max...,), (p_0[1], p_max[2], p_0[3])])
+    c = Meshes.connect.([(1, 2, 3), (3, 4, 1)])
     scene_quadrangle = Meshes.SimpleMesh(p, c)
 
     # Note: could also used `Meshes.Quadrangle` but then we need to discreatize it.

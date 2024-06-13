@@ -66,7 +66,7 @@ vertex_color = get_color(1:nvertices(get_ref_meshes(opf))[1], [1,nvertices(get_r
 viz(opf, color = Dict(1 => vertex_color))
 
 # Or even coloring by the value of the Z coordinates of each vertex:
-transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.vertices]) => :z, ignore_nothing = true)
+transform!(opf, :geometry => (x -> [Meshes.coords(i).z for i in Meshes.vertices(x.mesh)]) => :z, ignore_nothing = true)
 viz(opf, color = :z, showsegments = true)
 
 f,a,p = viz(opf, color = :z, showsegments = true)

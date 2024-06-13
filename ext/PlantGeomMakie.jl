@@ -11,6 +11,7 @@ import MultiScaleTreeGraph
 import MultiScaleTreeGraph: get_attributes
 import ColorSchemes: get, rainbow, colorschemes, ColorScheme
 import UUIDs
+import Unitful
 
 MeshesMakieExt = Base.get_extension(Meshes, :MeshesMakieExt)
 

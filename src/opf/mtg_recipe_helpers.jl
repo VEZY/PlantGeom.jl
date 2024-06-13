@@ -164,7 +164,7 @@ function mtg_coordinates_df!(mtg, attr=:YY; force=false)
     DataFrame(mtg, unique([:XX, :YY, :ZZ, :XX_from, :YY_from, :ZZ_from, attr]))
 end
 
-function attribute_range(mtg, attr)
+function attribute_range(mtg, attr; ustrip=false)
     attr_name = attr_colorant_name(attr)
     vals =
         MultiScaleTreeGraph.descendants(
@@ -181,6 +181,10 @@ function attribute_range(mtg, attr)
             error("No value for attribute $attr_name (all values are nothing).")
         end
         range_val = (minimum(minimum.(vals_no_nothing)), maximum(maximum.(vals_no_nothing)))
+    end
+
+    if ustrip
+        return Unitful.ustrip.(range_val)
     end
 
     return range_val

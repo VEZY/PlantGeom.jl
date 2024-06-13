@@ -40,7 +40,7 @@ function refmesh_to_mesh(node)
 end
 
 function apply_transformation(transformation, ref_mesh)
-    Meshes.SimpleMesh([transformation(p) for p in ref_mesh.vertices], Meshes.topology(ref_mesh))
+    Meshes.SimpleMesh([transformation(p) for p in Meshes.vertices(ref_mesh)], Meshes.topology(ref_mesh))
 end
 
 function refmesh_to_mesh!(node)

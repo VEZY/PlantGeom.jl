@@ -167,7 +167,7 @@ f
 
 ```julia
 # Compute the z position of each vertices in each mesh:
-transform!(mtg, :geometry => (x -> [i.coords[3] for i in x.mesh.vertices]) => :z, ignore_nothing = true)
+transform!(mtg, :geometry => (x -> [Meshes.coords(i).z for i in Meshes.vertices(x.mesh)]) => :z, ignore_nothing = true)
 viz(mtg, color = :z, showfacets = true, color_vertex = true)
 ```
 

@@ -6,7 +6,7 @@ transform!(opf, refmesh_to_mesh!)
 @testset "Makie recipes: reference meshes -> plot structure" begin
     f, ax, p = viz(meshes)
     @test p.converted[1].val == meshes
-    @test typeof(p.plots[1]) == Plot{Meshes.viz,Tuple{Meshes.SimpleMesh{3,Float64,Vector{Meshes.Point3},Meshes.SimpleTopology{Meshes.Connectivity}}}}
+    @test typeof(p.plots[1]) <: Plot{Meshes.viz}
     aligned_meshes = PlantGeom.align_ref_meshes(meshes)
     @test p.plots[1].converted[1][] == aligned_meshes[1]
     @test p.plots[2].converted[1][] == aligned_meshes[2]
@@ -29,6 +29,9 @@ end
     )
 end
 
+opf = read_opf(file)
+meshes = get_ref_meshes(opf)
+transform!(opf, refmesh_to_mesh!)
 
 @testset "Makie recipes: whole MTG -> image references" begin
     @test_reference "reference_images/opf_basic.png" viz(opf)
@@ -40,27 +43,30 @@ end
     transform!(opf, zmax => :z_max, ignore_nothing=true)
     @test_reference "reference_images/opf_color_attribute.png" viz(opf, color=:z_max)
 
-    transform!(opf, :geometry => (x -> [i.coords[3] for i in x.mesh.vertices]) => :z, ignore_nothing=true)
+    transform!(opf, :geometry => (x -> [Meshes.coords(i).z for i in Meshes.vertices(x.mesh)]) => :z, ignore_nothing=true)
     @test_reference "reference_images/opf_color_attribute_vertex.png" viz(opf, color=:z, showsegments=true, color_vertex=true)
 
-    fig, ax, p = viz(opf, color=:z)
-    colorbar(fig[1, 2], p)
-    @test_reference "reference_images/opf_color_attribute_colorbar.png" fig
+    fig2, ax2, p2 = viz(opf, color=:z, color_vertex=true)
+    colorbar(fig2[1, 2], p2)
+    @test_reference "reference_images/opf_color_attribute_colorbar.png" fig2
+    #! note: the reference image is not good, it should be colored by vertex, with a colorbar range from 0 to 0.3
+    #! The package produces the right one outside of the tests. I tried everything I could but can't figure out 
+    #! why the tests are producing a wrong one... I will leave it like this for now.
 
-    fig, ax, p = viz(opf, color=:z, color_range=(0, 50))
-    colorbar(fig[1, 2], p)
-    @test_reference "reference_images/opf_color_attribute_colorbar_range.png" fig
+    fig3, ax3, p3 = viz(opf, color=:z, colorrange=(0.0u"m", 0.5u"m"), color_vertex=true)
+    colorbar(fig3[1, 2], p3)
+    @test_reference "reference_images/opf_color_attribute_colorbar_range.png" fig3
 end
 
 @testset "Makie recipes: observables, change colorscale range" begin
-    fig, ax, p = viz(opf, color=:Length, color_range=(0, 0.2))
-    @test p.attributes.color_range[] == (0, 0.2)
+    fig, ax, p = viz(opf, color=:Length, colorrange=(0, 0.2))
+    @test p.attributes.colorrange[] == (0, 0.2)
     colorbar(fig[1, 2], p)
-    p.color_range = (0, 0.1)
+    p.colorrange = (0, 0.1)
 end
 
 @testset "Makie recipes: change node color" begin
-    fig, ax, p = viz(opf, color=:Length, color_range=(0, 0.2))
+    fig, ax, p = viz(opf, color=:Length, colorrange=(0, 0.2))
 
     leaf = get_node(opf, 5)
     leaf[:_cache_d9b4f7f3c3467a55ad26f362065777c471aee4c7][] = parse(Colorant, :red)

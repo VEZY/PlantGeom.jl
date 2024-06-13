@@ -31,7 +31,7 @@ Test RefMeshes equality.
 function Base.:(==)(a::T, b::T) where {T<:geometry}
     isequal(a.ref_mesh, b.ref_mesh) &&
         isequal(a.ref_mesh_index, b.ref_mesh_index) &&
-        isequal(a.transformation(Meshes.Point3(1, 2, 3)), b.transformation(Meshes.Point3(1, 2, 3))) &&
+        isequal(a.transformation(Meshes.Point(1, 2, 3)), b.transformation(Meshes.Point(1, 2, 3))) &&
         # NB: transform a point here because transformations can't be compared directly
         isequal(a.dUp, b.dUp) &&
         isequal(a.dDwn, b.dDwn) &&
