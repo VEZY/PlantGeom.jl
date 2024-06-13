@@ -38,6 +38,7 @@ Rotations = "1"
 StaticArrays = "1"
 Tables = "1"
 TransformsBase = "1"
+Unitful = "1.17"
 julia = "1.9"
 
 [extras]
