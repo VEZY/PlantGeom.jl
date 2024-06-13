@@ -56,31 +56,24 @@ transform!(mtg, refmesh_to_mesh!)
 - [x] Add `read_opf()`
 - [x] Add `write_opf()`.
 - [x] Use pointers to ref meshes instead of an index. It will be more simple then.
-- [ ] Add `read_ops()`
+- [x] Add `read_ops()`
 - [x] Add recipe for MTG diagram (no geometry )
-- [ ] Use Primitives from Meshes as reference meshes:
-  - [x] I added cylinder, but remove it whenever it is available from Meshes.jl.
-- [ ] Import reference meshes from disk (e.g. export from blender). This is done for the cylinder. Document it.
-- [ ] Add a ref mesh for wood
-- [ ] Add a ref mesh for a leaf
+- [ ] Import reference meshes from disk (e.g. export from blender): make a tutorial.
 - [ ] Add tutorials:
   - [x] How to plot with Plots.jl
   - [x] How to plot with Makie.jl
   - [ ] How to build a geometry using attributes and reference meshes
   - [ ] How to build a plant + geometry manually and recursively
 - [ ] Manage different kind of information into an MTG:
-  - [ ] Mesh for the nodes
-  - [ ] Reference meshes + transformation matrix (e.g. from OPF)
-  - [ ] Reference meshes + Length and/or Width/diameter for scaling. If only Length, scale the whole mesh by a factor, if Length + Width, scale accordingly
+  - [x] Mesh for the nodes
+  - [x] Reference meshes + transformation matrix (e.g. from OPF)
+  - [ ] Reference meshes + Length and/or Width/diameter for scaling. If only Length, scale the whole mesh by a factor, if Length + Width, scale accordingly, etc... This would be a shortcut to using Meshes.jl's scaling.
 - [ ] Remove coffee.opf from tests and add PlantBiophysics as a dependency instead. It will make PlantGeom much lighter.
 - [x] Improve the OPF parser using e.g. our own XML parser. See <https://github.com/ordovician/PLists.jl> for an example pure Julia XML parser, and the corresponding [blogpost here](https://blog.devgenius.io/how-to-easily-write-an-xml-parser-in-julia-7cd02f19d8c6). Make the reading in parallel ? For reference, reading a 80Mo OPF takes 8Go of memory and 4.5 minutes... -> The issue came from SVectors that took forever to be allocated. I replaced them by normal vectors. It is much faster now (~11s on my computer).
 - [ ] Make read_opf even faster (we should aim for e.g. 2-3s for an 80Mo OPF (largest file we have). We can make it parallel, but I think we can improve some things first (e.g. using structs instead of Dicts everywhere).
-- [ ] Improve the OPF writer similarly. It takes forever writing to disk.
+- [ ] Improve the OPF writer similarly.
 - [ ] Add a section about the OPF format.
 - [ ] Fix the example simple OPF -> use one cylinder only, fix the scales of each node.
 - [ ] Fix the coffee OPF -> scales are wrong (Metamer = 6 -> 3, Leaf = 2 -> 3) + Fix the MTG accordingly
 - [ ] Add tests using both simple_plant.opf and simple_plant.mtg to make sure both work the same way.
-- [ ] Fix the OPF writer: follow nodes are placed as siblings not children.
-- [ ] Make it compatible with <https://github.com/JuliaGeometry/GeometryBasics.jl>
 - [ ] Compute the vertex normals properly when writting the OPF to disk
-- [ ] Use the MakieCore package instead of Makie.jl to avoid the heavy dependencies of Makie.jl
