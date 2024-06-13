@@ -29,6 +29,9 @@ end
     )
 end
 
+opf = read_opf(file)
+meshes = get_ref_meshes(opf)
+transform!(opf, refmesh_to_mesh!)
 
 @testset "Makie recipes: whole MTG -> image references" begin
     @test_reference "reference_images/opf_basic.png" viz(opf)
@@ -40,14 +43,14 @@ end
     transform!(opf, zmax => :z_max, ignore_nothing=true)
     @test_reference "reference_images/opf_color_attribute.png" viz(opf, color=:z_max)
 
-    transform!(opf, :geometry => (x -> [coords(i).z for i in Meshes.vertices(x.mesh)]) => :z, ignore_nothing=true)
+    transform!(opf, :geometry => (x -> [Meshes.coords(i).z for i in Meshes.vertices(x.mesh)]) => :z, ignore_nothing=true)
     @test_reference "reference_images/opf_color_attribute_vertex.png" viz(opf, color=:z, showsegments=true, color_vertex=true)
 
-    fig, ax, p = viz(opf, color=:z)
+    fig, ax, p = viz(opf, color=:z, color_vertex=true)
     colorbar(fig[1, 2], p)
     @test_reference "reference_images/opf_color_attribute_colorbar.png" fig
 
-    fig, ax, p = viz(opf, color=:z, colorrange=(0u"m", 50u"m"))
+    fig, ax, p = viz(opf, color=:z, colorrange=(0.0u"m", 0.5u"m"), color_vertex=true)
     colorbar(fig[1, 2], p)
     @test_reference "reference_images/opf_color_attribute_colorbar_range.png" fig
 end
