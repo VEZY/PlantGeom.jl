@@ -46,13 +46,16 @@ transform!(opf, refmesh_to_mesh!)
     transform!(opf, :geometry => (x -> [Meshes.coords(i).z for i in Meshes.vertices(x.mesh)]) => :z, ignore_nothing=true)
     @test_reference "reference_images/opf_color_attribute_vertex.png" viz(opf, color=:z, showsegments=true, color_vertex=true)
 
-    fig, ax, p = viz(opf, color=:z, color_vertex=true)
-    colorbar(fig[1, 2], p)
-    @test_reference "reference_images/opf_color_attribute_colorbar.png" fig
+    fig2, ax2, p2 = viz(opf, color=:z, color_vertex=true)
+    colorbar(fig2[1, 2], p2)
+    @test_reference "reference_images/opf_color_attribute_colorbar.png" fig2
+    #! note: the reference image is not good, it should be colored by vertex, with a colorbar range from 0 to 0.3
+    #! The package produces the right one outside of the tests. I tried everything I could but can't figure out 
+    #! why the tests are producing a wrong one... I will leave it like this for now.
 
-    fig, ax, p = viz(opf, color=:z, colorrange=(0.0u"m", 0.5u"m"), color_vertex=true)
-    colorbar(fig[1, 2], p)
-    @test_reference "reference_images/opf_color_attribute_colorbar_range.png" fig
+    fig3, ax3, p3 = viz(opf, color=:z, colorrange=(0.0u"m", 0.5u"m"), color_vertex=true)
+    colorbar(fig3[1, 2], p3)
+    @test_reference "reference_images/opf_color_attribute_colorbar_range.png" fig3
 end
 
 @testset "Makie recipes: observables, change colorscale range" begin
