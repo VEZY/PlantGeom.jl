@@ -57,7 +57,7 @@ viz(opf, color = Dict(1 => :burlywood4))
 
 # Or coloring by opf attribute, e.g. using the mesh max Z coordinates (NB: need to use
 # `refmesh_to_mesh!` before, see above):
-transform!(opf, :geometry => (x -> zmax(x.mesh)) => :z_max, ignore_nothing = true)
+transform!(opf, zmax => :z_max, ignore_nothing = true)
 viz(opf, color = :z_max)
 
 # One color for each vertex of the refmesh 1:
