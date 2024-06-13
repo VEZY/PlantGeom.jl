@@ -338,9 +338,9 @@ version = "0.6.3"
 
 [[deps.CoordRefSystems]]
 deps = ["Random", "Rotations", "StaticArrays", "Unitful", "Zygote"]
-git-tree-sha1 = "3531b1bb3efd8dabaf8f2f000bebebbd95de1bdc"
+git-tree-sha1 = "338271d93aa07818d5f8d1aa5b94548730a65f6b"
 uuid = "b46f11dc-f210-4604-bfba-323c1ec968cb"
-version = "0.7.3"
+version = "0.7.4"
 
 [[deps.Crayons]]
 git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
@@ -634,9 +634,9 @@ version = "3.3.9+0"
 
 [[deps.GPUArrays]]
 deps = ["Adapt", "GPUArraysCore", "LLVM", "LinearAlgebra", "Printf", "Random", "Reexport", "Serialization", "Statistics"]
-git-tree-sha1 = "38cb19b8a3e600e509dc36a6396ac74266d108c1"
+git-tree-sha1 = "c154546e322a9c73364e8a60430b0f79b812d320"
 uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
-version = "10.1.1"
+version = "10.2.0"
 
 [[deps.GPUArraysCore]]
 deps = ["Adapt"]
@@ -753,9 +753,9 @@ version = "0.0.4"
 
 [[deps.IOCapture]]
 deps = ["Logging", "Random"]
-git-tree-sha1 = "8b72179abc660bfab5e28472e019392b97d0985c"
+git-tree-sha1 = "b6d6bfdd7ce25b0f9b2f6b3dd56b2673a66c8770"
 uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
-version = "0.2.4"
+version = "0.2.5"
 
 [[deps.IRTools]]
 deps = ["InteractiveUtils", "MacroTools"]
@@ -1444,7 +1444,7 @@ uuid = "eebad327-c553-4316-9ea0-9fa01ccd7688"
 version = "0.3.3"
 
 [[deps.PlantGeom]]
-deps = ["ColorSchemes", "Colors", "EzXML", "LinearAlgebra", "Meshes", "MultiScaleTreeGraph", "Observables", "RecipesBase", "Rotations", "StaticArrays", "Tables", "TransformsBase", "UUIDs"]
+deps = ["ColorSchemes", "Colors", "EzXML", "LinearAlgebra", "Meshes", "MultiScaleTreeGraph", "Observables", "RecipesBase", "Rotations", "StaticArrays", "Tables", "TransformsBase", "UUIDs", "Unitful"]
 path = ".."
 uuid = "5edaa67e-25db-4eb9-bf81-05d793b2238d"
 version = "0.6.0"
@@ -1933,9 +1933,9 @@ version = "0.4.82"
 
 [[deps.TransformsBase]]
 deps = ["AbstractTrees"]
-git-tree-sha1 = "484610e9b25a45f015f3e695c6d307e91883f2d3"
+git-tree-sha1 = "ecc04cc47ba1e2c57dff819f8f5e15cd097ae249"
 uuid = "28dd2a49-a57a-4bfb-84ca-1a49db9b96b8"
-version = "1.4.1"
+version = "1.5.0"
 
 [[deps.TriplotBase]]
 git-tree-sha1 = "4d4ed7f294cda19382ff7de4c137d24d16adc89b"
