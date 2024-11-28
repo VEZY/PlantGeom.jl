@@ -298,22 +298,22 @@ end
 
 function get_transformation_matrix(trans::Affine)
     A, b = parameters(trans)
-    b = Unitful.ustrip.(Unitful.uconvert.(u"cm", b))
+    b = Unitful.ustrip.(u"cm", b)
     vcat(hcat(A, b), [0 0 0 1])
 end
 
 function get_transformation_matrix(trans::Translate{3,T}) where {T}
-    x, y, z = Unitful.ustrip.(Unitful.uconvert.(u"cm", trans.offsets))
+    x, y, z = Unitful.ustrip.(u"cm", trans.offsets)
     [1.0 0.0 0.0 x; 0.0 1.0 0.0 y; 0.0 0.0 1.0 z; 0.0 0.0 0.0 1.0]
 end
 
 function get_transformation_matrix(trans::Translate{2,T}) where {T}
-    x, y = Unitful.ustrip.(Unitful.uconvert.(u"cm", trans.offsets))
+    x, y = Unitful.ustrip.(u"cm", trans.offsets)
     [1.0 0.0 0.0 x; 0.0 1.0 0.0 y; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
 end
 
 function get_transformation_matrix(trans::Translate{1,T}) where {T}
-    x = Unitful.ustrip.(Unitful.uconvert(u"cm", trans.offsets[1]))
+    x = Unitful.ustrip.(u"cm", trans.offsets[1])
     [1.0 0.0 0.0 x; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
 end
 
