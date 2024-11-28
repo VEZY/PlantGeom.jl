@@ -69,7 +69,7 @@ function write_opf(file, mtg)
             norm_elm = addelement!(
                 mesh_elm,
                 "textureCoords",
-                string("\n", join(Iterators.flatten(Unitful.ustrip.(u"cm", Meshes.to(p)) for p in Meshes.eachvertex(mesh_.texture_coords)), "\t"), "\n")
+                string("\n", join(Iterators.flatten(Unitful.ustrip.(u"cm", Meshes.to(p)) for p in mesh_.texture_coords), "\t"), "\n")
             )
         end
 
