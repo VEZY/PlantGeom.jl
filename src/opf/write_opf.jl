@@ -47,9 +47,9 @@ function write_opf(file, mtg)
         addelement!(
             mesh_elm,
             "points",
-            string("\n", join(Iterators.flatten(Unitful.ustrip.(Unitful.uconvert.(u"cm", Meshes.to(p))) for p in Meshes.vertices(mesh_.mesh)), "\t"), "\n")
+            string("\n", join(Iterators.flatten(Unitful.ustrip.(u"cm", Meshes.to(p)) for p in Meshes.eachvertex(mesh_.mesh)), "\t"), "\n")
         )
-
+        # p |> LengthUnit(u"cm")
         if length(mesh_.normals) == Meshes.nelements(mesh_) && length(mesh_.normals) != Meshes.nvertices(mesh_)
             # If the normals are per triangle, re-compute them per vertex:
             vertex_normals = normals_vertex(mesh_)
@@ -60,7 +60,7 @@ function write_opf(file, mtg)
         norm_elm = addelement!(
             mesh_elm,
             "normals",
-            string("\n", join(Iterators.flatten(Unitful.ustrip.(Unitful.uconvert.(u"cm", p)) for p in vertex_normals), "\t"), "\n")
+            string("\n", join(Iterators.flatten(Unitful.ustrip.(u"cm", p) for p in vertex_normals), "\t"), "\n")
         )
 
 
@@ -69,18 +69,19 @@ function write_opf(file, mtg)
             norm_elm = addelement!(
                 mesh_elm,
                 "textureCoords",
-                string("\n", join(Iterators.flatten(Unitful.ustrip.(Unitful.uconvert.(u"cm", Meshes.to(p))) for p in mesh_.texture_coords), "\t"), "\n")
+                string("\n", join(Iterators.flatten(Unitful.ustrip.(u"cm", Meshes.to(p)) for p in Meshes.eachvertex(mesh_.texture_coords)), "\t"), "\n")
             )
         end
 
         faces_elm = addelement!(mesh_elm, "faces")
 
+
         face_id = [0]
-        for i in firstindex(mesh_.mesh):lastindex(mesh_.mesh)
+        for tri in Meshes.elements(Meshes.topology(mesh_.mesh))
             face_elm = addelement!(
                 faces_elm,
                 "face",
-                string("\n", join(Meshes.topology(mesh_.mesh).connec[i].indices .- 1, "\t"), "\n")
+                string("\n", join(Meshes.indices(tri) .- 1, "\t"), "\n")
             )
             #? NB: we remove one because face index are 0-based in the opf
             face_elm["Id"] = face_id[1]
