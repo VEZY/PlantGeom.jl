@@ -36,23 +36,18 @@ Compute per vertex normals and return them as a `StaticArrays.SVector`.
 # https://stackoverflow.com/questions/45477806/general-method-for-calculating-smooth-vertex-normals-with-100-smoothness?noredirect=1&lq=1
 """
 function normals_vertex(mesh::RefMesh)
-    vertex_normals = fill(Meshes.Vec(0.0, 0.0, 0.0), Meshes.nvertices(mesh))
-    for (i, tri) in enumerate(Meshes.elements(Meshes.topology(mesh.mesh)))
-        vertex_normals[tri.indices[1]] = mesh.normals[i]
-        vertex_normals[tri.indices[2]] = mesh.normals[i]
-        vertex_normals[tri.indices[3]] = mesh.normals[i]
-    end
-
-    return SVector{length(vertex_normals)}(vertex_normals)
+    normals_vertex(mesh.mesh)
 end
 
 function normals_vertex(mesh::Meshes.SimpleMesh)
     vertex_normals = fill(Meshes.Vec(0.0, 0.0, 0.0), Meshes.nvertices(mesh))
-    for tri in Meshes.elements(Meshes.topology(mesh))
-        tri_norm = Meshes.normal(tri)
-        vertex_normals[tri.indices[1]] = tri_norm
-        vertex_normals[tri.indices[2]] = tri_norm
-        vertex_normals[tri.indices[3]] = tri_norm
+    tri_normals = [Meshes.normal(tri) for tri in mesh]
+
+    for (i, tri) in enumerate(Meshes.topology(mesh))
+        tri_indices = Meshes.indices(tri)
+        vertex_normals[tri_indices[1]] = tri_normals[i]
+        vertex_normals[tri_indices[2]] = tri_normals[i]
+        vertex_normals[tri_indices[3]] = tri_normals[i]
     end
 
     return SVector{length(vertex_normals)}(vertex_normals)
