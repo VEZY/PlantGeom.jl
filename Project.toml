@@ -22,7 +22,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
 ColorSchemes = "3"
-Colors = "0.12"
+Colors = "0.12, 0.13"
 EzXML = "1"
 Makie = "0.21"
 Meshes = "0.52"
