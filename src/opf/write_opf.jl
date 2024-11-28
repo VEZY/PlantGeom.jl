@@ -47,9 +47,9 @@ function write_opf(file, mtg)
         addelement!(
             mesh_elm,
             "points",
-            string("\n", join(Iterators.flatten(Unitful.ustrip.(Unitful.uconvert.(u"cm", Meshes.to(p))) for p in Meshes.vertices(mesh_.mesh)), "\t"), "\n")
+            string("\n", join(Iterators.flatten(Unitful.ustrip.(u"cm", Meshes.to(p)) for p in Meshes.eachvertex(mesh_.mesh)), "\t"), "\n")
         )
-
+        # p |> LengthUnit(u"cm")
         if length(mesh_.normals) == Meshes.nelements(mesh_) && length(mesh_.normals) != Meshes.nvertices(mesh_)
             # If the normals are per triangle, re-compute them per vertex:
             vertex_normals = normals_vertex(mesh_)
@@ -60,7 +60,7 @@ function write_opf(file, mtg)
         norm_elm = addelement!(
             mesh_elm,
             "normals",
-            string("\n", join(Iterators.flatten(Unitful.ustrip.(Unitful.uconvert.(u"cm", p)) for p in vertex_normals), "\t"), "\n")
+            string("\n", join(Iterators.flatten(Unitful.ustrip.(u"cm", p) for p in vertex_normals), "\t"), "\n")
         )
 
 
@@ -69,18 +69,19 @@ function write_opf(file, mtg)
             norm_elm = addelement!(
                 mesh_elm,
                 "textureCoords",
-                string("\n", join(Iterators.flatten(Unitful.ustrip.(Unitful.uconvert.(u"cm", Meshes.to(p))) for p in mesh_.texture_coords), "\t"), "\n")
+                string("\n", join(Iterators.flatten(Unitful.ustrip.(u"cm", Meshes.to(p)) for p in mesh_.texture_coords), "\t"), "\n")
             )
         end
 
         faces_elm = addelement!(mesh_elm, "faces")
 
+
         face_id = [0]
-        for i in firstindex(mesh_.mesh):lastindex(mesh_.mesh)
+        for tri in Meshes.elements(Meshes.topology(mesh_.mesh))
             face_elm = addelement!(
                 faces_elm,
                 "face",
-                string("\n", join(Meshes.topology(mesh_.mesh).connec[i].indices .- 1, "\t"), "\n")
+                string("\n", join(Meshes.indices(tri) .- 1, "\t"), "\n")
             )
             #? NB: we remove one because face index are 0-based in the opf
             face_elm["Id"] = face_id[1]
@@ -297,22 +298,22 @@ end
 
 function get_transformation_matrix(trans::Affine)
     A, b = parameters(trans)
-    b = Unitful.ustrip.(Unitful.uconvert.(u"cm", b))
+    b = Unitful.ustrip.(u"cm", b)
     vcat(hcat(A, b), [0 0 0 1])
 end
 
 function get_transformation_matrix(trans::Translate{3,T}) where {T}
-    x, y, z = Unitful.ustrip.(Unitful.uconvert.(u"cm", trans.offsets))
+    x, y, z = Unitful.ustrip.(u"cm", trans.offsets)
     [1.0 0.0 0.0 x; 0.0 1.0 0.0 y; 0.0 0.0 1.0 z; 0.0 0.0 0.0 1.0]
 end
 
 function get_transformation_matrix(trans::Translate{2,T}) where {T}
-    x, y = Unitful.ustrip.(Unitful.uconvert.(u"cm", trans.offsets))
+    x, y = Unitful.ustrip.(u"cm", trans.offsets)
     [1.0 0.0 0.0 x; 0.0 1.0 0.0 y; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
 end
 
 function get_transformation_matrix(trans::Translate{1,T}) where {T}
-    x = Unitful.ustrip.(Unitful.uconvert(u"cm", trans.offsets[1]))
+    x = Unitful.ustrip.(u"cm", trans.offsets[1])
     [1.0 0.0 0.0 x; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
 end
 

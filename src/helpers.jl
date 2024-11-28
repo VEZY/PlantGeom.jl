@@ -18,9 +18,7 @@ end
 
 function normals(mesh::RefMesh{S,ME,M,N,T}) where {S,ME<:Meshes.SimpleMesh,M,N,T}
     if length(mesh.normals) == 0
-        return SVector{length(Meshes.topology(mesh.mesh).connec)}(
-            Meshes.Point(Meshes.normal(Meshes.Triangle(Meshes.vertices(mesh.mesh)[[tri.indices...]]))) for tri in Meshes.topology(mesh.mesh).connec
-        )
+        return SVector{length(mesh.mesh)}(Meshes.normal(tri) for tri in mesh.mesh)
     else
         return mesh.normals
     end
@@ -38,23 +36,18 @@ Compute per vertex normals and return them as a `StaticArrays.SVector`.
 # https://stackoverflow.com/questions/45477806/general-method-for-calculating-smooth-vertex-normals-with-100-smoothness?noredirect=1&lq=1
 """
 function normals_vertex(mesh::RefMesh)
-    vertex_normals = fill(Meshes.Vec(0.0, 0.0, 0.0), Meshes.nvertices(mesh))
-    for (i, tri) in enumerate(Meshes.topology(mesh.mesh).connec)
-        vertex_normals[tri.indices[1]] = mesh.normals[i]
-        vertex_normals[tri.indices[2]] = mesh.normals[i]
-        vertex_normals[tri.indices[3]] = mesh.normals[i]
-    end
-
-    return SVector{length(vertex_normals)}(vertex_normals)
+    normals_vertex(mesh.mesh)
 end
 
 function normals_vertex(mesh::Meshes.SimpleMesh)
     vertex_normals = fill(Meshes.Vec(0.0, 0.0, 0.0), Meshes.nvertices(mesh))
-    for (i, tri) in enumerate(Meshes.topology(mesh).connec)
-        tri_norm = Meshes.normal(Meshes.Triangle(mesh.vertices[[tri.indices...]]...))
-        vertex_normals[tri.indices[1]] = tri_norm
-        vertex_normals[tri.indices[2]] = tri_norm
-        vertex_normals[tri.indices[3]] = tri_norm
+    tri_normals = [Meshes.normal(tri) for tri in mesh]
+
+    for (i, tri) in enumerate(Meshes.topology(mesh))
+        tri_indices = Meshes.indices(tri)
+        vertex_normals[tri_indices[1]] = tri_normals[i]
+        vertex_normals[tri_indices[2]] = tri_normals[i]
+        vertex_normals[tri_indices[3]] = tri_normals[i]
     end
 
     return SVector{length(vertex_normals)}(vertex_normals)
