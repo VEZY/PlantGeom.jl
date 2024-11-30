@@ -25,6 +25,10 @@ can be called with the `transform!` function. See the examples below.
     - `color_vertex`: A boolean indicating whether the values in `color` (if colored by attributes) are defined for each vertex of the mesh, or for each mesh.
     - `index`: An integer giving the index of the attribute value to be vizualised. This is useful when the attribute is a vector of values for *e.g.* each timestep.
     - `color_cache_name`: The name of the color cache. Should be a string (default to a random string).
+    - `filter_fun`: A function to filter the nodes to be plotted. Should be a function taking a node as argument and returning a boolean.
+    - `symbol`: Plot only nodes with this symbol. Should be a String or a vector of.
+    - `scale`: Plot only nodes with this scale. Should be an Int or a vector of.
+    - `link`: Plot only nodes with this link. Should be a String or a vector of.
     
 Note that `color_vertex` is set to `false` by default.
 

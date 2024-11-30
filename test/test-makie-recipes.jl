@@ -85,3 +85,41 @@ end
     p.color = :blue
     @test_reference "reference_images/opf_color_attribute_observable_node_blue.png" fig
 end
+
+
+
+@testset "Makie recipes: filter nodes" begin
+    @testset "Symbol" begin
+        fig, ax, p = viz(opf, symbol="Leaf")
+        @test_reference "reference_images/opf_filter_symbol_leaf.png" fig
+
+        fig, ax, p = viz(opf, symbol="Leaf", color=:Length, colorrange=(0, 0.2))
+        @test_reference "reference_images/opf_filter_symbol_leaf_colored_var.png" fig
+
+        fig, ax, p = viz(opf, symbol="Leaf", color=:red)
+        @test_reference "reference_images/opf_filter_symbol_leaf_colored_red.png" fig
+    end
+
+    @testset "Symbol" begin
+        fig, ax, p = viz(opf, scale=3)
+        @test_reference "reference_images/opf_basic.png" fig
+        # This is the same test as just viz(opf) because scale 3 is the only one with geometry
+
+        fig, ax, p = viz(opf, scale=3, color=:Length, colorrange=(0, 0.2))
+        @test_reference "reference_images/opf_filter_scale_leaf_internode_colored_var.png" fig
+    end
+
+
+    @testset "Link" begin
+        fig, ax, p = viz(opf, link="+")
+        @test_reference "reference_images/opf_filter_symbol_leaf.png" fig
+        # This is the same test as just `viz(opf, symbol="Leaf")` because only the leaves are branching
+    end
+
+
+    @testset "Filter function" begin
+        fig, ax, p = viz(opf, filter_fun=node -> link(node) == "+")
+        @test_reference "reference_images/opf_filter_symbol_leaf.png" fig
+        # This is the same test as just `viz(opf, symbol="Leaf")` because only the leaves are branching
+    end
+end
