@@ -104,18 +104,41 @@ end
 
 
 """
-RefMeshes type. Data base that stores all [`RefMesh`](@ref) in an MTG. Usually stored in the
-`:ref_meshes` attribute of the root node.
+    RefMeshes()
+    RefMeshes(v::Vector{RefMesh})
+    RefMeshes(v::Vector{Pair{String,T}}) where {T<:Meshes.Mesh{<:Meshes.𝔼{3}}}
+
+Vector of reference meshes [`RefMesh`](@ref) used to build the geometry of the scene components. These reference meshes are 
+referenced by the nodes of the MTG and associated to a unique transformation for each node. This is used to build a plant 
+geometry efficiently, as the reference meshes are shared among the nodes of the same type. For example, all the internodes
+of a plant will share the same cylinder reference mesh, with different transformations to match the reference mesh to the internode dimensions.
+
+Usually stored in the `:ref_meshes` attribute of the root node of the plant graph.
+
+# Example
+
+```julia
+cylinder() = Meshes.CylinderSurface(1.0) |> Meshes.discretize |> Meshes.simplexify
+refmeshes = PlantGeom.RefMeshes([RefMesh("Internode", cylinder()),])
+```
 """
 mutable struct RefMeshes
     meshes::Vector{RefMesh}
 end
 
+RefMeshes() = RefMeshes(RefMesh[])
+RefMeshes(v::Vector{Pair{String,T}}) where {T<:Meshes.Mesh{<:Meshes.𝔼{3}}} = RefMeshes([RefMesh(first(i), last(i)) for i in v])
+
 Base.names(m::RefMeshes) = [i.name for i in m.meshes]
 Base.push!(m::RefMeshes, x::RefMesh) = push!(m.meshes, x)
-Base.append!(m::RefMeshes, x::RefMesh) = append!(m.meshes, x)
+Base.append!(m::RefMeshes, x::Vector{RefMesh}) = (push!(m.meshes, i) for i in x)
 Base.push!(m::RefMeshes, x::RefMeshes) = push!(m.meshes, x.meshes)
-Base.append!(m::RefMeshes, x::RefMeshes) = append!(m.meshes, x.meshes)
+Base.append!(m::RefMeshes, x::Vector{RefMeshes}) = append!(m.meshes, [i.meshes for i in x]...)
+
+# Methods to add a RefMesh Pairs, e.g. "Internode" => cylinder()
+Base.push!(m::RefMeshes, x::Pair{String,Meshes.Mesh{<:Meshes.𝔼{3}}}) = push!(m.meshes, RefMesh(first(x), last(x)))
+Base.append!(m::RefMeshes, x::Vector{Pair{String,Meshes.Mesh{<:Meshes.𝔼{3}}}}) = (push!(m, x) for i in x)
+
 Base.getindex(m::RefMeshes, i::Int) = m.meshes[i]
 Base.getindex(m::RefMeshes, i::String) = m.meshes[findfirst(x -> x.name == i, m.meshes)]
 Base.getindex(m::RefMeshes, i::AbstractVector) = RefMeshes([m.meshes[j] for j in i])
