@@ -29,6 +29,7 @@ import StaticArrays: SMatrix, SVector
 import LinearAlgebra: I, UniformScaling, Diagonal # Used for geometry parsing in OPF
 import RecipesBase
 import Base
+import OrderedCollections
 
 # For random name of the color attribute for caching:
 import UUIDs

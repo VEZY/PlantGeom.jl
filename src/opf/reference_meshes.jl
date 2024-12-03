@@ -24,7 +24,7 @@ function get_ref_meshes(mtg)
     end
 
     # Get all reference meshes from the MTG:
-    ref_meshes = Set{RefMesh}()
+    ref_meshes = OrderedCollections.OrderedSet{RefMesh}()
     traverse!(mtg) do node
         if haskey(node, :geometry) && isa(node[:geometry], Geometry)
             push!(ref_meshes, node[:geometry].ref_mesh)
