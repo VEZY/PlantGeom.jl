@@ -41,8 +41,6 @@ joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene.ops") 
 function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG)
     scene_dimensions, object_table = read_ops_file(file)
 
-    opf_files = Tables.columns(object_table).filePath
-
     scene = Node(mtg_type("/", "Scene", 1, 0), MultiScaleTreeGraph.init_empty_attr(attr_type))
     scene.scene_dimensions = scene_dimensions
 
