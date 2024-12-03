@@ -16,7 +16,6 @@ viz(meshes)
 ```
 """
 function get_ref_meshes(mtg)
-
     if !isroot(mtg)
         @warn "Node is not the root node, using `get_root(mtg)`."
         x = get_root(mtg)
@@ -24,41 +23,25 @@ function get_ref_meshes(mtg)
         x = mtg
     end
 
-    return x[:ref_meshes]
-end
-
-function get_ref_mesh_index!(node, ref_meshes=get_ref_meshes(node))
-
-    # If the reference node mesh is unknown, get it:
-    if node[:geometry].ref_mesh_index === nothing
-        node[:geometry].ref_mesh_index =
-            findfirst(x -> x === node[:geometry].ref_mesh, ref_meshes.meshes)
+    # Get all reference meshes from the MTG:
+    ref_meshes = Set{RefMesh}()
+    traverse!(mtg) do node
+        if haskey(node, :geometry) && isa(node[:geometry], Geometry)
+            push!(ref_meshes, node[:geometry].ref_mesh)
+        end
     end
-
-    return node[:geometry].ref_mesh_index
-end
-
-function get_ref_mesh_index(node, ref_meshes=get_ref_meshes(node))
-    # If the reference node mesh is unknown, get it:
-    if node[:geometry].ref_mesh_index === nothing
-        return findfirst(x -> x === node[:geometry].ref_mesh, ref_meshes.meshes)
-    end
-
-    return node[:geometry].ref_mesh_index
+    return collect(ref_meshes)
 end
 
 """
-    get_ref_mesh_index!(node, ref_meshes = get_ref_meshes(node))
-    get_ref_mesh_index(node, ref_meshes = get_ref_meshes(node))
+    get_ref_mesh_name(node)
 
-Get the index of the reference mesh used in the current node.
-
-# Notes
-
-Please use the `ref_meshes` argument preferably as not giving it make the function visit the
-root node each time otherwise, and it can become a limitation when traversing a big MTG.
+Get the name of the reference mesh used for the current node.
 """
-get_ref_mesh_index!, get_ref_mesh_index
+function get_ref_mesh_name(node)
+    return node[:geometry].ref_mesh.name
+end
+
 
 
 """
@@ -85,11 +68,11 @@ function parse_ref_meshes(x)
     end
 
     # We create RefMeshes just now in case they were not sorted in the opf file
-    refmeshes = RefMeshes(RefMesh[])
+    refmeshes = RefMesh[]
     #! Do we really need to sort them? If not, we directly build it above instead of using
     #! an intermediary Dict
     for i in sort(collect(keys(meshes)))
-        push!(refmeshes.meshes, meshes[i])
+        push!(refmeshes, meshes[i])
     end
 
     return refmeshes
@@ -144,15 +127,15 @@ end
 
 
 """
-    align_ref_meshes(meshes::RefMeshes)
+    align_ref_meshes(meshes::Vector{RefMesh})
 
 Align all reference meshes along the X axis. Used for visualisation only.
 """
-function align_ref_meshes(meshes::RefMeshes)
+function align_ref_meshes(meshes::Vector{RefMesh})
     meshes_vec = Meshes.SimpleMesh[]
     trans = Translate(0.0, 0.0, 0.0)
 
-    for i in meshes.meshes
+    for i in meshes
         push!(meshes_vec, trans(i.mesh))
         # Maximum X coordinates of the newly translated mesh:
         xmax_ = Meshes.coords(maximum(Meshes.boundingbox(i.mesh))).x
@@ -167,7 +150,7 @@ end
 
 
 """
-    get_ref_meshes_color(meshes::RefMeshes)
+    get_ref_meshes_color(meshes::Vector{RefMesh})
 
 Get the reference meshes colors (only the diffuse part for now).
 
@@ -181,8 +164,8 @@ meshes = get_ref_meshes(opf)
 PlantGeom.get_ref_meshes_color(meshes)
 ```
 """
-function get_ref_meshes_color(meshes::RefMeshes)
-    [material_single_color(i.material) for i in meshes.meshes]
+function get_ref_meshes_color(meshes::Vector{RefMesh})
+    Dict{String}(i.name => material_single_color(i.material) for i in meshes)
 end
 
 function material_single_color(x::Phong)

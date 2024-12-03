@@ -11,7 +11,7 @@ mtg = read_opf("files/simple_plant.opf", attr_type=Dict)
 end
 
 @testset "read_opf: simple_plant.opf -> ref. meshes" begin
-    ref_meshes = mtg[:ref_meshes].meshes
+    ref_meshes = mtg[:ref_meshes]
     @test length(ref_meshes) == 2
     first_mesh = ref_meshes[1]
     @test isa(first_mesh.mesh, Meshes.SimpleMesh)
@@ -30,11 +30,11 @@ end
 
     @test sort(collect(keys(Internode))) == [:Length, :Width, :geometry]
     @test sort(names(Internode)) == [:Length, :Width, :XEuler, :geometry]
-    @test isa(Internode[:geometry], PlantGeom.geometry)
+    @test isa(Internode[:geometry], PlantGeom.Geometry)
 
     geom = Internode[:geometry]
     @test isnothing(geom.mesh)
-    @test geom.ref_mesh === mtg[:ref_meshes].meshes[geom.ref_mesh_index]
+    @test geom.ref_mesh === mtg[:ref_meshes][1] #! update this number 
     @test typeof(geom.transformation[1]) <: Affine{3,SMatrix{3,3,Float64,9},<:Meshes.Vec}
     @test isa(geom.transformation[2], Translate{3})
     @test [p.val for p in to(geom.transformation(Meshes.Point(1.0, 1.0, 1.0)))] ≈ [-1.0, 1.0, 10.0] atol = 1.0e-6

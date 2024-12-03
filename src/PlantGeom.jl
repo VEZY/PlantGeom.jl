@@ -71,7 +71,7 @@ export xmax, ymax, zmax, xmin, ymin, zmin
 export refmesh_to_mesh!
 export transform_mesh!
 export Material, Phong
-export RefMesh, RefMeshes
+export RefMesh
 export (==), names
 export get_color, get_colormap
 

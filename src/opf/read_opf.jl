@@ -415,9 +415,8 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
 
                 push!(
                     attrs,
-                    Symbol(elem.name) => geometry(
-                        ref_meshes.meshes[geom[:shapeIndex]],
-                        geom[:shapeIndex],
+                    Symbol(elem.name) => Geometry(
+                        ref_meshes[geom[:shapeIndex]],
                         transformation,
                         geom[:dUp],
                         geom[:dDwn],

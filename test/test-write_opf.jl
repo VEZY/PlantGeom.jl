@@ -3,10 +3,8 @@ tmp_file = tempname()
     mtg = read_opf("files/simple_plant.opf", attr_type=Dict)
     PlantGeom.write_opf(tmp_file, mtg)
     mtg2 = read_opf(tmp_file, attr_type=Dict)
-
-    # Note: we only do this in the tests because it is type piracy and we don't want to change the behavior of the package.
     # Compare each node one by one:
-    @test MultiScaleTreeGraph.traverse(mtg, node -> node) == MultiScaleTreeGraph.traverse(mtg2, node -> node)
+    @test all([i == j for (i, j) in zip(MultiScaleTreeGraph.traverse(mtg, node -> node), MultiScaleTreeGraph.traverse(mtg2, node -> node))])
 end
 
 @testset "write_opf: read, write, read again and compare -> coffee" begin
@@ -14,5 +12,6 @@ end
     PlantGeom.write_opf(tmp_file, mtg)
     mtg2 = read_opf(tmp_file, attr_type=Dict)
     # Compare each node one by one:
-    @test MultiScaleTreeGraph.traverse(mtg, node -> node) == MultiScaleTreeGraph.traverse(mtg2, node -> node)
+    comp = MultiScaleTreeGraph.traverse(mtg, node -> node) == MultiScaleTreeGraph.traverse(mtg2, node -> node)
+    @test comp
 end
