@@ -34,7 +34,7 @@ function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{Vector{RefMesh}}})
     end
 
     # Parsing the colors in the dictionary into Colorants:
-    new_color = Dict{Int,Union{Colorant,Vector{<:Colorant}}}([k => isa(v, AbstractArray) ? parse.(Colorant, v) : parse(Colorant, v) for (k, v) in colorant[]])
+    new_color = Dict{String,Union{Colorant,Vector{<:Colorant}}}([k => isa(v, AbstractArray) ? parse.(Colorant, v) : parse(Colorant, v) for (k, v) in colorant[]])
 
     if length(colorant[]) != n_meshes
         ref_cols = get_ref_meshes_color(plot[:object][])
@@ -44,7 +44,7 @@ function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{Vector{RefMesh}}})
         end
     end
 
-    for refmesh in p
-        MeshesMakieExt.viz!(plot, refmesh, color=new_color[refmesh.name], segmentcolor=plot[:segmentcolor], showsegments=plot[:showsegments], colormap=plot[:colormap])
+    for (name, refmesh) in p
+        MeshesMakieExt.viz!(plot, refmesh, color=new_color[name], segmentcolor=plot[:segmentcolor], showsegments=plot[:showsegments], colormap=plot[:colormap])
     end
 end

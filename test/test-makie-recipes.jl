@@ -8,23 +8,23 @@ transform!(opf, refmesh_to_mesh!)
     @test p.converted[1].val == meshes
     @test typeof(p.plots[1]) <: Plot{Meshes.viz}
     aligned_meshes = PlantGeom.align_ref_meshes(meshes)
-    @test p.plots[1].converted[1][] == aligned_meshes[1]
-    @test p.plots[2].converted[1][] == aligned_meshes[2]
+    @test p.plots[1].converted[1][] == aligned_meshes["Mesh0"]
+    @test p.plots[2].converted[1][] == aligned_meshes["Mesh1"]
 end
 
 @testset "Makie recipes: reference meshes -> image references" begin
     @test_reference "reference_images/refmesh_basic.png" viz(meshes)
-    @test_reference "reference_images/refmesh_allcolors.png" viz(meshes, color=Dict(1 => :burlywood4, 2 => :springgreen4))
-    @test_reference "reference_images/refmesh_somecolors.png" viz(meshes, color=Dict(2 => :burlywood4))
+    @test_reference "reference_images/refmesh_allcolors.png" viz(meshes, color=Dict("Mesh0" => :burlywood4, "Mesh1" => :springgreen4))
+    @test_reference "reference_images/refmesh_somecolors.png" viz(meshes, color=Dict("Mesh1" => :burlywood4))
 
-    vertex_color1 = get_color(1:nvertices(get_ref_meshes(opf))[1], [1, nvertices(get_ref_meshes(opf))[1]])
-    vertex_color2 = get_color(1:nvertices(get_ref_meshes(opf))[2], [1, nvertices(get_ref_meshes(opf))[1]])
+    vertex_color1 = get_color(1:nvertices.(get_ref_meshes(opf))[1], [1, nvertices.(get_ref_meshes(opf))[1]])
+    vertex_color2 = get_color(1:nvertices.(get_ref_meshes(opf))[2], [1, nvertices.(get_ref_meshes(opf))[1]])
 
     @test_reference "reference_images/refmesh_vertex_colors.png" viz(
         meshes,
         color=Dict(
-            1 => vertex_color1,
-            2 => vertex_color2,
+            "Mesh0" => vertex_color1,
+            "Mesh1" => vertex_color2,
         )
     )
 end
@@ -36,10 +36,10 @@ transform!(opf, refmesh_to_mesh!)
 @testset "Makie recipes: whole MTG -> image references" begin
     @test_reference "reference_images/opf_basic.png" viz(opf)
     @test_reference "reference_images/opf_one_color.png" viz(opf, color=:red)
-    @test_reference "reference_images/opf_one_color_per_ref.png" viz(opf, color=Dict(1 => :burlywood4, 2 => :springgreen4))
-    @test_reference "reference_images/opf_one_color_one_ref.png" viz(opf, color=Dict(1 => :burlywood4))
-    vertex_color = get_color(1:nvertices(get_ref_meshes(opf))[1], [1, nvertices(get_ref_meshes(opf))[1]])
-    @test_reference "reference_images/opf_color_ref_vertex.png" viz(opf, color=Dict(1 => vertex_color), color_vertex=true)
+    @test_reference "reference_images/opf_one_color_per_ref.png" viz(opf, color=Dict("Mesh0" => :burlywood4, "Mesh1" => :springgreen4))
+    @test_reference "reference_images/opf_one_color_one_ref.png" viz(opf, color=Dict("Mesh0" => :burlywood4))
+    vertex_color = get_color(1:nvertices.(get_ref_meshes(opf))[1], [1, nvertices.(get_ref_meshes(opf))[1]])
+    @test_reference "reference_images/opf_color_ref_vertex.png" viz(opf, color=Dict("Mesh0" => vertex_color), color_vertex=true)
     transform!(opf, zmax => :z_max, ignore_nothing=true)
     @test_reference "reference_images/opf_color_attribute.png" viz(opf, color=:z_max)
 
@@ -85,8 +85,6 @@ end
     p.color = :blue
     @test_reference "reference_images/opf_color_attribute_observable_node_blue.png" fig
 end
-
-
 
 @testset "Makie recipes: filter nodes" begin
     @testset "Symbol" begin

@@ -132,11 +132,11 @@ end
 Align all reference meshes along the X axis. Used for visualisation only.
 """
 function align_ref_meshes(meshes::Vector{RefMesh})
-    meshes_vec = Meshes.SimpleMesh[]
+    meshes_dict = Dict{String,Meshes.SimpleMesh}()
     trans = Translate(0.0, 0.0, 0.0)
 
     for i in meshes
-        push!(meshes_vec, trans(i.mesh))
+        push!(meshes_dict, i.name => trans(i.mesh))
         # Maximum X coordinates of the newly translated mesh:
         xmax_ = Meshes.coords(maximum(Meshes.boundingbox(i.mesh))).x
 
@@ -144,7 +144,7 @@ function align_ref_meshes(meshes::Vector{RefMesh})
         trans = Translate(xmax_.val * 1.1, 0.0, 0.0)
     end
 
-    return meshes_vec
+    return meshes_dict
 end
 
 
@@ -165,7 +165,7 @@ PlantGeom.get_ref_meshes_color(meshes)
 ```
 """
 function get_ref_meshes_color(meshes::Vector{RefMesh})
-    Dict{String}(i.name => material_single_color(i.material) for i in meshes)
+    Dict(i.name => material_single_color(i.material) for i in meshes)
 end
 
 function material_single_color(x::Phong)
