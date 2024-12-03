@@ -101,6 +101,12 @@ function RefMesh(name, mesh, material=RGB(220 / 255, 220 / 255, 220 / 255))
     )
 end
 
+
+# Deepcopying a RefMesh returns the same object. This is because the mesh is immutable, and because we don't want to 
+# have several copies of the same refmesh for different organs.
+Base.deepcopy_internal(x::RefMesh, dict::IdDict) = x
+# see: https://github.com/JuliaLang/julia/blob/9acf1129c91cddd9194f529ad9cc82afd2694190/base/deepcopy.jl
+
 """
     Geometry(; ref_mesh<:RefMesh, transformation=Identity(), dUp=1.0, dDwn=1.0, mesh::Union{SimpleMesh,Nothing}=nothing)
 
