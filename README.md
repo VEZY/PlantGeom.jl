@@ -16,7 +16,7 @@ The package provides different functionalities, the main ones being:
 - plotting using `viz` and `viz!`, optionally using coloring by attribute;
 - mesh transformations using `transform_mesh!`
 
-Note that `:geometry` is a reserved attribute in nodes (*e.g.* organs) used for the 3D geometry. It is stored as a special structure (`geometry`).
+Note that `:geometry` is a reserved attribute in nodes (*e.g.* organs) used for the 3D geometry. It is stored as a special structure (`Geometry`).
 
 ## Example usage
 
