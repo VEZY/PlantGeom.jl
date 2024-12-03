@@ -1,5 +1,6 @@
 # using MultiScaleTreeGraph
 # using PlantGeom
+# using Meshes
 # using CairoMakie
 
 # Import / pre-compute
@@ -13,22 +14,22 @@ transform!(opf, refmesh_to_mesh!)
 f, ax, p = PlantGeom.viz(meshes)
 save("reference_images/refmesh_basic.png", f)
 
-f, ax, p = viz(meshes, color=Dict(1 => :burlywood4, 2 => :springgreen4, 3 => :burlywood4))
+f, ax, p = viz(meshes, color=Dict("Mesh0" => :burlywood4, "Mesh1" => :springgreen4))
 save("reference_images/refmesh_allcolors.png", f)
 
 # Or just changing the color of some:
-f, ax, p = viz(meshes, color=Dict(2 => :burlywood4))
+f, ax, p = viz(meshes, color=Dict("Mesh1" => :burlywood4))
 save("reference_images/refmesh_somecolors.png", f)
 
 # One color for each vertex of the refmesh 0:
-vertex_color1 = get_color(1:nvertices(get_ref_meshes(opf))[1], [1, nvertices(get_ref_meshes(opf))[1]])
-vertex_color2 = get_color(1:nvertices(get_ref_meshes(opf))[2], [1, nvertices(get_ref_meshes(opf))[1]])
+vertex_color1 = get_color(1:nvertices.(get_ref_meshes(opf))[1], [1, nvertices.(get_ref_meshes(opf))[1]])
+vertex_color2 = get_color(1:nvertices.(get_ref_meshes(opf))[2], [1, nvertices.(get_ref_meshes(opf))[1]])
 
 f, ax, p = viz(
     meshes,
     color=Dict(
-        1 => vertex_color1,
-        2 => vertex_color2,
+        "Mesh0" => vertex_color1,
+        "Mesh1" => vertex_color2,
     )
 )
 save("reference_images/refmesh_vertex_colors.png", f)
@@ -44,16 +45,16 @@ f, ax, p = viz(opf, color=:red)
 save("reference_images/opf_one_color.png", f)
 
 # One color per reference mesh:
-f, ax, p = viz(opf, color=Dict(1 => :burlywood4, 2 => :springgreen4, 3 => :burlywood4))
+f, ax, p = viz(opf, color=Dict("Mesh0" => :burlywood4, "Mesh1" => :springgreen4))
 save("reference_images/opf_one_color_per_ref.png", f)
 
 # Or just changing the color of some:
-f, ax, p = viz(opf, color=Dict(1 => :burlywood4))
+f, ax, p = viz(opf, color=Dict("Mesh1" => :burlywood4))
 save("reference_images/opf_one_color_one_ref.png", f)
 
 # One color for each vertex of the refmesh 1:
-vertex_color = get_color(1:nvertices(get_ref_meshes(opf))[1], [1, nvertices(get_ref_meshes(opf))[1]])
-f, ax, p = viz(opf, color=Dict(1 => vertex_color))
+vertex_color = get_color(1:nvertices.(get_ref_meshes(opf))[1], [1, nvertices.(get_ref_meshes(opf))[1]])
+f, ax, p = viz(opf, color=Dict("Mesh0" => vertex_color))
 save("reference_images/opf_color_ref_vertex.png", f)
 
 # Or coloring by opf attribute, e.g. using the mesh max Z coordinates (NB: need to use
