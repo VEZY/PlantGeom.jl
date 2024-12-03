@@ -5,11 +5,8 @@ Write an MTG with explicit geometry to disk as an OPF file.
 
 # Notes
 
-Node attributes `:ref_meshes` and `:geometry` are treated as reserved keywords and
-should not be used without knowing their meaning:
-
-- `:ref_meshes`: a `RefMeshes` structure that holds the MTG reference meshes.
-- `:geometry`: a [`geometry`](@ref) instance
+Node attribute `:geometry` is treated as a reserved keyword and
+should not be used without knowing their meaning.
 
 # Examples
 
@@ -23,6 +20,9 @@ viz(opf2)
 ```
 """
 function write_opf(file, mtg)
+    # First, we remove the cached variables from the MTG (we don't want to write them in the OPF):
+    clean_cache!(mtg)
+
     doc = XMLDocument()
     opf_elm = ElementNode("opf")
     setroot!(doc, opf_elm)
@@ -36,8 +36,7 @@ function write_opf(file, mtg)
         error("No reference meshes found in the MTG.")
     end
 
-    for (key, mesh_) in enumerate(mtg[:ref_meshes].meshes)
-        # key = 1; mesh_ = mtg[:ref_meshes].meshes[key]
+    for (key, mesh_) in enumerate(mtg[:ref_meshes])
         mesh_elm = addelement!(meshBDD, "mesh")
         mesh_elm["name"] = mesh_.name
         mesh_elm["shape"] = ""
@@ -91,7 +90,7 @@ function write_opf(file, mtg)
 
     # Parsing the materialBDD section.
     materialBDD = addelement!(opf_elm, "materialBDD")
-    for (key, mesh_) in enumerate(mtg[:ref_meshes].meshes)
+    for (key, mesh_) in enumerate(mtg[:ref_meshes])
         mat_elm = addelement!(materialBDD, "material")
         mat_elm["Id"] = key - 1 # opf uses 0-based indexing
 
@@ -129,7 +128,7 @@ function write_opf(file, mtg)
 
     # Parsing the shapeBDD section.
     shapeBDD = addelement!(opf_elm, "shapeBDD")
-    for (key, mesh_) in enumerate(mtg[:ref_meshes].meshes)
+    for (key, mesh_) in enumerate(mtg[:ref_meshes])
         shape_elm = addelement!(shapeBDD, "shape")
         shape_elm["Id"] = key - 1 # opf uses 0-based indexing
 
@@ -242,14 +241,11 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
             geom = addelement!(xml_node, string(key))
             geom["class"] = "Mesh"
 
-            if node[key].ref_mesh_index === nothing
-                get_ref_mesh_index!(node, ref_meshes)
-            end
-            addelement!(geom, "shapeIndex", string(node[key].ref_mesh_index - 1))
+            ref_mesh_index = findfirst(x -> x === node[key].ref_mesh, ref_meshes)
+            addelement!(geom, "shapeIndex", string(ref_mesh_index - 1))
             # NB: opf uses 0-based indexing, that's why we use ref_mesh_index - 1
 
             # Make the homogeneous matrix from the transformations:
-
             mat4x4 = get_transformation_matrix(node[key].transformation)
 
             addelement!(

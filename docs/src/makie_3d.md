@@ -114,18 +114,18 @@ We can get the default color of each reference mesh by using:
 get_ref_meshes_color(ref_meshes)
 ```
 
-Now we know the first reference mesh is the cylinder (it is brown) and the second one is the leaf (it is green).
+Now we know there are two reference meshes, one for a cylinder called "Mesh0" colored in brown, and a second one for the leaf that is green.
 
-To update their colors we can simply pass the new colors as a dictionary mapping colors to reference meshes like so:
+To update their colors we can simply pass the new colors as a dictionary mapping colors to the names of the reference meshes like so:
 
 ```@example 2
-viz(mtg, color = Dict(1 => :gray87, 2 => "#42A25ABD"))
+viz(mtg, color = Dict("Mesh0" => :gray87, "Mesh1" => "#42A25ABD"))
 ```
 
 If we want to update the second reference mesh only (the leaves), we would do:
 
 ```@example 2
-viz(mtg, color = Dict(2 => "#42A25ABD"))
+viz(mtg, color = Dict("Mesh1" => "#42A25ABD"))
 ```
 
 ### Map color to attributes

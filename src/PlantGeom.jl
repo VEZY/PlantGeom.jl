@@ -29,6 +29,7 @@ import StaticArrays: SMatrix, SVector
 import LinearAlgebra: I, UniformScaling, Diagonal # Used for geometry parsing in OPF
 import RecipesBase
 import Base
+import OrderedCollections
 
 # For random name of the color attribute for caching:
 import UUIDs
@@ -52,6 +53,7 @@ include("colors/colors.jl")
 include("colors/get_mtg_color.jl")
 include("opf/mtg_recipe_helpers.jl")
 include("opf/diagram.jl")
+include("deprecated.jl")
 
 # function viz2 end
 # function viz2! end
@@ -71,7 +73,7 @@ export xmax, ymax, zmax, xmin, ymin, zmin
 export refmesh_to_mesh!
 export transform_mesh!
 export Material, Phong
-export RefMesh, RefMeshes
+export RefMesh
 export (==), names
 export get_color, get_colormap
 

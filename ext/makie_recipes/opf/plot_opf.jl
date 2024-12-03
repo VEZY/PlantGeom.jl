@@ -72,9 +72,6 @@ function plot_opf(plot)
     link = hasproperty(plot, :link) ? plot[:link][] : nothing
 
     plot_opf(colorant, plot, f, symbol, scale, link)
-    #? NB: implement scale / symbol / link / filter_fun filtering to be able to plot only
-    #? a subset of the plant/scene. This will be especially usefull when we have different
-    #? kind of geometries at different scales of representation.
 end
 
 # Case where the color is a colorant (e.g. `:red`, or `RGB(0.1,0.5,0.1)`):
@@ -106,14 +103,12 @@ function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, l
 
     opf = plot[:object]
 
-    ref_meshes = get_ref_meshes(opf[])
-
     any_node_selected = Ref(false)
     # Make the plot, case where the color is a color for each reference mesh:
     MultiScaleTreeGraph.traverse!(opf[]; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
         any_node_selected[] = true
 
-        node[color_attr_name] = Makie.@lift color_from_refmeshes($colorant, node, ref_meshes)
+        node[color_attr_name] = Makie.@lift color_from_refmeshes($colorant, node)
         MeshesMakieExt.viz!(
             plot,
             node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
@@ -128,8 +123,12 @@ function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, l
     any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
 end
 
-function color_from_refmeshes(color::Union{RefMeshColorant,DictRefMeshColorant,DictVertexRefMeshColorant}, node, ref_meshes)
-    color.colors[PlantGeom.get_ref_mesh_index!(node, ref_meshes)]
+function color_from_refmeshes(color::RefMeshColorant, node)
+    material_single_color(node.geometry.ref_mesh.material)
+end
+
+function color_from_refmeshes(color::Union{DictRefMeshColorant,DictVertexRefMeshColorant}, node)
+    get(color.colors, get_ref_mesh_name(node), material_single_color(node.geometry.ref_mesh.material))
 end
 
 # Case where the color is an attribute of the MTG:

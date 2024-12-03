@@ -90,7 +90,6 @@ struct RefMesh{S<:String,ME<:Meshes.Mesh{<:Meshes.𝔼{3}},M<:Union{Material,Col
 end
 
 #! Make a method that computes the normals and texture_coords from the mesh
-
 function RefMesh(name, mesh, material=RGB(220 / 255, 220 / 255, 220 / 255))
     RefMesh(
         name,
@@ -103,68 +102,34 @@ function RefMesh(name, mesh, material=RGB(220 / 255, 220 / 255, 220 / 255))
 end
 
 
-"""
-RefMeshes type. Data base that stores all [`RefMesh`](@ref) in an MTG. Usually stored in the
-`:ref_meshes` attribute of the root node.
-"""
-mutable struct RefMeshes
-    meshes::Vector{RefMesh}
-end
-
-Base.names(m::RefMeshes) = [i.name for i in m.meshes]
-Base.push!(m::RefMeshes, x::RefMesh) = push!(m.meshes, x)
-Base.append!(m::RefMeshes, x::RefMesh) = append!(m.meshes, x)
-Base.push!(m::RefMeshes, x::RefMeshes) = push!(m.meshes, x.meshes)
-Base.append!(m::RefMeshes, x::RefMeshes) = append!(m.meshes, x.meshes)
-Base.getindex(m::RefMeshes, i::Int) = m.meshes[i]
-Base.getindex(m::RefMeshes, i::String) = m.meshes[findfirst(x -> x.name == i, m.meshes)]
-Base.getindex(m::RefMeshes, i::AbstractVector) = RefMeshes([m.meshes[j] for j in i])
-Base.getindex(m::RefMeshes, i::AbstractVector{Bool}) = RefMeshes([m.meshes[j] for j in findall(i)])
-Base.getindex(m::RefMeshes, i::AbstractVector{<:AbstractString}) = RefMeshes([m.meshes[j] for j in findfirst(x -> x.name == i, m.meshes)])
-Base.in(m::RefMeshes, i::RefMesh) = i in m.meshes
-Base.length(m::RefMeshes) = length(m.meshes)
-Base.pop!(m::RefMeshes) = pop!(m.meshes)
-Base.popfirst!(m::RefMeshes) = popfirst!(m.meshes)
-Base.findfirst(m::RefMeshes, x) = findfirst(x, m.meshes)
+# Deepcopying a RefMesh returns the same object. This is because the mesh is immutable, and because we don't want to 
+# have several copies of the same refmesh for different organs.
+Base.deepcopy_internal(x::RefMesh, dict::IdDict) = x
+# see: https://github.com/JuliaLang/julia/blob/9acf1129c91cddd9194f529ad9cc82afd2694190/base/deepcopy.jl
 
 """
-    geometry(; ref_mesh<:RefMesh, ref_mesh_index=nothing, transformation=Identity(), dUp=1.0, dDwn=1.0, mesh::Union{SimpleMesh,Nothing}=nothing)
+    Geometry(; ref_mesh<:RefMesh, transformation=Identity(), dUp=1.0, dDwn=1.0, mesh::Union{SimpleMesh,Nothing}=nothing)
 
-A Node geometry with the reference mesh, its transformation (as a function) and optionnally the
-index of the reference mesh in the reference meshes data base (see notes) and the resulting
-mesh (optional to save memory).
-
-# Note
-
-The ref_mesh usually points to a [`RefMesh`](@ref) stored in the `:ref_meshes` attribute of the
-root node of the MTG.
-
-Although optional, storing the index of the reference mesh (`ref_mesh_index`) in the database allows a faster
-writing of the MTG as an OPF to disk.
+A Node geometry with the reference mesh, its transformation (as a function) and the resulting
+mesh (optional, may be lazily computed).
 
 The `transformation` field should be a `TransformsBase.Transform`, such as `TransformsBase.Identity`, or the ones implemented in 
 `Meshes.jl`, *e.g.* `Translate`, `Scale`... If you already have the transformation matrix, you can pass it to `Meshes.Affine()`. 
 """
-mutable struct geometry{M<:RefMesh,S}
+mutable struct Geometry{M<:RefMesh,S}
     ref_mesh::M
-    ref_mesh_index::Union{Int,Nothing}
     transformation::Transform
     dUp::S
     dDwn::S
     mesh::Union{Meshes.SimpleMesh,Nothing}
 end
 
-function geometry(; ref_mesh, ref_mesh_index=nothing, transformation=Identity(), dUp=1.0, dDwn=1.0, mesh=nothing)
-    geometry(
+function Geometry(; ref_mesh, transformation=Identity(), dUp=1.0, dDwn=1.0, mesh=nothing)
+    Geometry(
         ref_mesh,
-        ref_mesh_index,
         transformation,
         dUp,
         dDwn,
         mesh
     )
-end
-
-function geometry(ref_mesh, ref_mesh_index=nothing)
-    geometry(; ref_mesh=ref_mesh, ref_mesh_index=ref_mesh_index)
 end

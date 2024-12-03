@@ -8,7 +8,7 @@ function Meshes.nvertices(mesh::RefMesh)
 end
 
 """
-    nelements(meshes::RefMeshes)
+    nelements(meshes::RefMesh)
 
 Return the number of elements of a reference mesh
 """
@@ -51,24 +51,4 @@ function normals_vertex(mesh::Meshes.SimpleMesh)
     end
 
     return SVector{length(vertex_normals)}(vertex_normals)
-end
-
-"""
-    nvertices(meshes::RefMeshes)
-
-Return the number of vertices for each reference mesh as a vector of nvertices
-"""
-function Meshes.nvertices(meshes::RefMeshes)
-    [Meshes.nvertices(i) for i in meshes.meshes]
-    # TODO: Implement for RefMesh with GeometryBasics
-end
-
-"""
-    nelements(meshes::RefMeshes)
-
-Return the number of elements for each reference mesh as a vector of nelements
-"""
-function Meshes.nelements(meshes::RefMeshes)
-    [Meshes.nelements(i) for i in meshes.meshes]
-    # TODO: Implement for RefMesh with GeometryBasics
 end

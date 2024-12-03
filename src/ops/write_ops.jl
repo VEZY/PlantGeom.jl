@@ -37,6 +37,7 @@ object_table = [
 ]
 
 write_ops("scene.ops", scene_dimensions, object_table)
+```
 """
 function write_ops(file, scene_dimensions, object_table)
     dims = join([

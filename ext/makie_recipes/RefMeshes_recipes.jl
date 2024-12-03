@@ -1,8 +1,8 @@
-Makie.plottype(::RefMeshes) = MeshesMakieExt.Viz{<:Tuple{RefMeshes}}
-Makie.args_preferred_axis(::RefMeshes) = Makie.LScene
+Makie.plottype(::Vector{RefMesh}) = MeshesMakieExt.Viz{<:Tuple{Vector{RefMesh}}}
+Makie.args_preferred_axis(::Vector{RefMesh}) = Makie.LScene
 
 # Documentation is in opf_recipe.jl
-function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{RefMeshes}})
+function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{Vector{RefMesh}}})
     # Mesh list:
     p = PlantGeom.align_ref_meshes(plot[:object][])
 
@@ -18,7 +18,7 @@ function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{RefMeshes}})
             # see here for default value in MeshViz:
             # https://github.com/JuliaGeometry/MeshViz.jl/blob/6e37908c78c06212f09229e3e8d92483535ffa16/src/MeshViz.jl#L50
             ref_colors = get_ref_meshes_color(plot[:object][])
-            colorant = Observables.Observable(Dict(zip(1:n_meshes, ref_colors)))
+            colorant = Observables.Observable(ref_colors)
         else
             colorant = Makie.lift(x -> Dict(zip(keys(p), repeat([x], n_meshes))), color)
         end
@@ -34,7 +34,7 @@ function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{RefMeshes}})
     end
 
     # Parsing the colors in the dictionary into Colorants:
-    new_color = Dict{Int,Union{Colorant,Vector{<:Colorant}}}([k => isa(v, AbstractArray) ? parse.(Colorant, v) : parse(Colorant, v) for (k, v) in colorant[]])
+    new_color = Dict{String,Union{Colorant,Vector{<:Colorant}}}([k => isa(v, AbstractArray) ? parse.(Colorant, v) : parse(Colorant, v) for (k, v) in colorant[]])
 
     if length(colorant[]) != n_meshes
         ref_cols = get_ref_meshes_color(plot[:object][])
@@ -44,7 +44,7 @@ function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{RefMeshes}})
         end
     end
 
-    for (key, value) in enumerate(p)
-        MeshesMakieExt.viz!(plot, value, color=new_color[key], segmentcolor=plot[:segmentcolor], showsegments=plot[:showsegments], colormap=plot[:colormap])
+    for (name, refmesh) in p
+        MeshesMakieExt.viz!(plot, refmesh, color=new_color[name], segmentcolor=plot[:segmentcolor], showsegments=plot[:showsegments], colormap=plot[:colormap])
     end
 end

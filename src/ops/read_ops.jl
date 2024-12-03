@@ -44,20 +44,33 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG)
     scene = Node(mtg_type("/", "Scene", 1, 0), MultiScaleTreeGraph.init_empty_attr(attr_type))
     scene.scene_dimensions = scene_dimensions
 
-    max_id = Ref(0)
-    ref_meshes = RefMeshes(RefMesh[])
-    # Dict to store the first index of the ref_meshes in the scene.ref_meshes according to the object_table.filePath
-    # Note that if several plants share the same opf, the ref_meshes will not be duplicated with this method.
-    ref_meshes_length_before = Dict{String,Int}()
+    node_max_id = Ref(0)
+
+    # Reading all the OPF files, but only once if they are used several times in the scene.
+    # If they do, we make a deep copy of the original OPF:
+    opfs = Node[]
+    opf_orig_position = Dict{String,Int}()
     for row in Tables.rows(object_table)
         opf_file = row.filePath
-        opf = read_opf(joinpath(dirname(file), opf_file), attr_type=attr_type, mtg_type=mtg_type, read_id=false, max_id=max_id)
-
-        # The first time we encounter the opf file, we store the index of the first ref_mesh in the scene.ref_meshes:
-        if !haskey(ref_meshes_length_before, opf_file)
-            ref_meshes_length_before[opf_file] = length(ref_meshes)
-            append!(ref_meshes, opf.ref_meshes)
+        # If the OPF has not been copied yet, we use it as is, else we make a new one based on a copy of the original:
+        if haskey(opf_orig_position, opf_file)
+            opf = deepcopy(opfs[opf_orig_position[opf_file]])
+            traverse!(opf) do node
+                setfield!(node, :id, node_max_id[])
+                node_max_id[] += 1
+            end
+            push!(opfs, opf)
+        else
+            opf = read_opf(joinpath(dirname(file), opf_file), attr_type=attr_type, mtg_type=mtg_type, read_id=false, max_id=node_max_id)
+            delete!(node_attributes(opf), :ref_meshes)
+            push!(opfs, opf)
+            opf_orig_position[opf_file] = length(opfs)
         end
+    end
+    #! Important: we need to do this before the code below, because we need the OPFs without transformations first.
+
+    for (i, row) in enumerate(Tables.rows(object_table))
+        opf = opfs[i]
 
         # Initialize the scene transformation for this OPF:
         scene_transformation = Identity()
@@ -79,13 +92,11 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG)
         end
 
         if row.pos !== Meshes.Point(0.0, 0.0, 0.0)
-
             pos = Unitful.uconvert.(u"cm", Meshes.to(row.pos)) # the OPF is in cm.
             scene_transformation = scene_transformation → Translate(pos...)
         end
 
         traverse!(opf, filter_fun=node -> !isnothing(node.geometry)) do node
-            node.geometry.ref_mesh_index += ref_meshes_length_before[opf_file]
             scene_transformation != Identity() && transform_mesh!(node, scene_transformation)
         end
 
@@ -93,19 +104,16 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG)
         opf.sceneID = row.sceneID
         opf.functional_group = row.functional_group
         opf.plantID = row.plantID
-        opf.filePath = opf_file
+        opf.filePath = row.filePath
         opf.pos = row.pos
         opf.scale = row.scale
         opf.inclinationAzimut = row.inclinationAzimut
         opf.inclinationAngle = row.inclinationAngle
         opf.rotation = row.rotation
-
-        delete!(node_attributes(opf), :ref_meshes)
         addchild!(scene, opf)
     end
 
     # Add the scene quadrangle to the scene:
-
     p_0 = Unitful.uconvert.(u"cm", Meshes.to(scene_dimensions[1])) # m (scene) to cm (OPF)
     p_max = Unitful.uconvert.(u"cm", Meshes.to(scene_dimensions[2]))
 
@@ -113,11 +121,11 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG)
     c = Meshes.connect.([(1, 2, 3), (3, 4, 1)])
     scene_quadrangle = Meshes.SimpleMesh(p, c)
 
-    # Note: could also used `Meshes.Quadrangle` but then we need to discreatize it.
+    # Note: could also used `Meshes.Quadrangle` but then we need to discretize it.
     scene_refmesh = RefMesh("Scene", scene_quadrangle, RGBA(159 / 255, 182 / 255, 205 / 255, 0.1))
-    push!(ref_meshes, scene_refmesh)
-    scene.geometry = geometry(scene_refmesh, length(ref_meshes))
-    scene.ref_meshes = ref_meshes
+    scene.geometry = Geometry(ref_mesh=scene_refmesh)
+    # push!(ref_meshes, scene_refmesh)
+    # scene.ref_meshes = ref_meshes
 
     return scene
 end
