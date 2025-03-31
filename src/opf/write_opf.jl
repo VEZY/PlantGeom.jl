@@ -33,7 +33,7 @@ function write_opf(file, mtg)
     meshBDD = addelement!(opf_elm, "meshBDD")
 
     if mtg[:ref_meshes] === nothing
-        error("No reference meshes found in the MTG.")
+        mtg[:ref_meshes] = get_ref_meshes(mtg)
     end
 
     for (key, mesh_) in enumerate(mtg[:ref_meshes])
