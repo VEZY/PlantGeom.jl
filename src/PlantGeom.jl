@@ -53,6 +53,7 @@ include("colors/colors.jl")
 include("colors/get_mtg_color.jl")
 include("opf/mtg_recipe_helpers.jl")
 include("opf/diagram.jl")
+include("mesh_simplification.jl")
 include("deprecated.jl")
 
 # function viz2 end
