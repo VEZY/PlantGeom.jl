@@ -1,7 +1,7 @@
 # Merging Fine-Scale Geometry
 
 ```@setup merge_geometry
-using PlantGeom, CairoMakie
+using PlantGeom, CairoMakie, Statistics
 CairoMakie.activate!()
 mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf"))
 ```
@@ -118,6 +118,7 @@ The visual result is still the same, but now the MTG structure has been simplifi
 The performance improvements from merging geometry can be substantial:
 
 ```@example merge_geometry
+using Statistics
 # Run benchmarks (would be better to use BenchmarkTools, but this is an approximation)
 original_time = @time viz(mtg)
 merged1_time = @time viz(mtg_merged1)

@@ -1,9 +1,10 @@
 using CairoMakie
 using Meshes
 using PlantGeom
+using Statistics
 using Documenter
 
-DocMeta.setdocmeta!(PlantGeom, :DocTestSetup, :(using PlantGeom; using MultiScaleTreeGraph; using JSServe); recursive=true)
+DocMeta.setdocmeta!(PlantGeom, :DocTestSetup, :(using PlantGeom; using MultiScaleTreeGraph; using JSServe; using Statistics); recursive=true)
 
 makedocs(;
     modules=[PlantGeom],
