@@ -39,6 +39,8 @@ using Plots # Add this dependency because else the tests on plot recipes return 
     include("test-plots-recipe.jl")
 end
 
+include("test-simplify_geometry.jl")
+
 if VERSION >= v"1.10"
     # Some formating changed in Julia 1.10, e.g. @NamedTuple instead of NamedTuple.
     @testset "Doctests" begin
