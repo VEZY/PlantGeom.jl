@@ -18,12 +18,13 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        "Plot recipes" => [
-            "MTG diagrams" => [
-                "Makie.jl" => "plot_diagram/makie_diagram.md",
-                "Plots.jl" => "plot_diagram/plots_diagram.md",
-            ],
-            "3D Makie recipes" => "makie_3d.md"
+        "2D diagrams" => [
+            "Makie.jl" => "plot_diagram/makie_diagram.md",
+            "Plots.jl" => "plot_diagram/plots_diagram.md",
+        ],
+        "3D recipes" => "makie_3d.md",
+        "Gemetry" => [
+            "Merging meshes" => "geometry/merging_geometry.md",
         ],
         "API" => "API.md"
     ]
