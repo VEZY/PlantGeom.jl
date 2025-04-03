@@ -120,21 +120,14 @@ The performance improvements from merging geometry can be substantial:
 ```@example merge_geometry
 using Statistics
 # Run benchmarks (would be better to use BenchmarkTools, but this is an approximation)
-original_time = @time viz(mtg)
-merged1_time = @time viz(mtg_merged1)
-merged2_time = @time viz(mtg_merged2)
-
-# Create a comparison table
-data = [
-    "Original Model" median(original_time).time / 1e6
-    "Merged (Keeping Nodes)" median(merged1_time).time / 1e6
-    "Merged (Nodes Deleted)" median(merged2_time).time / 1e6
-]
+original_time = @elapsed viz(mtg)
+merged1_time = @elapsed viz(mtg_merged1)
+merged2_time = @elapsed viz(mtg_merged2)
 
 # Display the table
-table_fig = Figure(size=(500, 200))
-ax = Axis(table_fig[1, 1], title="Rendering Time (ms)")
-barplot(1:3, data[:, 2], axis=(xticks=(1:3, data[:, 1]),))
+table_fig = Figure(size=(600, 200))
+ax = Axis(table_fig[1, 1], title="Rendering Time (ms)", xticks = (1:3, ["Original Model", "Merged (Keeping Nodes)", "Merged (Nodes Deleted)"]))
+barplot!(ax, 1:3, [original_time, merged1_time, merged2_time])
 table_fig
 ```
 
