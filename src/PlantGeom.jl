@@ -26,6 +26,7 @@ import EzXML: eachelement, nodename, nodecontent, elements
 import EzXML: XMLDocument, ElementNode, setroot!, addelement!, hasnodename
 import EzXML: prettyprint # to remove
 import StaticArrays: SMatrix, SVector
+import StaticArrays
 import LinearAlgebra: I, UniformScaling, Diagonal # Used for geometry parsing in OPF
 import RecipesBase
 import Base
@@ -53,6 +54,7 @@ include("colors/colors.jl")
 include("colors/get_mtg_color.jl")
 include("opf/mtg_recipe_helpers.jl")
 include("opf/diagram.jl")
+include("mesh_simplification.jl")
 include("deprecated.jl")
 
 # function viz2 end
@@ -61,6 +63,8 @@ include("deprecated.jl")
 # 3D Plotting (OPF):
 export get_ref_meshes
 export viz, viz!
+
+export merge_children_geometry!
 
 export diagram, diagram!
 

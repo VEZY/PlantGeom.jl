@@ -48,6 +48,12 @@ get_mtg_color(Dict(1 => :burlywood4, 2 => :springgreen4), opf)
 function get_mtg_color(color, opf)
     get_mtg_color(color_type(color, opf), color, opf)
 end
+# The function above is the one called by users, the ones below are the ones that search for the trait of the color (Holy trait pattern).
+
+# This is the default implementation to catch errors:
+function get_mtg_color(::Type{T}, color, opf) where {T}
+    error("The type used to define the color ($T) is not supported: $color")
+end
 
 function get_mtg_color(::Type{RefMeshColorantType}, color, opf)
     return RefMeshColorant()
@@ -59,6 +65,10 @@ end
 
 function get_mtg_color(::Type{T}, color, opf) where {T<:Symbol}
     return parse(Colorant, color)
+end
+
+function get_mtg_color(::Type{T}, color, opf) where {T<:Colorant}
+    return color
 end
 
 function get_mtg_color(::Type{DictRefMeshColorantType}, color, opf)
