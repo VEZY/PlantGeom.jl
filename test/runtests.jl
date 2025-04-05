@@ -44,7 +44,7 @@ include("test-simplify_geometry.jl")
 if VERSION >= v"1.10"
     # Some formating changed in Julia 1.10, e.g. @NamedTuple instead of NamedTuple.
     @testset "Doctests" begin
-        DocMeta.setdocmeta!(PlantGeom, :DocTestSetup, :(using PlantGeom; using MultiScaleTreeGraph; using JSServe); recursive=true)
+        DocMeta.setdocmeta!(PlantGeom, :DocTestSetup, :(using PlantGeom; using MultiScaleTreeGraph; using Bonito); recursive=true)
 
         # Testing the doctests, i.e. the examples in the docstrings marked with jldoctest:
         doctest(PlantGeom; manual=false)

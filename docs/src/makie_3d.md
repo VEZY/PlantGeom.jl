@@ -10,11 +10,11 @@ Here comes the fun part! We can make 3D representations of the plants based on t
 
 If you read your MTG from an OPF file, the 3D geometry should already be computed, so you just have to `viz()` the MTG.
 
-Because we're plotting the interactive plot in the webpage, we must use `JSServe` first (no need when using Julia from the REPL or VS Code):
+Because we're plotting the interactive plot in the webpage, we must use `Bonito` first (no need when using Julia from the REPL or VS Code):
 
 ```@example 1
-using JSServe
-Page(exportable=true, offline=true)
+using Bonito
+Page()
 ```
 
 Then we can plot our interactive 3D plant:
@@ -35,6 +35,8 @@ Note that the plot is interactive. This is because we use `WGLMakie` as a plotti
 
 ```@setup 2
 using PlantGeom, CairoMakie, MultiScaleTreeGraph
+using Bonito
+Page()
 CairoMakie.activate!()
 mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf"))
 transform!(mtg, refmesh_to_mesh!)
