@@ -27,10 +27,10 @@ makedocs(;
         ],
         "3D recipes" => "makie_3d.md",
         "Geometry" => [
-            "Geometry" => "geometry/geometry.md",
-            "RefMesh" => "geometry/refmesh.md",
-            "Mesh" => "geometry/mesh.md",
-            "Merging meshes" => "geometry/merging_geometry.md",
+            "Concepts" => "geometry/geometry.md",
+            "Reference Meshes" => "geometry/refmesh.md",
+            "Building Plant Models" => "geometry/building_plant_models.md",
+            "Merging Meshes" => "geometry/merging_geometry.md",
         ],
         "API" => "API.md"
     ]

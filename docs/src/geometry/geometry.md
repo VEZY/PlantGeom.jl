@@ -1,84 +1,70 @@
-# Geometry in PlantGeom
+# Geometry Concepts in PlantGeom
 
 ## Overview
 
-PlantGeom.jl provides a comprehensive framework for handling 3D geometries in plant architecture models. Geometry representation is a fundamental aspect of plant modeling that enables visualization, spatial analysis, and computation of physical processes like light interception or gas exchange.
+PlantGeom provides a framework for representing, manipulating, and visualizing 3D plant architecture. This page introduces the key concepts behind PlantGeom's approach to geometry handling.
 
 ## Reference Mesh Design Philosophy
 
-PlantGeom uses a memory-efficient approach based on a key biological observation: many plant organs of the same type (e.g., leaves on a tree) share a common shape that varies only in size, orientation, and position. Instead of storing complete mesh data for each organ, PlantGeom stores:
+Most plants contain many similar organs - think of hundreds of leaves on a tree that share the same basic shape but differ in size and orientation. PlantGeom leverages this biological pattern through its **reference mesh** approach:
 
-1. A **reference mesh** that represents the canonical shape of the organ
-2. A **transformation matrix** for each instance of the organ that scales, rotates, and positions it appropriately
+1. Define a single **reference mesh** for each organ type (e.g., a generic leaf shape)
+2. Apply **transformations** (scaling, rotation, translation) to position each instance
 
-This approach significantly reduces memory usage and file sizes, especially for complex plant models with thousands of similar organs.
+This approach offers significant benefits:
 
-When an organ's shape cannot be easily represented by transforming a reference mesh (e.g., wheat leaves with complex curvature), PlantGeom can fall back to storing the complete mesh directly. In this case, the reference mesh becomes the specific mesh for that organ, and the transformation matrix is the identity (no transformation).
+- **Memory efficiency**: Store one mesh instead of hundreds of copies
+- **Smaller file sizes**: OPF files store only unique reference meshes plus transformations
+- **Performance**: Operations can be applied to reference meshes once rather than to many instances
 
-## Geometry Types
+For highly specialized shapes that can't be derived from a reference (like wheat leaves with complex curvatures), PlantGeom can still use direct mesh representations.
 
-In PlantGeom, plant geometries are primarily represented using mesh structures, which can be associated with different components of a plant's architecture stored in a Multi-scale Tree Graph (MTG).
+## Key Components
 
-The main geometry types include:
+PlantGeom's geometry system consists of three main components:
 
-1. **Geometry**: A container type that holds different geometric representations
-2. **RefMesh**: A reference mesh that includes metadata and the actual mesh
-3. **SimpleMesh**: The underlying mesh data structure (from [Meshes.jl](https://github.com/JuliaGeometry/Meshes.jl))
+1. **RefMesh**: A reference mesh with a unique identifier and the mesh data
+2. **Geometry**: A container that links a RefMesh to a node and stores transformation information
+3. **Transformations**: Operations that scale, rotate, and position instances of reference meshes
 
-## Associating Geometry with MTG Components
+## MTG Integration
 
-Geometry is typically associated with specific nodes in an MTG structure using the `:geometry` attribute:
+Geometries in PlantGeom are attached to nodes in a Multi-scale Tree Graph (MTG) that represents plant topology:
 
 ```julia
-# Set geometry for a node
-node.geometry = Geometry(ref_mesh=some_ref_mesh)
-
-# Check if a node has geometry
-has_geometry = haskey(node, :geometry)
-
-# Access the geometry
-mesh = node.geometry.ref_mesh.mesh
+# Attaching geometry to an MTG node
+node.geometry = Geometry(ref_mesh=some_ref_mesh, transformation=some_transformation)
 ```
 
-## Common Operations
+## Documentation Structure
 
-PlantGeom.jl leverages the functionality of the [Meshes.jl](https://github.com/JuliaGeometry/Meshes.jl) package for core mesh operations. This provides access to a wide range of geometric algorithms and data structures.
+To learn more about PlantGeom's geometry features:
 
-It also leverages Rotations.jl and TransformsBase.jl for rotations and other transformations, and for applying and reversing sequential transformation operations. The following operations are commonly performed on geometries:
+- **Reference Meshes**: Learn how to create and work with reference meshes
+- **Building Plant Models**: Step-by-step guide to constructing complete plant geometries
+- **Merging Meshes**: Tools for combining geometries at different scales
 
-- **Creating meshes**: Functions for generating basic shapes or reading meshes from files, performed using [Meshes.jl](https://github.com/JuliaGeometry/Meshes.jl), or meshes can be created from other specialized software (*e.g.* Blender)
-- **Transforming meshes**: Functions for scaling, rotating (see Rotations.jl and TransformsBase.jl), and translating meshes, again performed using the Meshes.jl package
-- **Merging meshes**: Combining multiple meshes into a single mesh (e.g., merging leaf meshes into a single leaf mesh). PlantGeom provides `merge_children_geometry!` for that purpose
-- **Analyzing meshes**: Computing properties like area, volume, or bounding boxes, which can be done using the Meshes.jl package
+## File Format Support
 
-## File Formats
+PlantGeom works with several file formats:
 
-PlantGeom can inport and export in the OPS and OPF formats. It can also read and write meshes to various common file formats using Meshes.jl, including:
+- **OPF**: Open Plant Format - combines MTG structure and geometry efficiently
+- **OBJ/PLY/STL**: Common 3D mesh formats
 
-- **OBJ**: A common 3D geometry format
-- **PLY**: Polygon File Format
-- **STL**: Standard Triangle Language
-- **OPF**: Open Plant Format (combines MTG structure and geometry)
-- ...
-
-The OPF file format specifically leverages the reference mesh concept, storing only the unique reference meshes and the transformation matrices for each node with geometry. This approach significantly reduces file sizes compared to storing complete mesh data for each organ.
-
-## Visualization
-
-Geometries in PlantGeom can be visualized using various Makie.jl backends. For example, we can visualize a plant's geometry using the following code:
+## Basic Usage Example
 
 ```julia
 using PlantGeom
-using CairoMakie # Could be GLMakie (GPU) or WGLMakie (web) instead
+using CairoMakie
 
-# Load an MTG with geometry
+# Load a plant model with geometry
 mtg = read_opf("path/to/plant.opf")
 
-# Visualize the geometry
+# Visualize
 fig = Figure()
 ax = Axis3(fig[1, 1])
 viz!(ax, mtg)
 fig
 ```
 
-See the [3D recipes](../makie_3d.md) section for more information on visualization options.
+For more visualization options, see the [3D recipes](../makie_3d.md) section.

@@ -1,4 +1,4 @@
-# Building Plant Geometries
+# Building Plant Models
 
 ```@setup buildgeom
 using PlantGeom, MultiScaleTreeGraph
