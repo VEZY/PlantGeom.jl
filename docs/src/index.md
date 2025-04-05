@@ -18,6 +18,8 @@ Note that PlantGeom reserves the `:geometry` attribute in the nodes (*e.g.* orga
 
 ```@setup animation
 using CairoMakie, Meshes, PlantGeom, MultiScaleTreeGraph # Note: CairoMakie must be loaded before PlantGeom to access the extensions
+using Bonito
+Page()
 opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 
 # First, we compute the 3D coordinates for each node in the MTG:

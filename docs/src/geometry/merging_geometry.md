@@ -2,6 +2,8 @@
 
 ```@setup merge_geometry
 using PlantGeom, CairoMakie, Statistics
+using Bonito
+Page()
 CairoMakie.activate!()
 mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf"))
 ```

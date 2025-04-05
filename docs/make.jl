@@ -4,7 +4,7 @@ using PlantGeom
 using Statistics
 using Documenter
 
-DocMeta.setdocmeta!(PlantGeom, :DocTestSetup, :(using PlantGeom; using MultiScaleTreeGraph; using JSServe; using Statistics); recursive=true)
+DocMeta.setdocmeta!(PlantGeom, :DocTestSetup, :(using PlantGeom; using MultiScaleTreeGraph; using Bonito; using Statistics); recursive=true)
 
 makedocs(;
     modules=[PlantGeom],
@@ -15,7 +15,9 @@ makedocs(;
         prettyurls=get(ENV, "CI", "false") == "true",
         canonical="https://VEZY.github.io/PlantGeom.jl",
         edit_link="main",
-        assets=String[]
+        assets=String[],
+        example_size_threshold=500000,
+        size_threshold=2_000_000,
     ),
     pages=[
         "Home" => "index.md",
@@ -24,7 +26,10 @@ makedocs(;
             "Plots.jl" => "plot_diagram/plots_diagram.md",
         ],
         "3D recipes" => "makie_3d.md",
-        "Gemetry" => [
+        "Geometry" => [
+            "Geometry" => "geometry/geometry.md",
+            "RefMesh" => "geometry/refmesh.md",
+            "Mesh" => "geometry/mesh.md",
             "Merging meshes" => "geometry/merging_geometry.md",
         ],
         "API" => "API.md"
