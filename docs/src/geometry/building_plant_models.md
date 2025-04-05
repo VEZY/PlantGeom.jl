@@ -2,12 +2,12 @@
 
 ```@setup buildgeom
 using PlantGeom, MultiScaleTreeGraph
-using WGLMakie, Colors
+using CairoMakie, Colors
 import TransformsBase: → # The → operator from TransformsBase composes transformations
 using Meshes, Rotations
 using Bonito
-Page()
-WGLMakie.activate!()
+# Page()
+CairoMakie.activate!()
 
 # Build reference meshes:
 cylinder = Meshes.CylinderSurface(Meshes.Point(0.0, 0.0, 0.0), Meshes.Point(0.0, 0.0, 1.0), 0.5) |> 
@@ -282,7 +282,7 @@ add_geometry!(mtg, refmesh_cylinder, refmesh_leaf)
 And finally, we can visualize our plant:
 
 ```@example buildgeom
-using PlantGeom, WGLMakie  # or GLMakie for interactive 3D, or CairoMakie for printing quality
+using PlantGeom, CairoMakie  # or GLMakie for interactive 3D, or WGLMakie for web
 
 # Visualize the plant
 fig = Figure()
