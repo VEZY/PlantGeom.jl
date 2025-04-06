@@ -13,6 +13,7 @@ Simplifies the geometry of a MultiScaleTreeGraph (MTG) by merging low-scale geom
   - `:nodes`: The nodes of type `from` will be deleted after merging.
   - `:geometry`: Only the geometry will be deleted, but the `from` nodes will remain in the MTG.
 - `child_link_fun`: A function that takes a parent node targeted for deletion and returns the new links for their children. Required if `delete` is `true`.
+- `verbose`: A boolean indicating if information should be returned when nodes or geometry was not found on expected nodes
 
 # Returns
 
@@ -22,7 +23,7 @@ Simplifies the geometry of a MultiScaleTreeGraph (MTG) by merging low-scale geom
 
 If no geometry is found in the children nodes of type `from`, an informational message is logged.
 """
-function merge_children_geometry!(mtg; from, into, delete=:nodes, child_link_fun=new_child_link)
+function merge_children_geometry!(mtg; from, into, delete=:nodes, child_link_fun=new_child_link, verbose=true)
     @assert into isa AbstractString """`into` must be a single string, e.g. "Leaf"."""
     @assert delete in (:none, :nodes, :geometry) """`delete` must be either `:nodes` or `:geometry`."""
     delete == :nodes && @assert child_link_fun isa Function """`child_link_fun` must be a function that takes a parent node targeted for deletion, and returns the new links for their children."""
@@ -35,11 +36,14 @@ function merge_children_geometry!(mtg; from, into, delete=:nodes, child_link_fun
         if isempty(meshes_vec)
             # First, test if we find any children nodes of type `from`:
             no_nodes_as_descendants = MultiScaleTreeGraph.descendants(node_into, symbol=from) |> isempty
-            if no_nodes_as_descendants
-                @info "No children nodes of type $from found in node $node_into"
-            else
-                @info "No geometry found in children nodes $from for node $node_into"
+            if verbose
+                if no_nodes_as_descendants
+                    @info "No children nodes of type $from found in node $node_into"
+                else
+                    @info "No geometry found in children nodes $from for node $node_into"
+                end
             end
+            return nothing
         end
         # Build a new reference mesh out of the children nodes
         ref_mesh = RefMesh(string(into, MultiScaleTreeGraph.node_id(node_into)), reduce(merge, meshes_vec))
