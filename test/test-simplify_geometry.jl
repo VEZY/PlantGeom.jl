@@ -2,7 +2,7 @@ mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "c
 
 @testset "merge_children_geometry!" begin
     @testset "delete= :none" begin
-        mtg1 = deepcopy(mtg1)
+        mtg1 = deepcopy(mtg)
         # Load the example OPF file
         @test !haskey(mtg1[1], :geometry)
         # Simplify geometry from "Metamer" and "Leaf" to "Axis" 
@@ -40,13 +40,14 @@ mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "c
 
     @testset "with node deletion" begin
         mtg3 = deepcopy(mtg)
-        @test length(mtg3) != length(mtg)
+        @test length(mtg3) == length(mtg)
         @test !haskey(mtg3[1], :geometry)
         # Simplify geometry from "Metamer" and "Leaf" to "Axis" 
         merge_children_geometry!(mtg3; from=["Metamer", "Leaf"], into="Axis", delete=:nodes, child_link_fun=new_child_link)
 
         # Verify the transformation
         @test haskey(mtg3[1], :geometry)
+        @test length(mtg3) != length(mtg)
 
         # Check that the nodes were deleted
         @test descendants(mtg3, symbol=["Metamer", "Leaf"]) |> isempty
