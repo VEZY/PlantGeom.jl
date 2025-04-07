@@ -14,7 +14,7 @@ Simplifies the geometry of a MultiScaleTreeGraph (MTG) by merging low-scale geom
   - `:geometry`: Only the geometry will be deleted, but the `from` nodes will remain in the MTG.
 - `verbose`: A boolean indicating if information should be returned when nodes or geometry was not found on expected nodes
 - `child_link_fun`: A function that takes a parent node targeted for deletion and returns the new links for their children. Required if `delete` is `true`. The
-default function is [`new_child_link`](@ref), which tries to be clever considering the parent and child links. See its help page for more information. If the link shouldn't be modified, use the `link` function instead.
+default function is `new_child_link`, which tries to be clever considering the parent and child links. See its help page for more information. If the link shouldn't be modified, use the `link` function instead.
 
 # Returns
 
