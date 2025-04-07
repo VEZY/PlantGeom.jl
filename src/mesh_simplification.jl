@@ -1,5 +1,5 @@
 """
-    merge_children_geometry!(mtg; from, into, delete=true, child_link_fun=new_child_link)
+    merge_children_geometry!(mtg; from, into, delete=:nodes, verbose=true, child_link_fun=x -> new_child_link(x, verbose))
 
 Simplifies the geometry of a MultiScaleTreeGraph (MTG) by merging low-scale geometries into an higher-scale geometry.
 
@@ -12,8 +12,9 @@ Simplifies the geometry of a MultiScaleTreeGraph (MTG) by merging low-scale geom
   - `:none`: No deletion will be performed, the geometry is merged into the `into` nodes, and also kept as before in the `from` nodes.
   - `:nodes`: The nodes of type `from` will be deleted after merging.
   - `:geometry`: Only the geometry will be deleted, but the `from` nodes will remain in the MTG.
-- `child_link_fun`: A function that takes a parent node targeted for deletion and returns the new links for their children. Required if `delete` is `true`.
 - `verbose`: A boolean indicating if information should be returned when nodes or geometry was not found on expected nodes
+- `child_link_fun`: A function that takes a parent node targeted for deletion and returns the new links for their children. Required if `delete` is `true`. The
+default function is [`new_child_link`](@ref), which tries to be clever considering the parent and child links. See its help page for more information. If the link shouldn't be modified, use the `link` function instead.
 
 # Returns
 
@@ -23,7 +24,7 @@ Simplifies the geometry of a MultiScaleTreeGraph (MTG) by merging low-scale geom
 
 If no geometry is found in the children nodes of type `from`, an informational message is logged.
 """
-function merge_children_geometry!(mtg; from, into, delete=:nodes, child_link_fun=new_child_link, verbose=true)
+function merge_children_geometry!(mtg; from, into, delete=:nodes, verbose=true, child_link_fun=x -> new_child_link(x, verbose))
     @assert into isa AbstractString """`into` must be a single string, e.g. "Leaf"."""
     @assert delete in (:none, :nodes, :geometry) """`delete` must be either `:nodes` or `:geometry`."""
     delete == :nodes && @assert child_link_fun isa Function """`child_link_fun` must be a function that takes a parent node targeted for deletion, and returns the new links for their children."""

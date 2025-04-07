@@ -23,7 +23,7 @@ PlantGeom provides tools to merge fine-scale geometries into coarser representat
 The `merge_children_geometry!` function allows you to merge geometries from lower-scale nodes into higher-scale parent nodes without losing geometric detail.
 
 ```julia
-merge_children_geometry!(mtg; from, into, delete=:nodes, child_link_fun=new_child_link)
+merge_children_geometry!(mtg; from, into, delete=:nodes, verbose=true, child_link_fun=x -> new_child_link(x, verbose))
 ```
 
 ### Parameters
@@ -35,7 +35,8 @@ merge_children_geometry!(mtg; from, into, delete=:nodes, child_link_fun=new_chil
   - `:none`: Keep both the original nodes and their geometry.
   - `:geometry`: Keep the original nodes but remove their geometry (saves memory).
   - `:nodes`: Delete the original nodes entirely (requires a `child_link_fun`).
-- `child_link_fun`: A function that handles reconnecting children when nodes are deleted.
+- `verbose`: A boolean indicating whether to print progress messages.
+- `child_link_fun`: A function that handles reconnecting children when nodes are deleted. The default function is `new_child_link` from the MultiScaleTreeGraph.jl package, which tries to be clever on relinking the children nodes.
 
 ## Example: Merging Coffee Plant Geometry
 
