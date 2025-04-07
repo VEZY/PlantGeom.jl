@@ -17,7 +17,8 @@ makedocs(;
         edit_link="main",
         assets=String[],
         example_size_threshold=500000,
-        size_threshold=2_000_000,
+        size_threshold=2_500_000,
+        size_threshold_warn=2_500_000,
     ),
     pages=[
         "Home" => "index.md",
