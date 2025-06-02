@@ -173,9 +173,14 @@ function attribute_range(mtg, attr; ustrip=false)
             ignore_nothing=true
         )
 
-    if length(vals[1]) == 1
+    if first(vals) isa Symbol || first(vals) isa Colorant
+        # If the attribute value is already a colorant or a symbol, return their unique values
+        return unique(vals)
+    elseif length(vals[1]) == 1
+        # vals is a vector of values
         range_val = extrema(vals)
     else
+        # vals is a vector of vectors, we need to compute the range of ranges
         vals_no_nothing = filter(x -> x !== nothing, vals)
         if length(vals_no_nothing) == 0
             error("No value for attribute $attr_name (all values are nothing).")
