@@ -16,6 +16,11 @@ struct VectorColorant
     colors::Vector{Colorant}
 end
 
+struct VectorSymbol
+    colors::Vector{Symbol}
+end
+
+
 """
     get_mtg_color(color, opf)
 
@@ -84,4 +89,8 @@ end
 
 function get_mtg_color(::Type{VectorColorantType}, color, opf)
     return VectorColorant(color)
+end
+
+function get_mtg_color(::Type{VectorSymbolType}, color, opf)
+    return VectorSymbol(color)
 end

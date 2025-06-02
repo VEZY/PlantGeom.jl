@@ -14,6 +14,7 @@ struct AttributeColorantType end
 struct DictRefMeshColorantType end
 struct DictVertexRefMeshColorantType end
 struct VectorColorantType end
+struct VectorSymbolType end
 
 color_type(color::T, opf) where {T<:Colorant} = T
 
@@ -78,10 +79,19 @@ function color_type(color::T, opf) where {T<:AbstractDict}
     end
 end
 
-function color_type(color::T, opf) where {T<:AbstractVector}
+function color_type(color::T, opf) where {T<:AbstractVector{<:Colorant}}
     return VectorColorantType
+end
+
+function color_type(color::T, opf) where {T<:AbstractVector{<:Symbol}}
+    return VectorSymbolType
+end
+
+function color_type(color::T, opf) where {T<:AbstractVector}
+    error("The type of the color vector is not supported: $T. Please use a vector of Colorants or Symbols instead.")
 end
 
 need_colorbar(color, opf) = false
 need_colorbar(color::AttributeColorantType, opf) = true
 need_colorbar(color::VectorColorantType, opf) = true
+need_colorbar(color::VectorSymbolType, opf) = true

@@ -57,6 +57,9 @@ function get_color(var, range_var, index::I=1; colormap=colorschemes[:viridis]) 
     get(colormap, (Unitful.ustrip(var) - range_var[1]) / (range_var[2] - range_var[1]))
 end
 
+function get_color(var::T, range_var, index::I=1; colormap=colorschemes[:viridis]) where {I<:Integer,T<:Union{Symbol,Colorant}}
+    var
+end
 
 function mtg_XYZ_color(mtg, color, edge_color, colormap; color_missing=RGBA(0, 0, 0, 0.3))
     if Symbol(color) in get_attributes(mtg)

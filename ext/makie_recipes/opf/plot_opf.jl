@@ -97,6 +97,31 @@ function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, l
     any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
 end
 
+# Case where the color is a vector of colors / symbols (e.g. `fill(:red, length(mtg))`):
+function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, link) where {T<:Union{PlantGeom.VectorColorant,PlantGeom.VectorSymbol}}
+    color_attr_name = MultiScaleTreeGraph.cache_name("Color name")
+    any_node_selected = Ref(false)
+    i = Ref(0) # index to access the color vector
+
+    MultiScaleTreeGraph.traverse!(plot[:object][]; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
+        i[] += 1
+        any_node_selected[] = true
+        # get the color based on a colormap and the normalized attribute value
+        node[color_attr_name] = Makie.lift(x -> x.colors[i[]], colorant)
+        MeshesMakieExt.viz!(
+            plot,
+            node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
+            color=node[color_attr_name],
+            segmentcolor=plot[:segmentcolor],
+            showsegments=plot[:showsegments],
+            segmentsize=plot[:segmentsize],
+            alpha=plot[:alpha],
+            colormap=plot[:colormap],
+        )
+    end
+    any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
+end
+
 # Case where the color is a color for each reference mesh:
 function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, link) where {T<:Union{RefMeshColorant,DictRefMeshColorant,DictVertexRefMeshColorant}}
     color_attr_name = MultiScaleTreeGraph.cache_name("Color name")
