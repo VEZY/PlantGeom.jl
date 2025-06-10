@@ -42,7 +42,10 @@ jobs:
         if: matrix.os == 'windows-latest' && matrix.version == '1.9'
         shell: julia --color=yes {0}
         run: |
-          Base.compilecache(Base.identify_package("GR"))
+          using Pkg
+          Pkg.activate(pwd())
+          Pkg.add("GR")
+          Pkg.build("GR")
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
