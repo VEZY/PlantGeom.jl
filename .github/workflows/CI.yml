@@ -43,15 +43,9 @@ jobs:
         shell: julia --color=yes {0}
         run: |
           using Pkg
-          Pkg.activate(pwd())
-          Pkg.add("GR")
-          Base.compilecache(Base.identify_package("GR"))
-          try 
-            using GR
-          end
-          using GR
-          GR.GRPreferences.use_upstream_binary(; force = true)
-          # using GR; GR.GRPreferences.use_jll_binary()
+          Pkg.activate(; temp = true)
+          Pkg.add("GR_jll")
+          import GR_jll
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
