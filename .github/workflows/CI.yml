@@ -38,6 +38,11 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
+      - name: Manually compile GR for Windows Julia 1.9 # Remove if not needed anymore (had a bug in GR.jl that caused it to not compile properly on Windows Julia 1.9)
+        if: matrix.os == 'windows-latest' && matrix.version == '1.9'
+        shell: julia --color=yes {0}
+        run: |
+          Base.compilecache(Base.identify_package("GR"))
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
