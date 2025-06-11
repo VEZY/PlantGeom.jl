@@ -58,7 +58,7 @@ jobs:
           Write-Host "Setting GRDIR environment variable to $GR_INSTALL_PATH..."
           echo "GRDIR=$GR_INSTALL_PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-          Write-Host "GRDIR set. Contents of $GR_INSTALL_PATH:"
+          Write-Host "GRDIR set. Contents of ${GR_INSTALL_PATH}:"
           Get-ChildItem -Path $GR_INSTALL_PATH
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
