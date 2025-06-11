@@ -42,24 +42,27 @@ jobs:
         if: matrix.os == 'windows-latest' && matrix.version == '1.9'
         shell: powershell
         run: |
-          $GR_ZIP_URL = "https://gr-framework.org/downloads/gr-latest-Windows-x86_64.tar.gz"
+          $GR_TGZ_URL = "https://gr-framework.org/downloads/gr-latest-Windows-x86_64.tar.gz"
           $GR_INSTALL_PATH = "C:\GR_CI"
-          $GR_ZIP_FILE = Join-Path $env:TEMP "gr.zip"
+          $GR_TGZ_FILE = Join-Path $env:TEMP "gr.tar.gz"
 
-          Write-Host "Downloading GR from $GR_ZIP_URL..."
-          Invoke-WebRequest -Uri $GR_ZIP_URL -OutFile $GR_ZIP_FILE
+          Write-Host "Downloading GR from $GR_TGZ_URL..."
+          Invoke-WebRequest -Uri $GR_TGZ_URL -OutFile $GR_TGZ_FILE
 
           Write-Host "Creating GR installation directory: $GR_INSTALL_PATH..."
           New-Item -ItemType Directory -Force -Path $GR_INSTALL_PATH
 
-          Write-Host "Extracting $GR_ZIP_FILE to $GR_INSTALL_PATH..."
-          Expand-Archive -Path $GR_ZIP_FILE -DestinationPath $GR_INSTALL_PATH -Force
+          Write-Host "Extracting $GR_TGZ_FILE to $GR_INSTALL_PATH..."
+          tar -xzf $GR_TGZ_FILE -C $GR_INSTALL_PATH
 
-          Write-Host "Setting GRDIR environment variable to $GR_INSTALL_PATH..."
-          echo "GRDIR=$GR_INSTALL_PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-          Write-Host "GRDIR set. Contents of ${GR_INSTALL_PATH}:"
+          Write-Host "Setting GRDIR environment variable to $GR_INSTALL_PATH\gr..." # Assuming gr is a subdirectory after extraction
+          # List contents of $GR_INSTALL_PATH to confirm structure
           Get-ChildItem -Path $GR_INSTALL_PATH
+          # Adjust the path below if GR's main directory isn't 'gr' directly under $GR_INSTALL_PATH
+          echo "GRDIR=$GR_INSTALL_PATH\gr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          Write-Host "GRDIR set. Contents of ${GR_INSTALL_PATH}\gr:"
+          Get-ChildItem -Path "$GR_INSTALL_PATH\gr"
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
