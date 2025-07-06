@@ -107,3 +107,5 @@ viz, viz!
 function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{MultiScaleTreeGraph.Node}})
     plot_opf(plot)
 end
+
+Makie.preferred_axis_type(plot::MeshesMakieExt.Viz{<:Tuple{MultiScaleTreeGraph.Node}}) = Makie.LScene
