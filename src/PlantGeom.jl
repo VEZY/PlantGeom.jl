@@ -97,4 +97,15 @@ include("../ext/makie_recipes/opf_recipe.jl")
 include("../ext/makie_recipes/mtg_tree_recipe.jl")
 include("../ext/makie_recipes/colorbar.jl")
 
+function vplantviz end
+
+"""
+    viplantviz!(mtg; [options])
+
+Visualize the 3D meshes of an mtg using Meshes.jl and makie.
+This function adds the plot to an existing scene with `options` forwarded to [`plantviz`](@ref).
+"""
+function plantviz! end
+
+export plantviz, plantviz!
 end

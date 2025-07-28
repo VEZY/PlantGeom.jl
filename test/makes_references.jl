@@ -65,14 +65,14 @@ save("reference_images/opf_color_attribute.png", f)
 
 # Or even coloring by the value of the Z coordinates of each vertex:
 transform!(opf, :geometry => (x -> [Meshes.coords(i).z for i in Meshes.vertices(x.mesh)]) => :z, ignore_nothing=true)
-f, ax, p = viz(opf, color=:z, showsegments=true, color_vertex=true)
+f, ax, p = viz(opf, color=:z, showsegments=true)
 save("reference_images/opf_color_attribute_vertex.png", f)
 
-f, ax, p = viz(opf, color=:z, color_vertex=true)
+f, ax, p = viz(opf, color=:z)
 colorbar(f[1, 2], p)
 save("reference_images/opf_color_attribute_colorbar.png", f)
 
-f, ax, p = viz(opf, color=:z, colorrange=(0u"m", 50u"m"), color_vertex=true)
+f, ax, p = viz(opf, color=:z, colorrange=(0u"m", 50u"m"))
 colorbar(f[1, 2], p)
 save("reference_images/opf_color_attribute_colorbar_range.png", f)
 
