@@ -181,7 +181,7 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot, f, 
     #! Important note: we use `opf` here and not `$opf` because the code below will modify the OPF, and we don't want to trigger
     #! this again on change, as it will do a stack overflow error (infinite recursion).
 
-    index = plot[:index]
+    index = Makie.lift(x -> isnothing(x) ? 1 : x, plot[:index])
 
     any_node_selected = Ref(false)
     # Make the plot, case where the color is a color for each reference mesh:
