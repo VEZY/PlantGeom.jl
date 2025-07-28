@@ -14,6 +14,29 @@ function get_colormap(colormap)
         error("colormap must be a ColorScheme")
     end
 end
+"""
+    get_color_range(colorrange, opf, colorant)
+
+Get the color range from the `colorrange` argument or from the MTG attribute.
+
+# Arguments
+
+- `colorrange`: the color range specified by the user, can be an Observable or a tuple of two values.
+- `opf`: the MTG object.
+- `colorant`: the color attribute to use for the range.
+
+# Returns
+
+- `colorrange`: the color range as a tuple of two values.
+"""
+function get_color_range(colorrange, opf, colorant)
+    if !isa(colorrange, Observables.Observable) && colorrange !== nothing
+        return colorrange
+    else
+        # If it's nothing, get the range from the mtg attribute:
+        return PlantGeom.attribute_range(opf, colorant, ustrip=true)
+    end
+end
 
 """
     get_color(var <: AbstractArray, range_var, colormap=colorschemes[:viridis])

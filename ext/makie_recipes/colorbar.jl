@@ -23,7 +23,7 @@ f
 """
 function PlantGeom.colorbar(parent, plotobject; kwargs...)
     color = plotobject.attributes.color
-    mtg = plotobject.converted[1]
+    mtg = plotobject[1]
 
     if !(typeof(mtg[]) <: MultiScaleTreeGraph.Node)
         error("This is not a plot of an MTG. Use Makie.Colorbar instead.")

@@ -5,11 +5,11 @@ meshes = get_ref_meshes(opf)
 transform!(opf, refmesh_to_mesh!)
 @testset "Makie recipes: reference meshes -> plot structure" begin
     f, ax, p = viz(meshes)
-    @test p.converted[1].val == meshes
+    @test p.converted.value[][1] == meshes
     @test typeof(p.plots[1]) <: Plot{Meshes.viz}
     aligned_meshes = PlantGeom.align_ref_meshes(meshes)
-    @test p.plots[1].converted[1][] == aligned_meshes["Mesh0"]
-    @test p.plots[2].converted[1][] == aligned_meshes["Mesh1"]
+    @test p.plots[1].converted.value[][1] == aligned_meshes["Mesh0"]
+    @test p.plots[2].converted.value[][1] == aligned_meshes["Mesh1"]
 end
 
 @testset "Makie recipes: reference meshes -> image references" begin
@@ -63,6 +63,7 @@ end
     @test p.attributes.colorrange[] == (0, 0.2)
     colorbar(fig[1, 2], p)
     p.colorrange = (0, 0.1)
+    @test p.attributes.colorrange[] == (0, 0.1)
 end
 
 @testset "Makie recipes: change node color" begin

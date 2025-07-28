@@ -67,9 +67,9 @@ function plot_opf(plot)
         f = node -> node[:geometry] !== nothing
     end
 
-    symbol = hasproperty(plot, :symbol) ? plot[:symbol][] : nothing
-    scale = hasproperty(plot, :scale) ? plot[:scale][] : nothing
-    link = hasproperty(plot, :link) ? plot[:link][] : nothing
+    symbol = hasproperty(plot, :symbol) ? Makie.lift(x -> x, plot[:symbol]) : nothing
+    scale = hasproperty(plot, :scale) ? Makie.lift(x -> x, plot[:scale]) : nothing
+    link = hasproperty(plot, :link) ? Makie.lift(x -> x, plot[:link]) : nothing
 
     plot_opf(colorant, plot, f, symbol, scale, link)
 end
@@ -178,12 +178,9 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot, f, 
     color_vertex = hasproperty(plot, :color_vertex) ? plot[:color_vertex] : Observables.Observable(false)
     color_missing = hasproperty(plot, :color_missing) ? plot[:color_missing] : Observables.Observable(RGBA(0, 0, 0, 0.3))
 
-    if hasproperty(plot, :colorrange) && (!isa(plot[:colorrange], Observables.Observable) || plot[:colorrange][] !== nothing)
-        color_range = plot[:colorrange]
-    else
-        # Get the attribute values without nothing values:    
-        color_range = Makie.@lift PlantGeom.attribute_range($opf, $colorant, ustrip=true)
-    end
+    color_range = Makie.@lift get_color_range($(plot[:colorrange]), opf, $colorant)
+    #! Important note: we use `opf` here and not `$opf` because the code below will modify the OPF, and we don't want to trigger
+    #! this again on change, as it will do a stack overflow error (infinite recursion).
 
     if hasproperty(plot, :index)
         hasproperty(plot, :color_vertex) && error("The `index` argument can only be used when the colors are given for each mesh, not each vertex.")
