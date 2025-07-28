@@ -59,7 +59,7 @@ function plot_opf(plot)
     color = plot[:color]
 
     # Get the colors for the meshes:
-    colorant = Makie.@lift PlantGeom.get_mtg_color($color, $opf)
+    colorant = Makie.@lift PlantGeom.get_mtg_color($color, opf) #! not using `$opf` as it would trigger the computation of the color again on change, which is not what we want here.
 
     if hasproperty(plot, :filter_fun)
         f = node -> node[:geometry] !== nothing && plot[:filter_fun][](node)
@@ -67,6 +67,7 @@ function plot_opf(plot)
         f = node -> node[:geometry] !== nothing
     end
 
+    @show plot.attributes
     symbol = hasproperty(plot, :symbol) ? Makie.lift(x -> x, plot[:symbol]) : nothing
     scale = hasproperty(plot, :scale) ? Makie.lift(x -> x, plot[:scale]) : nothing
     link = hasproperty(plot, :link) ? Makie.lift(x -> x, plot[:link]) : nothing
@@ -124,6 +125,7 @@ end
 
 # Case where the color is a color for each reference mesh:
 function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, link) where {T<:Union{RefMeshColorant,DictRefMeshColorant,DictVertexRefMeshColorant}}
+
     color_attr_name = MultiScaleTreeGraph.cache_name("Color name")
 
     opf = plot[:object]
