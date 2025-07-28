@@ -104,7 +104,7 @@ function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{MultiScaleTreeGraph.Node}}
     plot_opf(plot, :object)
 end
 
-
+# Implementing our own plot recipe for PlantViz (plantviz and plantviz!):
 Makie.@recipe PlantViz (mtg,) begin
     color = :slategray3
     alpha = nothing
