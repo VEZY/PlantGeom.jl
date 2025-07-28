@@ -6,7 +6,8 @@ transform!(opf, refmesh_to_mesh!)
 @testset "Makie recipes: reference meshes -> plot structure" begin
     f, ax, p = plantviz(meshes)
     @test p.converted.value[][1] == meshes
-    @test typeof(p.plots[1]) <: Plot{plantviz}
+    @test typeof(p) <: Plot{plantviz,Tuple{Vector{RefMesh}}}
+    @test typeof(p.plots[1]) <: Plot{viz}
     aligned_meshes = PlantGeom.align_ref_meshes(meshes)
     @test p.plots[1].converted.value[][1] == aligned_meshes["Mesh0"]
     @test p.plots[2].converted.value[][1] == aligned_meshes["Mesh1"]
