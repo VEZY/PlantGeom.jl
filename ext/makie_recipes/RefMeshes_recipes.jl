@@ -1,12 +1,12 @@
-Makie.plottype(::Vector{RefMesh}) = MeshesMakieExt.Viz{<:Tuple{Vector{RefMesh}}}
-Makie.args_preferred_axis(::Vector{RefMesh}) = Makie.LScene
+Makie.plottype(::Vector{T}) where {T<:RefMesh} = MeshesMakieExt.Viz{<:Tuple{Vector{T}}}
+Makie.args_preferred_axis(::Union{T,Vector{T}}) where {T<:RefMesh} = Makie.LScene
 
-function Makie.plot!(plot::PlantViz{<:Tuple{Vector{RefMesh}}})
+function Makie.plot!(plot::PlantViz{<:Tuple{Union{T,Vector{T}}}}) where {T<:RefMesh}
     plot_refmesh(plot, :mtg)
 end
 
 # Documentation is in opf_recipe.jl
-function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{Vector{RefMesh}}})
+function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{Union{T,Vector{T}}}}) where {T<:RefMesh}
     @warn "The `viz` function is deprecated, use `plantviz` instead."
     plot_refmesh(plot, :object)
 end
@@ -14,7 +14,6 @@ end
 function plot_refmesh(plot, mtg_name=:mtg)
     # Mesh list:
     p = PlantGeom.align_ref_meshes(plot[mtg_name][])
-
     n_meshes = length(p)
 
     # Plot options:
@@ -54,6 +53,7 @@ function plot_refmesh(plot, mtg_name=:mtg)
     end
 
     for (name, refmesh) in p
+        @show name refmesh
         MeshesMakieExt.viz!(plot, refmesh, color=new_color[name], segmentcolor=plot[:segmentcolor], showsegments=plot[:showsegments], colormap=plot[:colormap])
     end
 end
