@@ -12,7 +12,7 @@ opf = read_opf(file)
 meshes = get_ref_meshes(opf)
 
 using GLMakie
-viz(meshes)
+plantviz(meshes)
 ```
 """
 function get_ref_meshes(mtg)
@@ -127,11 +127,11 @@ end
 
 
 """
-    align_ref_meshes(meshes::Vector{RefMesh})
+    align_ref_meshes(meshes::Vector{<:RefMesh})
 
 Align all reference meshes along the X axis. Used for visualisation only.
 """
-function align_ref_meshes(meshes::Vector{RefMesh})
+function align_ref_meshes(meshes::Vector{T}) where {T<:RefMesh}
     meshes_dict = Dict{String,Meshes.SimpleMesh}()
     trans = Translate(0.0, 0.0, 0.0)
 
@@ -147,10 +147,10 @@ function align_ref_meshes(meshes::Vector{RefMesh})
     return meshes_dict
 end
 
-
+align_ref_meshes(refmesh::T) where {T<:RefMesh} = Dict(refmesh.name => refmesh.mesh)
 
 """
-    get_ref_meshes_color(meshes::Vector{RefMesh})
+    get_ref_meshes_color(meshes::Vector{<:RefMesh})
 
 Get the reference meshes colors (only the diffuse part for now).
 
@@ -164,9 +164,11 @@ meshes = get_ref_meshes(opf)
 PlantGeom.get_ref_meshes_color(meshes)
 ```
 """
-function get_ref_meshes_color(meshes::Vector{RefMesh})
+function get_ref_meshes_color(meshes::Vector{T}) where {T<:RefMesh}
     Dict(i.name => material_single_color(i.material) for i in meshes)
 end
+
+get_ref_meshes_color(refmesh::T) where {T<:RefMesh} = Dict(refmesh.name => material_single_color(refmesh.material))
 
 function material_single_color(x::Phong)
     x.diffuse

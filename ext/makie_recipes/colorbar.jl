@@ -17,13 +17,13 @@ using GLMakie, MultiScaleTreeGraph, PlantGeom
 file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
 opf = read_opf(file)
 
-f, ax, p = viz(opf, color=:Length)
+f, ax, p = plantviz(opf, color=:Length)
 colorbar(f[1, 2], p)
 f
 """
 function PlantGeom.colorbar(parent, plotobject; kwargs...)
     color = plotobject.attributes.color
-    mtg = plotobject.converted[1]
+    mtg = plotobject[1]
 
     if !(typeof(mtg[]) <: MultiScaleTreeGraph.Node)
         error("This is not a plot of an MTG. Use Makie.Colorbar instead.")
@@ -36,8 +36,8 @@ function PlantGeom.colorbar(parent, plotobject; kwargs...)
         )
     end
 
-    # Because we extend the `Viz` type, we need to check if the user has given a color range.
-    # If we defined our own e.g. `PlantViz` type, we could have defined a `colorrange` field in it directly.
+    #! Because we extend the `Viz` type, we need to check if the user has given a color range.
+    #! If we defined our own e.g. `PlantViz` type, we could have defined a `colorrange` field in it directly.
 
     if hasproperty(plotobject.attributes, :colorrange) && (!isa(plotobject.attributes.colorrange, Observables.Observable) || plotobject.attributes.colorrange[] !== nothing)
         if isa(plotobject.attributes.colorrange, Observables.Observable)

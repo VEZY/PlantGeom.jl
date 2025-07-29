@@ -60,9 +60,9 @@ using PlantGeom
 using GeoIO
 
 # Read a mesh from a file: 
-geotable = GeoIO.load("fllower.ply")
+geotable = GeoIO.load("flower.ply")
 # Create a RefMesh from an existing mesh:
-ref_mesh = RefMesh("fllower", geotable.geometry)
+ref_mesh = RefMesh("flower", geotable.geometry)
 ```
 
 You can find an example for the trunk snags in [VPalm here](https://github.com/PalmStudio/VPalm.jl/blob/02f037beb816f76bfdae1eae60f740014ed0e398/src/geometry/snag.jl).
@@ -94,7 +94,7 @@ mesh = Meshes.SimpleMesh(mesh_vertices, mesh_faces)
 
 ref_mesh = RefMesh("plane", mesh)
 
-viz(mesh)
+plantviz(ref_mesh)
 ```
 
 This is used to create simple leaflets elements in [VPalm](https://github.com/PalmStudio/VPalm.jl/blob/896a25fba8810adb2b893c186223eb73cc94202d/src/geometry/plane.jl).
@@ -103,13 +103,13 @@ This is used to create simple leaflets elements in [VPalm](https://github.com/Pa
 
 You can also create a `RefMesh` directly from primitive shapes like spheres, cylinders, or cones. This is useful for quickly generating common geometric forms. The only thing to remember is to use the `discretize` function to create a mesh from the primitive shape, and then use the `simplexify` function to convert it to a triangulated mesh.
 
-To create a sphere: 
+To create a sphere:
 
 ```@example refmesh
 using Meshes
 sphere_mesh = Meshes.Sphere((0.0, 0.0, 0.0), 1.0) |> Meshes.discretize |> Meshes.simplexify
 sphere_refmesh = RefMesh("sphere_1", sphere_mesh)
-viz(sphere_refmesh.mesh)
+plantviz(sphere_refmesh)
 ```
 
 Or a cylinder:
@@ -118,7 +118,7 @@ Or a cylinder:
 cyl = Meshes.CylinderSurface((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), 0.5) |> Meshes.discretize |> Meshes.simplexify
 cylinder_refmesh = RefMesh("cylinder_1", cyl)
 
-viz(cylinder_refmesh.mesh)
+plantviz(cylinder_refmesh)
 ```
 
 ## Working with RefMesh
@@ -136,7 +136,7 @@ mesh = cylinder_refmesh.mesh
 fieldnames(typeof(cylinder_refmesh))
 
 # Get vertices
-vertices = coordinates(cylinder_refmesh.mesh)
+verts = vertices(cylinder_refmesh.mesh)
 
 # Get faces
 faces = Meshes.topology(cylinder_refmesh.mesh)

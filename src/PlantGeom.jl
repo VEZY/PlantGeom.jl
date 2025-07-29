@@ -86,15 +86,19 @@ export colorbar
 
 export get_transformation_matrix
 
+# Defining the main functions for PlantViz:
+include("plantviz.jl")
+export plantviz, plantviz!
 
 # Code that should be moved to PlantGeomMakie:
 import Makie
 MeshesMakieExt = Base.get_extension(Meshes, :MeshesMakieExt)
 
+include("../ext/makie_recipes/opf_recipe.jl")
 include("../ext/makie_recipes/RefMeshes_recipes.jl")
 include("../ext/makie_recipes/opf/plot_opf.jl")
-include("../ext/makie_recipes/opf_recipe.jl")
 include("../ext/makie_recipes/mtg_tree_recipe.jl")
 include("../ext/makie_recipes/colorbar.jl")
+
 
 end

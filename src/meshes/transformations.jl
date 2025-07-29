@@ -26,20 +26,23 @@ file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_pl
 opf = read_opf(file)
 
 # Visualize the mesh as is:
-viz(opf)
+plantviz(opf)
 
 # Copy the OPF, and translate the whole plant by 15 in the y direction (this is in cm, the mesh comes from XPlo):
+clean_cache!(opf) # Clean the cache to remove the observables that where cached by the previous `plantviz` call (necessary for the `deepcopy`).
 opf2 = deepcopy(opf)
 transform!(opf2, x -> transform_mesh!(x, Translate(0, 15, 0)))
-viz!(opf2) # Visualize it again in the same figure
+plantviz!(opf2) # Visualize it again in the same figure
 
 # Same but rotate the whole plant around the X axis:
+clean_cache!(opf)
 opf3 = deepcopy(opf)
 transform!(opf3, x -> transform_mesh!(x, Rotate(RotX(0.3))))
 # NB: we use Rotations.jl's RotX here. Input in radian, use rad2deg and deg2rad if needed.
-viz!(opf3)
+plantviz!(opf3)
 
 # Same but rotate only the second leaf around the Z axis:
+clean_cache!(opf)
 opf4 = deepcopy(opf)
 # Build the meshes from the reference meshes (need it because we want the coordinates of the parent):
 transform!(opf4, refmesh_to_mesh!)
@@ -57,8 +60,8 @@ transformation = recenter(Rotate(RotZ(1.0)), Point(0.0, 0.0, parent_zmax))
 transform_mesh!(leaf_node, transformation)
 
 # Plot the result:
-viz(opf)
-viz!(opf4)
+plantviz(opf)
+plantviz!(opf4)
 ```
 """
 function transform_mesh!(node::MultiScaleTreeGraph.Node, transformation)

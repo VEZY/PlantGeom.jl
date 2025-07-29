@@ -1,6 +1,4 @@
 Makie.plottype(::MultiScaleTreeGraph.Node) = MeshesMakieExt.Viz{<:Tuple{MultiScaleTreeGraph.Node}}
-Makie.args_preferred_axis(::MultiScaleTreeGraph.Node) = Makie.LScene
-
 
 """
     viz(opf::MultiScaleTreeGraph.Node; kwargs...)
@@ -21,8 +19,7 @@ can be called with the `transform!` function. See the examples below.
     - `colormap`: The colorscheme to be used for the plot. Can be a Symbol or a ColorScheme. 
     - `segmentcolor`: The color to be used for the facets. Should be a colorant or a symbol of color.
     - `showsegments`: A boolean indicating whether the facets should be shown or not.
-    - `color_missing`: The color to be used for missing values. Should be a colorant or a symbol of color.
-    - `color_vertex`: A boolean indicating whether the values in `color` (if colored by attributes) are defined for each vertex of the mesh, or for each mesh.
+    - `color_missing=RGBA(0, 0, 0, 0.3)`: The color to be used for missing values. Should be a colorant or a symbol of color.
     - `index`: An integer giving the index of the attribute value to be vizualised. This is useful when the attribute is a vector of values for *e.g.* each timestep.
     - `color_cache_name`: The name of the color cache. Should be a string (default to a random string).
     - `filter_fun`: A function to filter the nodes to be plotted. Should be a function taking a node as argument and returning a boolean.
@@ -30,8 +27,6 @@ can be called with the `transform!` function. See the examples below.
     - `scale`: Plot only nodes with this scale. Should be an Int or a vector of.
     - `link`: Plot only nodes with this link. Should be a String or a vector of.
     
-Note that `color_vertex` is set to `false` by default.
-
 # Examples
 
 ```julia
@@ -105,7 +100,42 @@ viz(meshes, color = Dict(2 => 1:nvertices(meshes)[2]))
 viz, viz!
 
 function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{MultiScaleTreeGraph.Node}})
-    plot_opf(plot)
+    @warn "The `viz!` function is deprecated, use `plantviz!` instead."
+    plot_opf(plot, :object)
 end
 
-Makie.preferred_axis_type(plot::MeshesMakieExt.Viz{<:Tuple{MultiScaleTreeGraph.Node}}) = Makie.LScene
+# Implementing our own plot recipe for PlantViz (plantviz and plantviz!):
+Makie.@recipe PlantViz (mtg,) begin
+    color = :slategray3
+    alpha = nothing
+    colormap = nothing
+    colorrange = nothing
+    showsegments = false
+    segmentcolor = :gray30
+    segmentsize = 1.5
+    showpoints = false
+    pointmarker = :circle
+    pointcolor = :gray30
+    pointsize = 4 #  use `pointsize = @inherit markersize` instead?
+    "An integer giving the index of the attribute value to be vizualised. This is useful when the attribute is a vector of values for *e.g.* each timestep."
+    index = nothing
+    "The name of the color cache. Should be a string (default to a random string)."
+    color_cache_name = nothing
+    "The color to be used for missing values. Should be a colorant or a symbol of color."
+    color_missing = RGBA(0, 0, 0, 0.3)
+    "Filter the MTG nodes to be plotted by symbol"
+    symbol = nothing
+    "Filter the MTG nodes to be plotted using a function that takes a node as argument and returns a boolean"
+    filter_fun = nothing
+    "Filter the MTG nodes to be plotted by scale"
+    scale = nothing
+    "Filter the MTG nodes to be plotted by link"
+    link = nothing
+    visible = true
+end
+
+Makie.args_preferred_axis(mtg::MultiScaleTreeGraph.Node) = Makie.LScene
+
+function Makie.plot!(plot::PlantViz{<:Tuple{MultiScaleTreeGraph.Node}})
+    plot_opf(plot, :mtg)
+end

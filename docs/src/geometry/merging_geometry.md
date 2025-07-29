@@ -56,7 +56,7 @@ mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "c
 # Visualize the original model
 fig = Figure(size=(600, 600))
 ax = Axis3(fig[1, 1], aspect=:data, title="Original Coffee Plant")
-viz!(ax, mtg)
+plantviz!(ax, mtg)
 hidedecorations!(ax)
 hidespines!(ax)
 fig
@@ -69,6 +69,8 @@ In this visualization, each metamer and leaf has its own individual mesh. This r
 We can merge the geometry from metamers and leaves up to the axis level while keeping the original node structure intact:
 
 ```@example merge_geometry
+mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "coffee.opf"))
+
 # Create a copy to preserve the original
 mtg_merged1 = deepcopy(mtg)
 
@@ -82,7 +84,7 @@ merge_children_geometry!(mtg_merged1;
 # Visualize the result
 fig = Figure(size=(600, 600))
 ax = Axis3(fig[1, 1], aspect=:data, title="Merged Geometry (Keeping Nodes)")
-viz!(ax, mtg_merged1)
+plantviz!(ax, mtg_merged1)
 hidedecorations!(ax)
 hidespines!(ax)
 fig
@@ -95,6 +97,8 @@ The plant looks identical, but the geometry is now stored at the axis level rath
 For even more streamlined representation, we can completely remove the lower-scale nodes:
 
 ```@example merge_geometry
+mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "coffee.opf"))
+
 # Create a copy to preserve the original
 mtg_merged2 = deepcopy(mtg)
 
@@ -108,7 +112,7 @@ merge_children_geometry!(mtg_merged2;
 # Visualize the result
 fig = Figure(size=(600, 600))
 ax = Axis3(fig[1, 1], aspect=:data, title="Merged Geometry (Nodes Deleted)")
-viz!(ax, mtg_merged2)
+plantviz!(ax, mtg_merged2)
 hidedecorations!(ax)
 hidespines!(ax)
 fig
@@ -123,9 +127,9 @@ The performance improvements from merging geometry can be substantial:
 ```@example merge_geometry
 using Statistics
 # Run benchmarks (would be better to use BenchmarkTools, but this is an approximation)
-original_time = @elapsed viz(mtg)
-merged1_time = @elapsed viz(mtg_merged1)
-merged2_time = @elapsed viz(mtg_merged2)
+original_time = @elapsed plantviz(mtg)
+merged1_time = @elapsed plantviz(mtg_merged1)
+merged2_time = @elapsed plantviz(mtg_merged2)
 
 # Display the table
 table_fig = Figure(size=(600, 200))
