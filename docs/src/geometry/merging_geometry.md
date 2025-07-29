@@ -69,6 +69,8 @@ In this visualization, each metamer and leaf has its own individual mesh. This r
 We can merge the geometry from metamers and leaves up to the axis level while keeping the original node structure intact:
 
 ```@example merge_geometry
+mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "coffee.opf"))
+
 # Create a copy to preserve the original
 mtg_merged1 = deepcopy(mtg)
 
@@ -95,6 +97,8 @@ The plant looks identical, but the geometry is now stored at the axis level rath
 For even more streamlined representation, we can completely remove the lower-scale nodes:
 
 ```@example merge_geometry
+mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "coffee.opf"))
+
 # Create a copy to preserve the original
 mtg_merged2 = deepcopy(mtg)
 
