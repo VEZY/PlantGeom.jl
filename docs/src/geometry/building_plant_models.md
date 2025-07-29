@@ -287,7 +287,7 @@ using PlantGeom, CairoMakie  # or GLMakie for interactive 3D, or WGLMakie for we
 # Visualize the plant
 fig = Figure()
 ax = Axis3(fig[1, 1], aspect=:data)
-viz!(ax, mtg)
+plantviz!(ax, mtg)
 fig
 ```
 

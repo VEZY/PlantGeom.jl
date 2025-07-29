@@ -11,7 +11,7 @@ The package is designed around [MultiScaleTreeGraph](https://github.com/VEZY/Mul
 The package provides different functionalities, the main ones being:
 
 - IO for the OPF file format (see [`read_opf`](@ref) and [`write_opf`](@ref));
-- plotting using `viz` and `viz!`, optionally using coloring by attribute;
+- plotting using `plantviz` and `plantviz!`, optionally using coloring by attribute;
 - mesh transformations using [`transform_mesh!`](@ref)
 
 Note that PlantGeom reserves the `:geometry` attribute in the nodes (*e.g.* organs). It uses it to store the 3D geometry as a special structure ([`Geometry`](@ref)).
@@ -45,7 +45,7 @@ ax1.title = "MultiscaleTreeGraph diagram"
 
 # And a 3d representation:
 
-viz!(opf, color = :z_vertex)
+plantviz!(opf, color = :z_vertex)
 
 # And making a little animation out of it:
 CairoMakie.record(f, "plant_animation.mp4", 1:120) do frame
@@ -85,7 +85,7 @@ ax1.title = "MultiscaleTreeGraph diagram"
 
 # And a 3d representation:
 
-viz!(opf, color = :z_vertex)
+plantviz!(opf, color = :z_vertex)
 
 # And making a little animation out of it:
 CairoMakie.record(f, "plant_animation.mp4", 1:120) do frame

@@ -35,13 +35,13 @@ file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant
 
 opf = read_opf(file)
 
-f, a, plot = viz(opf)
+f, a, plot = plantviz(opf)
 plot_opf(p)
 
-f, a, plot = viz(opf, color=:red)
+f, a, plot = plantviz(opf, color=:red)
 plot_opf(plot)
 
-f, a, plot = viz(opf, color=:Length)
+f, a, plot = plantviz(opf, color=:Length)
 plot_opf(plot)
 
 plot_opf(opf; color=Dict(1=>RGB(0.1,0.5,0.1), 2=>RGB(0.1,0.1,0.5)))

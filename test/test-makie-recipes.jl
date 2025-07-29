@@ -103,7 +103,7 @@ end
     @testset "Symbol" begin
         fig, ax, p = plantviz(opf, scale=3)
         @test_reference "reference_images/opf_basic.png" fig
-        # This is the same test as just viz(opf) because scale 3 is the only one with geometry
+        # This is the same test as just plantviz(opf) because scale 3 is the only one with geometry
 
         fig, ax, p = plantviz(opf, scale=3, color=:Length, colorrange=(0, 0.2))
         @test_reference "reference_images/opf_filter_scale_leaf_internode_colored_var.png" fig
@@ -113,13 +113,13 @@ end
     @testset "Link" begin
         fig, ax, p = plantviz(opf, link="+")
         @test_reference "reference_images/opf_filter_symbol_leaf.png" fig
-        # This is the same test as just `viz(opf, symbol="Leaf")` because only the leaves are branching
+        # This is the same test as just `plantviz(opf, symbol="Leaf")` because only the leaves are branching
     end
 
 
     @testset "Filter function" begin
         fig, ax, p = plantviz(opf, filter_fun=node -> link(node) == "+")
         @test_reference "reference_images/opf_filter_symbol_leaf.png" fig
-        # This is the same test as just `viz(opf, symbol="Leaf")` because only the leaves are branching
+        # This is the same test as just `plantviz(opf, symbol="Leaf")` because only the leaves are branching
     end
 end

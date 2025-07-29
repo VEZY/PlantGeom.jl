@@ -16,7 +16,7 @@ file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant
 opf = read_opf(file)
 write_opf("test.opf", opf)
 opf2 = read_opf("test.opf")
-viz(opf2)
+plantviz(opf2)
 ```
 """
 function write_opf(file, mtg)

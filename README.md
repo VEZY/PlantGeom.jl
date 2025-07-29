@@ -13,7 +13,7 @@ The package is designed around [MultiScaleTreeGraph](https://github.com/VEZY/Mul
 The package provides different functionalities, the main ones being:
 
 - IO for the OPF file format (see `read_opf` and `write_opf`);
-- plotting using `viz` and `viz!`, optionally using coloring by attribute;
+- plotting using `plantviz` and `plantviz!`, optionally using coloring by attribute;
 - mesh transformations using `transform_mesh!`
 
 Note that `:geometry` is a reserved attribute in nodes (*e.g.* organs) used for the 3D geometry. It is stored as a special structure (`Geometry`).
@@ -33,16 +33,16 @@ Plot the plant geometry:
 
 ```julia
 using GLMakie # Choose a Makie backend here.
-viz(mtg)
+plantviz(mtg)
 ```
 
-`viz` search for the `:geometry` attribute in the MTG nodes, and computes the meshes using the reference meshes and the transformation matrices to plot the 3d geometry of the plants.
+`plantviz` search for the `:geometry` attribute in the MTG nodes, and computes the meshes using the reference meshes and the transformation matrices to plot the 3d geometry of the plants.
 
 Colour by attribute, *e.g.* using the mesh max Z coordinates:
 
 ```julia
 transform!(mtg, refmesh_to_mesh!, zmax => :z_max, ignore_nothing = true)
-viz(mtg, color = :z_max)
+plantviz(mtg, color = :z_max)
 ```
 
 By design the 3D geometry of each node is stored in the `:geometry` attribute. It stores a reference mesh, a transformation matrix, and the resulting mesh. The resulting mesh is computed lazily, meaning it is computed only the first time it is needed. To compute it explicitly, you can use `refmesh_to_mesh!` (like above):

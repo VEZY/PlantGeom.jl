@@ -35,7 +35,7 @@ Node IDs of the OPFs are recomputed at import to ensure their uniqueness in the 
 
 ```julia
 using CairoMakie, PlantGeom
-joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene.ops") |> read_ops |> viz
+joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene.ops") |> read_ops |> plantviz
 ```
 """
 function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG)

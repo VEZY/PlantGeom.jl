@@ -12,7 +12,7 @@ opf = read_opf(file)
 meshes = get_ref_meshes(opf)
 
 using GLMakie
-viz(meshes)
+plantviz(meshes)
 ```
 """
 function get_ref_meshes(mtg)

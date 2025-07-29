@@ -63,7 +63,7 @@ mtg = read_opf("path/to/plant.opf")
 # Visualize
 fig = Figure()
 ax = Axis3(fig[1, 1])
-viz!(ax, mtg)
+plantviz!(ax, mtg)
 fig
 ```
 

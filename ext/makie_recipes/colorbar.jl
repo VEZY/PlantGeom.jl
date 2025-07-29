@@ -17,7 +17,7 @@ using GLMakie, MultiScaleTreeGraph, PlantGeom
 file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
 opf = read_opf(file)
 
-f, ax, p = viz(opf, color=:Length)
+f, ax, p = plantviz(opf, color=:Length)
 colorbar(f[1, 2], p)
 f
 """

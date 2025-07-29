@@ -94,7 +94,7 @@ mesh = Meshes.SimpleMesh(mesh_vertices, mesh_faces)
 
 ref_mesh = RefMesh("plane", mesh)
 
-viz(mesh)
+plantviz(mesh)
 ```
 
 This is used to create simple leaflets elements in [VPalm](https://github.com/PalmStudio/VPalm.jl/blob/896a25fba8810adb2b893c186223eb73cc94202d/src/geometry/plane.jl).
@@ -109,7 +109,7 @@ To create a sphere:
 using Meshes
 sphere_mesh = Meshes.Sphere((0.0, 0.0, 0.0), 1.0) |> Meshes.discretize |> Meshes.simplexify
 sphere_refmesh = RefMesh("sphere_1", sphere_mesh)
-viz(sphere_refmesh.mesh)
+plantviz(sphere_refmesh.mesh)
 ```
 
 Or a cylinder:
@@ -118,7 +118,7 @@ Or a cylinder:
 cyl = Meshes.CylinderSurface((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), 0.5) |> Meshes.discretize |> Meshes.simplexify
 cylinder_refmesh = RefMesh("cylinder_1", cyl)
 
-viz(cylinder_refmesh.mesh)
+plantviz(cylinder_refmesh.mesh)
 ```
 
 ## Working with RefMesh
