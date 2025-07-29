@@ -36,8 +36,8 @@ function PlantGeom.colorbar(parent, plotobject; kwargs...)
         )
     end
 
-    # Because we extend the `Viz` type, we need to check if the user has given a color range.
-    # If we defined our own e.g. `PlantViz` type, we could have defined a `colorrange` field in it directly.
+    #! Because we extend the `Viz` type, we need to check if the user has given a color range.
+    #! If we defined our own e.g. `PlantViz` type, we could have defined a `colorrange` field in it directly.
 
     if hasproperty(plotobject.attributes, :colorrange) && (!isa(plotobject.attributes.colorrange, Observables.Observable) || plotobject.attributes.colorrange[] !== nothing)
         if isa(plotobject.attributes.colorrange, Observables.Observable)
