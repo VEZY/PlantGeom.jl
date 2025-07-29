@@ -71,6 +71,8 @@ function plot_opf(plot, mtg_name=:mtg)
     link = hasproperty(plot, :link) ? plot[:link][] : nothing
 
     plot_opf(colorant, plot, f, symbol, scale, link, mtg_name)
+
+    return plot
 end
 
 # Case where the color is a colorant (e.g. `:red`, or `RGB(0.1,0.5,0.1)`):
@@ -84,16 +86,14 @@ function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, l
 
         MeshesMakieExt.viz!(
             plot,
+            Makie.Attributes(plot),
             node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
             color=node[color_attr_name],
-            segmentcolor=plot[:segmentcolor],
-            showsegments=plot[:showsegments],
-            segmentsize=plot[:segmentsize],
-            alpha=plot[:alpha],
-            colormap=plot[:colormap],
         )
     end
     any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
+
+    return plot
 end
 
 # Case where the color is a vector of colors / symbols (e.g. `fill(:red, length(mtg))`):
@@ -109,16 +109,14 @@ function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, l
         node[color_attr_name] = Makie.lift(x -> x.colors[i[]], colorant)
         MeshesMakieExt.viz!(
             plot,
+            Makie.Attributes(plot),
             node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
             color=node[color_attr_name],
-            segmentcolor=plot[:segmentcolor],
-            showsegments=plot[:showsegments],
-            segmentsize=plot[:segmentsize],
-            alpha=plot[:alpha],
-            colormap=plot[:colormap],
         )
     end
     any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
+
+    return plot
 end
 
 # Case where the color is a color for each reference mesh:
@@ -136,16 +134,14 @@ function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, l
         node[color_attr_name] = Makie.@lift color_from_refmeshes($colorant, node)
         MeshesMakieExt.viz!(
             plot,
+            Makie.Attributes(plot),
             node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
             color=node[color_attr_name],
-            segmentcolor=plot[:segmentcolor],
-            showsegments=plot[:showsegments],
-            segmentsize=plot[:segmentsize],
-            alpha=plot[:alpha],
-            colormap=plot[:colormap],
         )
     end
     any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
+
+    return plot
 end
 
 function color_from_refmeshes(color::RefMeshColorant, node)
@@ -198,15 +194,14 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot, f, 
 
         MeshesMakieExt.viz!(
             plot,
+            Makie.Attributes(plot),
             node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
             color=node[color_attr_name],
-            alpha=plot[:alpha],
-            segmentcolor=plot[:segmentcolor],
-            showsegments=plot[:showsegments],
             colormap=colormap,
-            segmentsize=plot[:segmentsize],
         )
     end
     any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
+
+    return plot
 end
 
