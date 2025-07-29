@@ -131,6 +131,7 @@ Makie.@recipe PlantViz (mtg,) begin
     scale = nothing
     "Filter the MTG nodes to be plotted by link"
     link = nothing
+    visible = true
 end
 
 Makie.args_preferred_axis(mtg::MultiScaleTreeGraph.Node) = Makie.LScene
