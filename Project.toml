@@ -1,7 +1,7 @@
 name = "PlantGeom"
 uuid = "5edaa67e-25db-4eb9-bf81-05d793b2238d"
 authors = ["remi.vezy <VEZY@users.noreply.github.com> and contributors"]
-version = "0.12.0"
+version = "0.13.0"
 
 [deps]
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
@@ -36,7 +36,7 @@ StaticArrays = "1"
 Tables = "1"
 TransformsBase = "1"
 Unitful = "1.17"
-julia = "1.9"
+julia = "1.10"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
