@@ -33,3 +33,30 @@ opf = read_opf("test/files/simple_plant.opf")
 refmesh_to_mesh!(opf)              # materialize per-node meshes
 fig, ax, plt = plantviz(opf)       # visualize
 ```
+
+## Color Mapping & Caching
+
+```text
+User input to plantviz(color=..., colormap=..., colorrange=...)
+          │
+          ▼
+  get_mtg_color / get_ref_meshes_color   get_colormap
+          │                                │
+          ▼                                ▼
+      get_color_range ◄──────────── optional user colorrange
+          │
+          ▼
+Per-node/mesh color values (may be Observables)
+          │             ┌─────────────────────────────────────────┐
+          ├────────────►│ Cache: UUIDs-based attribute on MTG    │
+          │             │ (e.g., :_cache_<hash>) holds Observables│
+          ▼             └─────────────────────────────────────────┘
+ Makie plot attributes (colormap, colorrange, color per segment)
+          │
+          ▼
+        plantviz recipe renders via Meshes/Makie
+```
+
+- Inputs: single color, `Dict("RefMeshName" => color)`, attribute symbol (e.g., `:z_max`), or per-vertex arrays.
+- Mapping: `get_colormap` resolves a `ColorScheme`; `get_color_range` derives or validates ranges; `get_color` maps values to colors.
+- Caching: color values may be wrapped in Observables and stored on nodes with a UUID-derived key to enable interactivity without recomputing.
