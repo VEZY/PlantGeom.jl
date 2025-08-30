@@ -22,6 +22,7 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Architecture" => "architecture.md",
         "2D diagrams" => [
             "Makie.jl" => "plot_diagram/makie_diagram.md",
             "Plots.jl" => "plot_diagram/plots_diagram.md",
