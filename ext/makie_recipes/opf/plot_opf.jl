@@ -103,6 +103,27 @@ function plot_opf_merged(colorant::Observables.Observable{T}, plot, f, symbol, s
     return plot
 end
 
+function plot_opf_merged(colorant::Observables.Observable{T}, plot, f, symbol, scale, link, mtg_name) where {T<:Union{PlantGeom.VectorColorant,PlantGeom.VectorSymbol}}
+    opf = plot[mtg_name][]
+    # Cache key based on solid color and filters
+    filter_fun_user = hasproperty(plot, :filter_fun) ? plot[:filter_fun][] : nothing
+    key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:solid, color_id=string(colorant[]),
+        symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
+
+    if (cached = PlantGeom.get_cached_scene(opf, key)) !== nothing
+        MultiScaleTreeGraph.get_root(opf)[:_scene_face2node] = cached.face2node
+        MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=Makie.lift(x -> x.colors, colorant))
+        return plot
+    end
+
+    merged_mesh, face2node = PlantGeom.build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
+    PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, face2node=face2node)
+    MultiScaleTreeGraph.get_root(opf)[:_scene_face2node] = face2node
+
+    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=Makie.lift(x -> x.colors, colorant))
+    return plot
+end
+
 # Fallback when merged mode is requested with unsupported color specs
 function plot_opf_merged(colorant, plot, f, symbol, scale, link, mtg_name)
     @warn "colorant type not supported: $colorant"

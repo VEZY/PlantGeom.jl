@@ -11,7 +11,7 @@ function build_merged_mesh(mtg; filter_fun=nothing, symbol=nothing, scale=nothin
         if node[:geometry] !== nothing
             any_node_selected[] = true
             m = node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh
-            m === nothing || push!(meshes, m)
+            m === nothing || push!(meshes, m) #! merge the nodes directly here? 
         end
     end
     any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
@@ -39,7 +39,7 @@ function build_merged_mesh_with_map(mtg; filter_fun=nothing, symbol=nothing, sca
             any_node_selected[] = true
             m = node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh
             if m !== nothing
-                push!(meshes, m)
+                push!(meshes, m) #! merge the nodes directly here? 
                 append!(face2node, fill(MultiScaleTreeGraph.node_id(node), Meshes.nelements(m)))
             end
         end
@@ -47,7 +47,7 @@ function build_merged_mesh_with_map(mtg; filter_fun=nothing, symbol=nothing, sca
     any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
     length(meshes) > 0 || error("No geometry meshes found to merge.")
 
-    merged_mesh = meshes[1]
+    merged_mesh = meshes[1] #! merge the nodes directly up there, or at least use reduce here
     for i in 2:length(meshes)
         merged_mesh = Meshes.merge(merged_mesh, meshes[i])
     end
