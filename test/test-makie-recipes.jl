@@ -68,19 +68,14 @@ end
 end
 
 @testset "Makie recipes: change node color" begin
-    # colors = traverse(opf, filter_fun=node -> hasproperty(node, :geometry), type=Observable{RGB{Colors.N0f8}}) do node
-    #     Observable(parse(Colorant, :blue))
-    # end
-
     colors = traverse(opf, filter_fun=node -> hasproperty(node, :geometry), type=RGB{Colors.N0f8}) do node
         parse(Colorant, :blue)
     end
-    test = Observable(colors)
-    fig, ax, p = plantviz(opf, color=test, colorrange=(0, 0.2))
-    test[][2] = :red
-    fig
-    p.color[][2] = :red # Make node 5 red
-
+    observable_colors = Observable(colors)
+    fig, ax, p = plantviz(opf, color=observable_colors, colorrange=(0, 0.2))
+    observable_colors[][2] = parse(Colorant, :red)
+    @test p.color[][2] == observable_colors[][2]
+    # Makie.update!(p, color=observable_colors[])
     @test_reference "reference_images/opf_color_attribute_observable_node.png" fig
 
     # Making the whole plot red:

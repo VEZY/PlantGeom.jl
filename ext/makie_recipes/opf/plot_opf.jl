@@ -110,9 +110,33 @@ function plot_opf_merged(colorant::Observables.Observable{T}, plot, f, symbol, s
     key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:solid, color_id=string(colorant[]),
         symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
 
+    # Helper to compute mapping from node id -> index in the user-provided color vector,
+    # using the same traversal and filters used to build the merged mesh and face2node.
+    function node_index_map()
+        ids = Int[]
+        MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
+            if node[:geometry] !== nothing
+                push!(ids, MultiScaleTreeGraph.node_id(node))
+            end
+        end
+        Dict(id => i for (i, id) in enumerate(ids))
+    end
+
     if (cached = PlantGeom.get_cached_scene(opf, key)) !== nothing
         MultiScaleTreeGraph.get_root(opf)[:_scene_face2node] = cached.face2node
-        MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=Makie.lift(x -> x.colors, colorant))
+        id2idx = node_index_map()
+        # Expand per-node colors to per-face colors using face2node mapping
+        face_colors = Makie.lift(colorant) do c
+            cols = c.colors
+            length(id2idx) == length(cols) || error("Vector color length (", length(cols), ") does not match number of selected nodes (", length(id2idx), ").")
+            # Preserve element type (Colorant or Symbol)
+            out = Vector{typeof(cols[1])}(undef, length(cached.face2node))
+            @inbounds for i in eachindex(cached.face2node)
+                out[i] = cols[id2idx[cached.face2node[i]]]
+            end
+            out
+        end
+        MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=face_colors)
         return plot
     end
 
@@ -120,7 +144,18 @@ function plot_opf_merged(colorant::Observables.Observable{T}, plot, f, symbol, s
     PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, face2node=face2node)
     MultiScaleTreeGraph.get_root(opf)[:_scene_face2node] = face2node
 
-    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=Makie.lift(x -> x.colors, colorant))
+    id2idx = node_index_map()
+    face_colors = Makie.lift(colorant) do c
+        cols = c.colors
+        length(id2idx) == length(cols) || error("Vector color length (", length(cols), ") does not match number of selected nodes (", length(id2idx), ").")
+        out = Vector{typeof(cols[1])}(undef, length(face2node))
+        @inbounds for i in eachindex(face2node)
+            out[i] = cols[id2idx[face2node[i]]]
+        end
+        out
+    end
+
+    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=face_colors)
     return plot
 end
 
