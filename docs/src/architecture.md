@@ -59,4 +59,13 @@ Per-node/mesh color values (may be Observables)
 
 - Inputs: single color, `Dict("RefMeshName" => color)`, attribute symbol (e.g., `:z_max`), or per-vertex arrays.
 - Mapping: `get_colormap` resolves a `ColorScheme`; `get_color_range` derives or validates ranges; `get_color` maps values to colors.
-- Caching: color values may be wrapped in Observables and stored on nodes with a UUID-derived key to enable interactivity without recomputing.
+- Caching: two layers exist:
+  - Per-node color caches (UUID-derived Observables) for interactive updates.
+  - Scene cache on the root (`:_scene_cache`) storing merged mesh, colors, and `face2node`. Invalidate with `bump_scene_version!(mtg)`.
+
+### Merged Mode (Performance)
+
+- Build: traverses nodes, transforms ref meshes, and merges using `Meshes.merge` into one `SimpleMesh`.
+- Colors: computes per-vertex colors once and passes a single color array to Makie.
+- Mapping: stores `:_scene_face2node` on root to map triangles back to node IDs.
+- Use: `plantviz(opf; merged=true, color=:z_max)`; invalidate cache after geometry/attribute changes via `bump_scene_version!(opf)`.

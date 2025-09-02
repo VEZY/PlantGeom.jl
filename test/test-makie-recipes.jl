@@ -68,10 +68,12 @@ end
 end
 
 @testset "Makie recipes: change node color" begin
-    fig, ax, p = plantviz(opf, color=:Length, colorrange=(0, 0.2))
-
-    leaf = get_node(opf, 5)
-    leaf[:_cache_d9b4f7f3c3467a55ad26f362065777c471aee4c7][] = parse(Colorant, :red)
+    fig, ax, p = plantviz(opf, color=:Length, colorrange=(0, 0.2), color_cache_name=:color_cache)
+    faces_node_5 = findall(face_id -> face_id == 5, opf._scene_face2node)
+    opf._scene_cache
+    # leaf = get_node(opf, 5)
+    leaf.leaf.var"Computed(:color_cache_name, #undef)"[] = parse(Colorant, :red)
+    # leaf[:_cache_d9b4f7f3c3467a55ad26f362065777c471aee4c7][] = parse(Colorant, :red)
 
     @test_reference "reference_images/opf_color_attribute_observable_node.png" fig
 

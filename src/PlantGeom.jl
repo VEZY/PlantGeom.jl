@@ -48,6 +48,7 @@ include("ops/read_ops.jl")
 include("ops/write_ops.jl")
 include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
+include("meshes/scene_merge.jl")
 include("plots_recipes/plots_recipe.jl")
 include("colors/get_color_type.jl")
 include("colors/colors.jl")
@@ -85,10 +86,24 @@ function colorbar end # Extended in PlantGeomMakie extension
 export colorbar
 
 export get_transformation_matrix
+export bump_scene_version!
+export default_merged, set_default_merged!
 
 # Defining the main functions for PlantViz:
 include("plantviz.jl")
 export plantviz, plantviz!
+
+# Global default for merged plotting (can be overridden via ENV or API)
+const _DEFAULT_MERGED = Base.RefValue(true)
+default_merged() = begin
+    v = get(ENV, "PLANTGEOM_MERGED", nothing)
+    if v === nothing
+        return _DEFAULT_MERGED[]
+    end
+    s = String(v)
+    s in ("1", "true", "TRUE", "yes", "YES")
+end
+set_default_merged!(b::Bool) = (_DEFAULT_MERGED[] = b)
 
 # Code that should be moved to PlantGeomMakie:
 import Makie

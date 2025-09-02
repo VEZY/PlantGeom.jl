@@ -16,6 +16,9 @@ The package provides different functionalities, the main ones being:
 - plotting using `plantviz` and `plantviz!`, optionally using coloring by attribute;
 - mesh transformations using `transform_mesh!`
 
+See the Architecture overview for a high-level data flow and performance notes:
+- Docs: https://VEZY.github.io/PlantGeom.jl/dev/architecture/
+
 Note that `:geometry` is a reserved attribute in nodes (*e.g.* organs) used for the 3D geometry. It is stored as a special structure (`Geometry`).
 
 ## Example usage

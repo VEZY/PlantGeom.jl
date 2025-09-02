@@ -24,6 +24,25 @@ using PlantGeom, WGLMakie
 WGLMakie.activate!() # hide
 mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 plantviz(mtg)
+plantviz(mtg; merged=true) # merged scene for faster rendering
+
+
+"""
+You can set merged mode as the default either for the session or via an
+environment variable:
+
+```julia
+using PlantGeom
+PlantGeom.set_default_merged!(true)        # session default
+```
+
+Or start Julia with:
+
+```sh
+PLANTGEOM_MERGED=1 julia --project
+```
+"""
+
 ```
 
 !!! warning
@@ -96,6 +115,7 @@ If we plot the coffee plant without providing any color, we would get:
 
 ```@example 2
 plantviz(mtg)
+plantviz(mtg; merged=true)
 ```
 
 ### Single color
@@ -104,6 +124,7 @@ Now we can change the color of all meshes by providing a single color:
 
 ```@example 2
 plantviz(mtg, color = :gray87)
+plantviz(mtg, color = :gray87; merged=true)
 ```
 
 ### Map color to reference meshes
