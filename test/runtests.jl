@@ -10,10 +10,6 @@ using LinearAlgebra
 using Tables
 using Unitful
 using PlantGeom
-
-# Update the reference plots (do only when you know awhat you are doing!):
-# include("makes_references.jl")
-
 @testset "Read OPF" begin
     include("test-refmesh.jl")
 end
