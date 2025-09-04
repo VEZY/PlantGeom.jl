@@ -61,11 +61,11 @@ Per-node/mesh color values (may be Observables)
 - Mapping: `get_colormap` resolves a `ColorScheme`; `get_color_range` derives or validates ranges; `get_color` maps values to colors.
 - Caching: two layers exist:
   - Per-node color caches (UUID-derived Observables) for interactive updates.
-  - Scene cache on the root (`:_scene_cache`) storing merged mesh, colors, and `face2node`. Invalidate with `bump_scene_version!(mtg)`.
+  - Scene cache on the root (`:_scene_cache`) as a single-entry NamedTuple with `(hash, mesh, face2node)`. The `hash` encodes the scene version and relevant plotting options. Invalidate with `bump_scene_version!(mtg)`.
 
 ### Merged Mode (Performance)
 
 - Build: traverses nodes, transforms ref meshes, and merges using `Meshes.merge` into one `SimpleMesh`.
 - Colors: computes per-vertex colors once and passes a single color array to Makie.
-- Mapping: stores `:_scene_face2node` on root to map triangles back to node IDs.
+- Mapping: `face2node` is stored alongside the merged mesh in `:_scene_cache` to map triangles back to node IDs.
 - Use: `plantviz(opf; merged=true, color=:z_max)`; invalidate cache after geometry/attribute changes via `bump_scene_version!(opf)`.

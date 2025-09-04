@@ -48,8 +48,8 @@ Increment the scene version to invalidate any cached merged scene.
 function bump_scene_version!(mtg; by=1)
     root = MultiScaleTreeGraph.get_root(mtg)
     root[:_scene_version] = scene_version(mtg) + by
-    # Optionally clear cache
-    haskey(root, :_scene_cache) && empty!(root[:_scene_cache])
+    # Invalidate single-entry cache
+    root[:_scene_cache] = nothing
     return root[:_scene_version]
 end
 
@@ -60,38 +60,34 @@ end
 
 Compute a stable cache key for the current scene rendering request.
 """
-function scene_cache_key(mtg; merged=true, colorant_tag=:solid, color_id=nothing,
-    colormap_id=nothing, colorrange_id=nothing,
-    symbol=nothing, scale=nothing, link=nothing, filter_fun=nothing)
+function scene_cache_key(mtg; merged=true, symbol=nothing, scale=nothing, link=nothing, filter_fun=nothing)
     ver = scene_version(mtg)
     fid = isnothing(filter_fun) ? 0 : objectid(filter_fun)
-    return hash((ver, merged, colorant_tag, color_id, colormap_id, colorrange_id, symbol, scale, link, fid))
+    return hash((ver, merged, symbol, scale, link, fid))
 end
 
 """
     get_cached_scene(mtg, key) -> Union{Nothing,NamedTuple}
 
-Retrieve a cached merged scene for `key`. Returns a NamedTuple with
-`(mesh, vertex_colors, face2node)` if present.
+Retrieve the single cached merged scene if it matches `key`.
+Returns a NamedTuple with `(hash, mesh, face2node)` or `nothing`.
 """
 function get_cached_scene(mtg, key)
     root = MultiScaleTreeGraph.get_root(mtg)
-    (!haskey(root, :_scene_cache) || isnothing(root[:_scene_cache])) && return nothing
     cache = root[:_scene_cache]
-    get(cache, key, nothing)
+    cache === nothing && return nothing
+    # Accept only if hash matches
+    (getfield(cache, :hash) == key) || return nothing
+    return cache
 end
 
 """
-    set_cached_scene!(mtg, key; mesh, vertex_colors=nothing, face2node=nothing)
+    set_cached_scene!(mtg, key; mesh, face2node=nothing)
 
-Store a merged scene in the cache.
+Store a single merged scene cache with associated `key` hash. Only mesh and face2node are cached.
 """
-function set_cached_scene!(mtg, key; mesh, vertex_colors=nothing, face2node=nothing)
+function set_cached_scene!(mtg, key; mesh, face2node=nothing)
     root = MultiScaleTreeGraph.get_root(mtg)
-    if !haskey(root, :_scene_cache)
-        root[:_scene_cache] = Dict{UInt,NamedTuple}()
-    end
-    root[:_scene_cache][key] = (mesh=mesh, vertex_colors=vertex_colors, face2node=face2node)
+    root[:_scene_cache] = (hash=key, mesh=mesh, face2node=face2node)
     return nothing
 end
-

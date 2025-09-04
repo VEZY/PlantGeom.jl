@@ -102,8 +102,7 @@ function plot_opf_merged(::T, plot, f, symbol, scale, link, mtg_name) where {T<:
     # Cache key based on solid color and filters
     filter_fun_user = hasproperty(plot, :filter_fun) ? Makie.to_value(plot[:filter_fun]) : nothing
 
-    key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:solid, color_id=string(Makie.to_value(colorant)),
-        symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
+    key = PlantGeom.scene_cache_key(opf; merged=true, symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
 
     if (cached = PlantGeom.get_cached_scene(opf, key)) !== nothing
         MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=colorant)
@@ -113,7 +112,6 @@ function plot_opf_merged(::T, plot, f, symbol, scale, link, mtg_name) where {T<:
     merged_mesh, face2node = PlantGeom.build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
     PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, face2node=face2node)
 
-
     MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=colorant)
     return plot
 end
@@ -122,8 +120,7 @@ function plot_opf_merged(colorant_value::T, plot, f, symbol, scale, link, mtg_na
     opf = Makie.to_value(plot[mtg_name])
     # Cache key based on solid color and filters
     filter_fun_user = hasproperty(plot, :filter_fun) ? Makie.to_value(plot[:filter_fun]) : nothing
-    key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:solid, color_id=string(colorant_value),
-        symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
+    key = PlantGeom.scene_cache_key(opf; merged=true, symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
 
     # Helper to compute mapping from node id -> index in the user-provided color vector,
     # using the same traversal and filters used to build the merged mesh and face2node.
@@ -140,9 +137,11 @@ function plot_opf_merged(colorant_value::T, plot, f, symbol, scale, link, mtg_na
     id2idx = node_index_map()
 
     cached = PlantGeom.get_cached_scene(opf, key)
-    if isnothing(cached)
-        cached = PlantGeom.build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
-        PlantGeom.set_cached_scene!(opf, key; mesh=cached.mesh, face2node=cached.face2node)
+    if !isnothing(cached)
+        hash, merged_mesh, face2node = cached
+    else
+        merged_mesh, face2node = PlantGeom.build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
+        PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, face2node=face2node)
     end
 
     # Expand per-node colors to per-face colors using face2node mapping
@@ -150,14 +149,14 @@ function plot_opf_merged(colorant_value::T, plot, f, symbol, scale, link, mtg_na
         cols = colorant.colors
         length(id2idx) == length(cols) || error("Vector color length (", length(cols), ") does not match number of selected nodes (", length(id2idx), ").")
         # Preserve element type (Colorant or Symbol)
-        out = Vector{typeof(cols[1])}(undef, length(cached.face2node))
-        @inbounds for i in eachindex(cached.face2node)
-            out[i] = cols[id2idx[cached.face2node[i]]]
+        out = Vector{typeof(cols[1])}(undef, length(face2node))
+        @inbounds for i in eachindex(face2node)
+            out[i] = cols[id2idx[face2node[i]]]
         end
         out
     end
 
-    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=plot[:face_colors])
+    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=plot[:face_colors])
     return plot
 end
 
@@ -166,16 +165,15 @@ function plot_opf_merged(colorant_value::AttributeColorant, plot, f, symbol, sca
     opf = Makie.to_value(plot[mtg_name])
     # Cache key includes attribute, colormap, colorrange and filters
     filter_fun_user = hasproperty(plot, :filter_fun) ? Makie.to_value(plot[:filter_fun]) : nothing
-    key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:attr, color_id=attr_colorant_name(colorant_value),
-        colormap_id=Makie.to_value(plot[:colormap]), colorrange_id=Makie.to_value(plot[:colorrange_resolved]),
-        symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
-    if (cached = PlantGeom.get_cached_scene(opf, key)) !== nothing
-        MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=cached.vertex_colors, colormap=plot[:colormap_resolved])
-        return plot
-    end
+    key = PlantGeom.scene_cache_key(opf; merged=true, symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
 
-    # Build per-node meshes and face2node mapping
-    merged_mesh, face2node = build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
+    cached = PlantGeom.get_cached_scene(opf, key)
+    if !isnothing(cached)
+        hash, merged_mesh, face2node = cached
+    else
+        merged_mesh, face2node = PlantGeom.build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
+        PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, face2node=face2node)
+    end
 
     # Then, compute the colors (this one uses Makie's compute graph):
     map!(plot.attributes, [:colorant, :color_missing, :colormap_resolved, :colorrange_resolved, :index_resolved], :vertex_colors) do colorant, color_missing, colormap, color_range, index
@@ -203,8 +201,6 @@ function plot_opf_merged(colorant_value::AttributeColorant, plot, f, symbol, sca
         return vertex_colors
     end
 
-    PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, vertex_colors=plot[:vertex_colors], face2node=face2node)
-
     MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=plot[:vertex_colors], colormap=plot[:colormap_resolved])
     return plot
 end
@@ -215,16 +211,16 @@ function plot_opf_merged(colorant_value::DictRefMeshColorant, plot, f, symbol, s
 
     # Cache key based on refmesh color dict and filters
     filter_fun_user = hasproperty(plot, :filter_fun) ? Makie.to_value(plot[:filter_fun]) : nothing
-    key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:refmesh, color_id=objectid(colorant_value),
-        symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
+    key = PlantGeom.scene_cache_key(opf; merged=true, symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
 
-    if (cached = PlantGeom.get_cached_scene(opf, key)) !== nothing
-        MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=cached.vertex_colors)
-        return plot
+    cached = PlantGeom.get_cached_scene(opf, key)
+
+    if !isnothing(cached)
+        hash, merged_mesh, face2node = cached
+    else
+        merged_mesh, face2node = PlantGeom.build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
+        PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, face2node=face2node)
     end
-
-    # Build per-node meshes and face2node mapping
-    merged_mesh, face2node = build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
 
     # Then, compute the colors (this one uses Makie's compute graph):
     map!(plot.attributes, [:colorant, :color_missing, :colormap_resolved, :colorrange_resolved, :index_resolved], :vertex_colors) do colorant, color_missing, colormap, color_range, index
@@ -240,8 +236,6 @@ function plot_opf_merged(colorant_value::DictRefMeshColorant, plot, f, symbol, s
         return vertex_colors
     end
 
-    PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, vertex_colors=plot[:vertex_colors], face2node=face2node)
-
     MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=plot[:vertex_colors])
     return plot
 end
@@ -252,18 +246,17 @@ function plot_opf_merged(colorant_value::DictVertexRefMeshColorant, plot, f, sym
 
     # Cache key based on refmesh color dict and filters
     filter_fun_user = hasproperty(plot, :filter_fun) ? Makie.to_value(plot[:filter_fun]) : nothing
-    key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:refmesh, color_id=objectid(colorant_value),
-        symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
+    key = PlantGeom.scene_cache_key(opf; merged=true, symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
 
-    if (cached = PlantGeom.get_cached_scene(opf, key)) !== nothing
-        MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=cached.vertex_colors)
-        return plot
+    cached = PlantGeom.get_cached_scene(opf, key)
+
+    if !isnothing(cached)
+        hash, merged_mesh, face2node = cached
+    else
+        merged_mesh, face2node = PlantGeom.build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
+        PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, face2node=face2node)
     end
 
-    # Build per-node meshes and face2node mapping
-    merged_mesh, face2node = build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
-
-    # Then, compute the colors (this one uses Makie's compute graph):
     map!(plot.attributes, [:colorant, :color_missing, :colormap_resolved, :colorrange_resolved, :index_resolved], :vertex_colors) do colorant, color_missing, colormap, color_range, index
         vertex_colors = Vector{Colorant}()
         MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
@@ -277,8 +270,6 @@ function plot_opf_merged(colorant_value::DictVertexRefMeshColorant, plot, f, sym
         return vertex_colors
     end
 
-    PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, vertex_colors=plot[:vertex_colors], face2node=face2node)
-
     MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=plot[:vertex_colors])
     return plot
 end
@@ -288,17 +279,16 @@ function plot_opf_merged(::RefMeshColorant, plot, f, symbol, scale, link, mtg_na
     opf = Makie.to_value(plot[mtg_name])
     # Cache key for default refmesh color path
     filter_fun_user = hasproperty(plot, :filter_fun) ? plot[:filter_fun][] : nothing
-    key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:refmesh_default, color_id=:default,
-        symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
-    if (cached = PlantGeom.get_cached_scene(opf, key)) !== nothing
-        MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=cached.vertex_colors)
-        return plot
+    key = PlantGeom.scene_cache_key(opf; merged=true, symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
+
+    cached = PlantGeom.get_cached_scene(opf, key)
+    if !isnothing(cached)
+        hash, merged_mesh, face2node = cached
+    else
+        merged_mesh, face2node = PlantGeom.build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
+        PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, face2node=face2node)
     end
 
-    # Build per-node meshes and face2node mapping
-    merged_mesh, face2node = build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
-
-    # Then, compute the colors (this one uses Makie's compute graph):
     map!(plot.attributes, [:colorant, :color_missing, :colormap_resolved, :colorrange_resolved, :index_resolved], :vertex_colors) do colorant, color_missing, colormap, color_range, index
         vertex_colors = Vector{Colorant}()
         MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
@@ -311,7 +301,6 @@ function plot_opf_merged(::RefMeshColorant, plot, f, symbol, scale, link, mtg_na
         return vertex_colors
     end
 
-    PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, vertex_colors=plot[:vertex_colors], face2node=face2node)
     MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=plot[:vertex_colors])
     return plot
 end

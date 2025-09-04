@@ -131,11 +131,9 @@ end
     fig, ax, p = plantviz(opf, merged=true)
     # Check that face2node mapping was produced and cached scene exists
     root = MultiScaleTreeGraph.get_root(opf)
-    @test hasproperty(root, :_scene_cache)
-    face2node = root[:_scene_cache][first(keys(root[:_scene_cache]))].face2node
-    # At least one cached entry should have a mesh whose nelements matches face2node length
-    has_match = any(values(root[:_scene_cache])) do nt
-        hasproperty(nt, :mesh) && hasproperty(nt, :face2node) && !isnothing(nt.mesh) && !isnothing(nt.face2node) && length(nt.face2node) == Meshes.nelements(nt.mesh)
-    end
-    @test has_match
+    cache = root[:_scene_cache]
+    @test cache !== nothing
+    @test hasproperty(cache, :mesh) && hasproperty(cache, :face2node) && hasproperty(cache, :hash)
+    @test !isnothing(cache.mesh) && !isnothing(cache.face2node)
+    @test length(cache.face2node) == Meshes.nelements(cache.mesh)
 end
