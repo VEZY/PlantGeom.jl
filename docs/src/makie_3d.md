@@ -96,6 +96,7 @@ If we plot the coffee plant without providing any color, we would get:
 
 ```@example 2
 plantviz(mtg)
+plantviz(mtg; merged=true)
 ```
 
 ### Single color
@@ -104,6 +105,7 @@ Now we can change the color of all meshes by providing a single color:
 
 ```@example 2
 plantviz(mtg, color = :gray87)
+plantviz(mtg, color = :gray87; merged=true)
 ```
 
 ### Map color to reference meshes

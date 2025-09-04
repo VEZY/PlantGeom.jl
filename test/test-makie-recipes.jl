@@ -59,6 +59,14 @@ transform!(opf, refmesh_to_mesh!)
     @test_reference "reference_images/opf_color_attribute_colorbar_range.png" fig3
 end
 
+@testset "Makie recipes: observables, change color" begin
+    c = Observable(:blue)
+    fig, ax, p = plantviz(opf, color=c)
+    c[] = :red
+    @test p.color[] == :red
+    @test_reference "reference_images/opf_one_color.png" fig # Should come back to this plot in the end
+end
+
 @testset "Makie recipes: observables, change colorscale range" begin
     fig, ax, p = plantviz(opf, color=:Length, colorrange=(0, 0.2))
     @test p.attributes.colorrange[] == (0, 0.2)
@@ -67,25 +75,15 @@ end
     @test p.attributes.colorrange[] == (0, 0.1)
 end
 
-@testset "Makie recipes: change node color" begin
-    fig, ax, p = plantviz(opf, color=:Length, colorrange=(0, 0.2))
-
-    leaf = get_node(opf, 5)
-    leaf[:_cache_d9b4f7f3c3467a55ad26f362065777c471aee4c7][] = parse(Colorant, :red)
-
-    @test_reference "reference_images/opf_color_attribute_observable_node.png" fig
-
-    # Making the whole plot red:
-    fig, ax, p = plantviz(opf, color=:red)
-    # Update with a green leaf:
-    leaf = get_node(opf, 5)
-    leaf[:_cache_d9b4f7f3c3467a55ad26f362065777c471aee4c7][] = parse(Colorant, :green)
-
-    @test_reference "reference_images/opf_color_attribute_observable_node_red_green.png" fig
-
-    # Making the whole plot blue:
-    p.color = :blue
-    @test_reference "reference_images/opf_color_attribute_observable_node_blue.png" fig
+@testset "Makie recipes: change variable for coloring" begin
+    c = Observable(:Width)
+    fig, ax, p = plantviz(opf, color=c)
+    colorrange = p.colorrange_resolved[]
+    c[] = :Length
+    @test p.color[] == :Length
+    @test p.colorrange_resolved[] != colorrange # The resolved color range should change with the variable
+    fig
+    @test_reference "reference_images/opf_color_attribute_length.png" fig
 end
 
 @testset "Makie recipes: filter nodes" begin
@@ -122,4 +120,20 @@ end
         @test_reference "reference_images/opf_filter_symbol_leaf.png" fig
         # This is the same test as just `plantviz(opf, symbol="Leaf")` because only the leaves are branching
     end
+end
+
+@testset "Makie recipes: testing cache" begin
+    # Ensure plotting works with default refmesh colors in merged mode
+    file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
+    opf = read_opf(file)
+    # Precompute meshes for stability
+    transform!(opf, refmesh_to_mesh!)
+    fig, ax, p = plantviz(opf, merged=true)
+    # Check that face2node mapping was produced and cached scene exists
+    root = MultiScaleTreeGraph.get_root(opf)
+    cache = root[:_scene_cache]
+    @test cache !== nothing
+    @test hasproperty(cache, :mesh) && hasproperty(cache, :face2node) && hasproperty(cache, :hash)
+    @test !isnothing(cache.mesh) && !isnothing(cache.face2node)
+    @test length(cache.face2node) == Meshes.nelements(cache.mesh)
 end
