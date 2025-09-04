@@ -12,6 +12,7 @@ const N = 3  # repetitions
 # file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "coffee.opf")
 file = "/Users/rvezy/Documents/dev/VPalm_test/tests/test2/test.opf"
 opf = read_opf(file)
+plantviz(opf, color=:green)
 
 function bench_per_node(opf)
     ts = Float64[]
