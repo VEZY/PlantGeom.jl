@@ -9,7 +9,7 @@ struct DictRefMeshColorant
 end
 
 struct DictVertexRefMeshColorant
-    colors::Dict{String,Union{Colorant,Vector{<:Colorant}}}
+    colors::Dict{String,Vector{<:Colorant}}
 end
 
 struct VectorColorant
@@ -83,9 +83,23 @@ function get_mtg_color(::Type{DictRefMeshColorantType}, color, opf)
 end
 
 function get_mtg_color(::Type{DictVertexRefMeshColorantType}, color, opf)
-    return DictVertexRefMeshColorant(color)
+    # User gave at least one color as a vector, so we need to make sure we get all as vectors too:
+    ref_meshes = get_ref_meshes(opf)
+    new_color = Dict{String,Vector{Colorant}}()
+    for (k, v) in color
+        ref_mesh = ref_meshes[findfirst(x -> x.name == k, ref_meshes)]
+        n_verts = Meshes.nvertices(ref_mesh)
+        if v isa AbstractVector
+            @assert length(v) == n_verts "The length of the color vector for refmesh $k does not match the number of vertices of that refmesh ($(length(v)) != $n_verts)"
+            col = v isa AbstractVector{Colorant} ? v : parse.(Colorant, v)
+        else
+            col = v isa Colorant ? v : parse(Colorant, v)
+            col = fill(col, n_verts)
+        end
+        push!(new_color, k => col)
+    end
+    return DictVertexRefMeshColorant(new_color)
 end
-
 
 function get_mtg_color(::Type{VectorColorantType}, color, opf)
     return VectorColorant(color)
