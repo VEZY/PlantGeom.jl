@@ -89,37 +89,40 @@ function plot_opf(plot, mtg_name=:mtg)
     return plot
 end
 
+# Fallback when merged mode is requested with unsupported color specs
+function plot_opf_merged(colorant, plot, f, symbol, scale, link, mtg_name)
+    @warn "colorant type not supported: $colorant"
+    return plot_opf(colorant, plot, f, symbol, scale, link, mtg_name)
+end
+
 # Merged-path rendering for simple colorant (single color only, experimental)
-function plot_opf_merged(colorant::Observables.Observable{T}, plot, f, symbol, scale, link, mtg_name) where {T<:Colorant}
+function plot_opf_merged(::T, plot, f, symbol, scale, link, mtg_name) where {T<:Colorant}
+    colorant = plot[:colorant]
     opf = Makie.to_value(plot[mtg_name])
     # Cache key based on solid color and filters
     filter_fun_user = hasproperty(plot, :filter_fun) ? Makie.to_value(plot[:filter_fun]) : nothing
+
     key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:solid, color_id=string(Makie.to_value(colorant)),
         symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
 
     if (cached = PlantGeom.get_cached_scene(opf, key)) !== nothing
-        MultiScaleTreeGraph.get_root(opf)[:_scene_face2node] = cached.face2node
-        MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=Makie.lift(plot, colorant) do x
-            x
-        end)
+        MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=colorant)
         return plot
     end
 
     merged_mesh, face2node = PlantGeom.build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
     PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, face2node=face2node)
-    MultiScaleTreeGraph.get_root(opf)[:_scene_face2node] = face2node
 
-    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=Makie.lift(plot, colorant) do x
-        x
-    end)
+
+    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=colorant)
     return plot
 end
 
-function plot_opf_merged(colorant::Observables.Observable{T}, plot, f, symbol, scale, link, mtg_name) where {T<:Union{PlantGeom.VectorColorant,PlantGeom.VectorSymbol}}
+function plot_opf_merged(colorant_value::T, plot, f, symbol, scale, link, mtg_name) where {T<:Union{PlantGeom.VectorColorant,PlantGeom.VectorSymbol}}
     opf = Makie.to_value(plot[mtg_name])
     # Cache key based on solid color and filters
     filter_fun_user = hasproperty(plot, :filter_fun) ? Makie.to_value(plot[:filter_fun]) : nothing
-    key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:solid, color_id=string(Makie.to_value(colorant)),
+    key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:solid, color_id=string(colorant_value),
         symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
 
     # Helper to compute mapping from node id -> index in the user-provided color vector,
@@ -134,217 +137,182 @@ function plot_opf_merged(colorant::Observables.Observable{T}, plot, f, symbol, s
         Dict(id => i for (i, id) in enumerate(ids))
     end
 
-    if (cached = PlantGeom.get_cached_scene(opf, key)) !== nothing
-        MultiScaleTreeGraph.get_root(opf)[:_scene_face2node] = cached.face2node
-        id2idx = node_index_map()
-        # Expand per-node colors to per-face colors using face2node mapping
-        face_colors = Makie.lift(plot, colorant) do c
-            cols = c.colors
-            length(id2idx) == length(cols) || error("Vector color length (", length(cols), ") does not match number of selected nodes (", length(id2idx), ").")
-            # Preserve element type (Colorant or Symbol)
-            out = Vector{typeof(cols[1])}(undef, length(cached.face2node))
-            @inbounds for i in eachindex(cached.face2node)
-                out[i] = cols[id2idx[cached.face2node[i]]]
-            end
-            out
-        end
-        MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=face_colors)
-        return plot
+    id2idx = node_index_map()
+
+    cached = PlantGeom.get_cached_scene(opf, key)
+    if isnothing(cached)
+        cached = PlantGeom.build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
+        PlantGeom.set_cached_scene!(opf, key; mesh=cached.mesh, face2node=cached.face2node)
     end
 
-    merged_mesh, face2node = PlantGeom.build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
-    PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, face2node=face2node)
-    MultiScaleTreeGraph.get_root(opf)[:_scene_face2node] = face2node
-
-    id2idx = node_index_map()
-    face_colors = Makie.lift(plot, colorant) do c
-        cols = c.colors
+    # Expand per-node colors to per-face colors using face2node mapping
+    map!(plot.attributes, [:colorant], :face_colors) do colorant
+        cols = colorant.colors
         length(id2idx) == length(cols) || error("Vector color length (", length(cols), ") does not match number of selected nodes (", length(id2idx), ").")
-        out = Vector{typeof(cols[1])}(undef, length(face2node))
-        @inbounds for i in eachindex(face2node)
-            out[i] = cols[id2idx[face2node[i]]]
+        # Preserve element type (Colorant or Symbol)
+        out = Vector{typeof(cols[1])}(undef, length(cached.face2node))
+        @inbounds for i in eachindex(cached.face2node)
+            out[i] = cols[id2idx[cached.face2node[i]]]
         end
         out
     end
 
-    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=face_colors)
+    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=plot[:face_colors])
     return plot
 end
 
-# Fallback when merged mode is requested with unsupported color specs
-function plot_opf_merged(colorant, plot, f, symbol, scale, link, mtg_name)
-    @warn "colorant type not supported: $colorant"
-    return plot_opf(colorant, plot, f, symbol, scale, link, mtg_name)
-end
-
 # Merged-path rendering for attribute-based color
-function plot_opf_merged(colorant::Observables.Observable{AttributeColorant}, plot, f, symbol, scale, link, mtg_name)
-    opf_obs = plot[mtg_name]
-    opf = Makie.to_value(opf_obs)
-    colormap_node = plot[:colormap_resolved]
-    colormap = Makie.to_value(colormap_node)
-    color_missing = hasproperty(plot, :color_missing) ? Makie.to_value(plot[:color_missing]) : RGBA(0, 0, 0, 0.3)
-    color_range = Makie.to_value(plot[:colorrange_resolved])
-    index = Makie.to_value(plot[:index_resolved])
-
+function plot_opf_merged(colorant_value::AttributeColorant, plot, f, symbol, scale, link, mtg_name)
+    opf = Makie.to_value(plot[mtg_name])
     # Cache key includes attribute, colormap, colorrange and filters
     filter_fun_user = hasproperty(plot, :filter_fun) ? Makie.to_value(plot[:filter_fun]) : nothing
-    key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:attr, color_id=attr_colorant_name(Makie.to_value(colorant)),
-        colormap_id=Makie.to_value(plot[:colormap]), colorrange_id=Makie.to_value(plot[:colorrange]),
+    key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:attr, color_id=attr_colorant_name(colorant_value),
+        colormap_id=Makie.to_value(plot[:colormap]), colorrange_id=Makie.to_value(plot[:colorrange_resolved]),
         symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
     if (cached = PlantGeom.get_cached_scene(opf, key)) !== nothing
-        MultiScaleTreeGraph.get_root(opf)[:_scene_face2node] = cached.face2node
-        MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=cached.vertex_colors, colormap=colormap)
+        MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=cached.vertex_colors, colormap=plot[:colormap_resolved])
         return plot
     end
 
-    # Build per-node meshes, vertex-colors, and face2node mapping
-    meshes = Meshes.SimpleMesh[]
-    vertex_colors = Vector{Colorant}()
-    face2node = Int[]
-    any_node_selected = Ref(false)
+    # Build per-node meshes and face2node mapping
+    merged_mesh, face2node = build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
 
-    color_attr_sym = attr_colorant_name(colorant[])
-
-    MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
-        geom = node[:geometry]
-        if geom !== nothing
-            any_node_selected[] = true
+    # Then, compute the colors (this one uses Makie's compute graph):
+    map!(plot.attributes, [:colorant, :color_missing, :colormap_resolved, :colorrange_resolved, :index_resolved], :vertex_colors) do colorant, color_missing, colormap, color_range, index
+        color_attribute = colorant.color
+        vertex_colors = Vector{Colorant}()
+        MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
+            geom = node[:geometry] # we need the geometry to know how many vertices there are
             m = geom.mesh === nothing ? PlantGeom.refmesh_to_mesh(node) : geom.mesh
-            if m !== nothing
-                push!(meshes, m)
-                # Colors for this mesh's vertices
-                val = node[color_attr_sym]
-                local cols
-                if val === nothing
-                    cols = fill(color_missing, Meshes.nvertices(m))
+            # Colors for this mesh's vertices
+            val = node[color_attribute]
+            local cols
+            if val === nothing
+                cols = fill(color_missing, Meshes.nvertices(m))
+            else
+                cols_any = get_color(val, color_range, index; colormap=colormap)
+                if cols_any isa AbstractVector{<:Colorant}
+                    cols = cols_any
                 else
-                    cols_any = get_color(val, color_range, index; colormap=colormap)
-                    if cols_any isa AbstractVector{<:Colorant}
-                        cols = cols_any
-                    else
-                        cols = fill(cols_any, Meshes.nvertices(m))
-                    end
+                    cols = fill(cols_any, Meshes.nvertices(m))
                 end
-                append!(vertex_colors, cols)
-                append!(face2node, fill(MultiScaleTreeGraph.node_id(node), Meshes.nelements(m))) #! should we put the node directly?
             end
+            append!(vertex_colors, cols)
         end
-    end
-    any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
-    length(meshes) > 0 || error("No geometry meshes found to merge.")
 
-    #! we should probably avoid making a vector and then merging, we can do this in one pass I think, but check that's faster. If not, at least we can use reduce(merge, meshes)
-    merged_mesh = meshes[1]
-    for i in 2:length(meshes)
-        merged_mesh = Meshes.merge(merged_mesh, meshes[i])
+        return vertex_colors
     end
 
-    PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, vertex_colors=vertex_colors, face2node=face2node)
-    MultiScaleTreeGraph.get_root(opf)[:_scene_face2node] = face2node
-    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=vertex_colors, colormap=colormap)
+    PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, vertex_colors=plot[:vertex_colors], face2node=face2node)
+
+    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=plot[:vertex_colors], colormap=plot[:colormap_resolved])
     return plot
 end
 
 # Merged-path rendering for dict-by-refmesh colors
-function plot_opf_merged(colorant::Observables.Observable{T}, plot, f, symbol, scale, link, mtg_name) where {T<:Union{DictRefMeshColorant,DictVertexRefMeshColorant}}
+function plot_opf_merged(colorant_value::DictRefMeshColorant, plot, f, symbol, scale, link, mtg_name)
     opf = Makie.to_value(plot[mtg_name])
+
     # Cache key based on refmesh color dict and filters
     filter_fun_user = hasproperty(plot, :filter_fun) ? Makie.to_value(plot[:filter_fun]) : nothing
-    key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:refmesh, color_id=objectid(Makie.to_value(colorant)),
+    key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:refmesh, color_id=objectid(colorant_value),
         symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
+
     if (cached = PlantGeom.get_cached_scene(opf, key)) !== nothing
-        MultiScaleTreeGraph.get_root(opf)[:_scene_face2node] = cached.face2node
         MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=cached.vertex_colors)
         return plot
     end
 
-    meshes = Meshes.SimpleMesh[]
-    vertex_colors = Vector{Colorant}()
-    face2node = Int[]
-    any_node_selected = Ref(false)
+    # Build per-node meshes and face2node mapping
+    merged_mesh, face2node = build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
 
-    MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
-        geom = node[:geometry]
-        if geom !== nothing
-            any_node_selected[] = true
+    # Then, compute the colors (this one uses Makie's compute graph):
+    map!(plot.attributes, [:colorant, :color_missing, :colormap_resolved, :colorrange_resolved, :index_resolved], :vertex_colors) do colorant, color_missing, colormap, color_range, index
+        vertex_colors = Vector{Colorant}()
+        MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
+            geom = node[:geometry] # we need the geometry to know how many vertices there are
             m = geom.mesh === nothing ? PlantGeom.refmesh_to_mesh(node) : geom.mesh
-            if m !== nothing
-                push!(meshes, m)
-                # Determine color from refmesh name; if a per-vertex vector is provided use it
-                name = get_ref_mesh_name(node)
-                c = get(Makie.to_value(colorant).colors, name, material_single_color(geom.ref_mesh.material))
-                if c isa AbstractVector{<:Colorant}
-                    append!(vertex_colors, c)
-                else
-                    local col::Colorant
-                    if c isa Colorant
-                        col = c
-                    else
-                        col = parse(Colorant, c)
-                    end
-                    append!(vertex_colors, fill(col, Meshes.nvertices(m)))
-                end
-                append!(face2node, fill(MultiScaleTreeGraph.node_id(node), Meshes.nelements(m)))
-            end
+            # Determine color from refmesh name; if a per-vertex vector is provided use it
+            name = get_ref_mesh_name(node)
+            cols = get(colorant.colors, name, material_single_color(geom.ref_mesh.material))
+            append!(vertex_colors, fill(cols, Meshes.nvertices(m)))
         end
-    end
-    any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
-    length(meshes) > 0 || error("No geometry meshes found to merge.")
-
-    merged_mesh = meshes[1]
-    for i in 2:length(meshes)
-        merged_mesh = Meshes.merge(merged_mesh, meshes[i])
+        return vertex_colors
     end
 
-    PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, vertex_colors=vertex_colors, face2node=face2node)
-    MultiScaleTreeGraph.get_root(opf)[:_scene_face2node] = face2node
-    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=vertex_colors)
+    PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, vertex_colors=plot[:vertex_colors], face2node=face2node)
+
+    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=plot[:vertex_colors])
+    return plot
+end
+
+
+function plot_opf_merged(colorant_value::DictVertexRefMeshColorant, plot, f, symbol, scale, link, mtg_name)
+    opf = Makie.to_value(plot[mtg_name])
+
+    # Cache key based on refmesh color dict and filters
+    filter_fun_user = hasproperty(plot, :filter_fun) ? Makie.to_value(plot[:filter_fun]) : nothing
+    key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:refmesh, color_id=objectid(colorant_value),
+        symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
+
+    if (cached = PlantGeom.get_cached_scene(opf, key)) !== nothing
+        MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=cached.vertex_colors)
+        return plot
+    end
+
+    # Build per-node meshes and face2node mapping
+    merged_mesh, face2node = build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
+
+    # Then, compute the colors (this one uses Makie's compute graph):
+    map!(plot.attributes, [:colorant, :color_missing, :colormap_resolved, :colorrange_resolved, :index_resolved], :vertex_colors) do colorant, color_missing, colormap, color_range, index
+        vertex_colors = Vector{Colorant}()
+        MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
+            geom = node[:geometry] # we need the geometry to know how many vertices there are
+            m = geom.mesh === nothing ? PlantGeom.refmesh_to_mesh(node) : geom.mesh
+            # Determine color from refmesh name; if a per-vertex vector is provided use it
+            name = get_ref_mesh_name(node)
+            cols = get(colorant.colors, name, fill(material_single_color(geom.ref_mesh.material), Meshes.nvertices(m)))
+            append!(vertex_colors, cols)
+        end
+        return vertex_colors
+    end
+
+    PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, vertex_colors=plot[:vertex_colors], face2node=face2node)
+
+    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=plot[:vertex_colors])
     return plot
 end
 
 # Merged-path rendering for default refmesh colors
-function plot_opf_merged(colorant::Observables.Observable{RefMeshColorant}, plot, f, symbol, scale, link, mtg_name)
+function plot_opf_merged(::RefMeshColorant, plot, f, symbol, scale, link, mtg_name)
     opf = Makie.to_value(plot[mtg_name])
     # Cache key for default refmesh color path
     filter_fun_user = hasproperty(plot, :filter_fun) ? plot[:filter_fun][] : nothing
     key = PlantGeom.scene_cache_key(opf; merged=true, colorant_tag=:refmesh_default, color_id=:default,
         symbol=symbol, scale=scale, link=link, filter_fun=filter_fun_user)
     if (cached = PlantGeom.get_cached_scene(opf, key)) !== nothing
-        MultiScaleTreeGraph.get_root(opf)[:_scene_face2node] = cached.face2node
         MeshesMakieExt.viz!(plot, Makie.Attributes(plot), cached.mesh, color=cached.vertex_colors)
         return plot
     end
 
-    meshes = Meshes.SimpleMesh[]
-    vertex_colors = Vector{Colorant}()
-    face2node = Int[]
-    any_node_selected = Ref(false)
+    # Build per-node meshes and face2node mapping
+    merged_mesh, face2node = build_merged_mesh_with_map(opf; filter_fun=f, symbol=symbol, scale=scale, link=link)
 
-    MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
-        geom = node[:geometry]
-        if geom !== nothing
-            any_node_selected[] = true
+    # Then, compute the colors (this one uses Makie's compute graph):
+    map!(plot.attributes, [:colorant, :color_missing, :colormap_resolved, :colorrange_resolved, :index_resolved], :vertex_colors) do colorant, color_missing, colormap, color_range, index
+        vertex_colors = Vector{Colorant}()
+        MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
+            geom = node[:geometry] # we need the geometry to know how many vertices there are
             m = geom.mesh === nothing ? PlantGeom.refmesh_to_mesh(node) : geom.mesh
-            if m !== nothing
-                push!(meshes, m)
-                c = material_single_color(geom.ref_mesh.material)
-                append!(vertex_colors, fill(c, Meshes.nvertices(m)))
-                append!(face2node, fill(MultiScaleTreeGraph.node_id(node), Meshes.nelements(m)))
-            end
+            # Determine color from refmesh name; if a per-vertex vector is provided use it
+            cols = fill(material_single_color(geom.ref_mesh.material), Meshes.nvertices(m))
+            append!(vertex_colors, cols)
         end
-    end
-    any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
-    length(meshes) > 0 || error("No geometry meshes found to merge.")
-
-    merged_mesh = meshes[1]
-    for i in 2:length(meshes)
-        merged_mesh = Meshes.merge(merged_mesh, meshes[i])
+        return vertex_colors
     end
 
-    PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, vertex_colors=vertex_colors, face2node=face2node)
-    MultiScaleTreeGraph.get_root(opf)[:_scene_face2node] = face2node
-    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=vertex_colors)
+    PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, vertex_colors=plot[:vertex_colors], face2node=face2node)
+    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), merged_mesh, color=plot[:vertex_colors])
     return plot
 end
 
@@ -371,6 +339,10 @@ function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, l
     return plot
 end
 
+# Convenience wrappers to support direct (non-Observable) colorants in non-merged mode
+plot_opf(colorant::Colorant, plot, f, symbol, scale, link, mtg_name) =
+    plot_opf(Observables.Observable(colorant), plot, f, symbol, scale, link, mtg_name)
+
 # Case where the color is a vector of colors / symbols (e.g. `fill(:red, length(mtg))`):
 function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, link, mtg_name) where {T<:Union{PlantGeom.VectorColorant,PlantGeom.VectorSymbol}}
     color_attr_name = MultiScaleTreeGraph.cache_name("Color name")
@@ -395,6 +367,10 @@ function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, l
 
     return plot
 end
+plot_opf(colorant::PlantGeom.VectorColorant, plot, f, symbol, scale, link, mtg_name) =
+    plot_opf(Observables.Observable(colorant), plot, f, symbol, scale, link, mtg_name)
+plot_opf(colorant::PlantGeom.VectorSymbol, plot, f, symbol, scale, link, mtg_name) =
+    plot_opf(Observables.Observable(colorant), plot, f, symbol, scale, link, mtg_name)
 
 # Case where the color is a color for each reference mesh:
 function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, link, mtg_name) where {T<:Union{RefMeshColorant,DictRefMeshColorant,DictVertexRefMeshColorant}}
@@ -422,6 +398,12 @@ function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, l
 
     return plot
 end
+plot_opf(colorant::RefMeshColorant, plot, f, symbol, scale, link, mtg_name) =
+    plot_opf(Observables.Observable(colorant), plot, f, symbol, scale, link, mtg_name)
+plot_opf(colorant::DictRefMeshColorant, plot, f, symbol, scale, link, mtg_name) =
+    plot_opf(Observables.Observable(colorant), plot, f, symbol, scale, link, mtg_name)
+plot_opf(colorant::DictVertexRefMeshColorant, plot, f, symbol, scale, link, mtg_name) =
+    plot_opf(Observables.Observable(colorant), plot, f, symbol, scale, link, mtg_name)
 
 function color_from_refmeshes(color::RefMeshColorant, node)
     material_single_color(node.geometry.ref_mesh.material)
@@ -486,3 +468,5 @@ function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot, f, 
 
     return plot
 end
+plot_opf(colorant::AttributeColorant, plot, f, symbol, scale, link, mtg_name) =
+    plot_opf(Observables.Observable(colorant), plot, f, symbol, scale, link, mtg_name)
