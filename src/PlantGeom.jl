@@ -112,8 +112,8 @@ MeshesMakieExt = Base.get_extension(Meshes, :MeshesMakieExt)
 include("../ext/makie_recipes/opf_recipe.jl")
 include("../ext/makie_recipes/RefMeshes_recipes.jl")
 include("../ext/makie_recipes/opf/plot_opf.jl")
+include("../ext/makie_recipes/opf/scene_mesh.jl")
 include("../ext/makie_recipes/mtg_tree_recipe.jl")
 include("../ext/makie_recipes/colorbar.jl")
-
 
 end
