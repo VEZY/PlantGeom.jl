@@ -1,0 +1,21 @@
+name: Benchmarks
+# See this also to use ChairMarks instead of BenchmarkTools: https://github.com/MilesCranmer/AirspeedVelocity.jl/issues/35
+on:
+  pull_request_target:
+    branches: [main]
+permissions:
+  pull-requests: write
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version:
+          - "lts"
+          - "1"
+    steps:
+      - uses: MilesCranmer/AirspeedVelocity.jl@action-v1
+        with:
+          julia-version: ${{ matrix.version }}
+          bench-on: ${{ github.event.pull_request.head.sha }}
