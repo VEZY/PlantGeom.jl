@@ -8,13 +8,10 @@ function scene_mesh!(opf, filter_fun, symbol, scale, link)
     key = PlantGeom.scene_cache_key(opf; merged=true, symbol=symbol, scale=scale, link=link, filter_fun=filter_fun)
 
     cached = PlantGeom.get_cached_scene(opf, key)
+    !isnothing(cached) && return cached.mesh, cached.face2node
 
-    if !isnothing(cached)
-        hash, merged_mesh, face2node = cached
-    else
-        merged_mesh, face2node = PlantGeom.build_merged_mesh_with_map(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link)
-        PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, face2node=face2node)
-    end
+    merged_mesh, face2node = PlantGeom.build_merged_mesh_with_map(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link)
+    PlantGeom.set_cached_scene!(opf, key; mesh=merged_mesh, face2node=face2node)
 
     return merged_mesh, face2node
 end
