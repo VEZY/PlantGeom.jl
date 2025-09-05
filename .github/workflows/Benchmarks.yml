@@ -1,4 +1,5 @@
 name: Benchmarks
+# See this also to use ChairMarks instead of BenchmarkTools: https://github.com/MilesCranmer/AirspeedVelocity.jl/issues/35
 on:
   pull_request_target:
     branches: [main]
