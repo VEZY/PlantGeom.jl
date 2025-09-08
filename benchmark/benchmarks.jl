@@ -7,11 +7,12 @@ using Downloads
 # auxiliary variables
 file_small = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
 file_medium = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "coffee.opf")
-file_large = "/Users/rvezy/Documents/dev/VPalm_test/tests/test2/test.opf"
+file_large = Downloads.download("https://api.figshare.com/v2/file/download/57762715")
 
 # initialize benchmark suite
 const SUITE = BenchmarkGroup()
 
+const cache = false # Disable caching for benchmarking
 const cache = false # Disable caching for benchmarking
 # ---------
 # IO
