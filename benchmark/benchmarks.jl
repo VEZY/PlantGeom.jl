@@ -3,6 +3,7 @@ using PlantGeom
 using MultiScaleTreeGraph
 using CairoMakie
 using Downloads
+using Downloads
 
 # auxiliary variables
 file_small = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
@@ -13,7 +14,7 @@ file_large = Downloads.download("https://api.figshare.com/v2/file/download/57762
 const SUITE = BenchmarkGroup()
 
 const cache = false # Disable caching for benchmarking
-const cache = false # Disable caching for benchmarking
+
 # ---------
 # IO
 # ---------
