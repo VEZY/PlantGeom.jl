@@ -1,7 +1,7 @@
 name = "PlantGeom"
 uuid = "5edaa67e-25db-4eb9-bf81-05d793b2238d"
 authors = ["remi.vezy <VEZY@users.noreply.github.com> and contributors"]
-version = "0.13.0"
+version = "0.13.1"
 
 [deps]
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
