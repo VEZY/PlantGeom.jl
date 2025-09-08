@@ -3,7 +3,6 @@ using PlantGeom
 using MultiScaleTreeGraph
 using CairoMakie
 using Downloads
-using Downloads
 
 # auxiliary variables
 file_small = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
