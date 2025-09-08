@@ -132,8 +132,10 @@ Makie.@recipe PlantViz (mtg,) begin
     "Filter the MTG nodes to be plotted by link"
     link = nothing
     visible = true
-    "Render as a single merged mesh instead of per-node plots (experimental)."
+    "Render as a single merged mesh instead of per-node plots."
     merged = PlantGeom.default_merged()
+    "Cache the meshes computations for speeding-up plotting with only changes in coloring."
+    cache = true
 end
 
 Makie.args_preferred_axis(mtg::MultiScaleTreeGraph.Node) = Makie.LScene

@@ -25,6 +25,7 @@ The plot object can have the following optional arguments:
 - `symbol`: Plot only nodes with this symbol. Should be a String or a vector of.
 - `scale`: Plot only nodes with this scale. Should be an Int or a vector of.
 - `link`: Plot only nodes with this link. Should be a String or a vector of.
+- `cache=true`: Whether to cache the results.
 
 # Examples
 
@@ -74,14 +75,14 @@ function plot_opf(plot, mtg_name=:mtg)
         f = node -> node[:geometry] !== nothing
     end
 
-    symbol = hasproperty(plot, :symbol) ? Makie.to_value(plot[:symbol]) : nothing
+    symbol = hasproperty(plot, :symbol) ? Makie.to_value(plot[:symbol]) : nothing #! should be using map! here (and for all other arguments too!)
     scale = hasproperty(plot, :scale) ? Makie.to_value(plot[:scale]) : nothing
     link = hasproperty(plot, :link) ? Makie.to_value(plot[:link]) : nothing
 
     # Optional merged rendering path (single mesh for the whole scene):
     merged = hasproperty(plot, :merged) ? Makie.to_value(plot[:merged]) : false
     if merged
-        return plot_opf_merged(plot, f, symbol, scale, link, mtg_name)
+        return plot_opf_merged(plot, f, symbol, scale, link, mtg_name, Makie.to_value(plot[:cache]))
     end
 
     plot_opf(Makie.to_value(plot[:colorant]), plot, f, symbol, scale, link, mtg_name)
@@ -89,10 +90,10 @@ function plot_opf(plot, mtg_name=:mtg)
     return plot
 end
 
-function plot_opf_merged(plot, f, symbol, scale, link, mtg_name)
+function plot_opf_merged(plot, f, symbol, scale, link, mtg_name, cache=true)
     # Compute the mesh at the scene scale:
     Makie.map!(plot.attributes, [mtg_name, :filter_fun], [:merged_mesh, :face2node]) do opf, filter_fun
-        return scene_mesh!(opf, filter_fun, symbol, scale, link)
+        return scene_mesh!(opf, filter_fun, symbol, scale, link, cache)
     end
 
     compute_vertex_colors!(Makie.to_value(plot[:colorant]), plot, f, symbol, scale, link, mtg_name)
