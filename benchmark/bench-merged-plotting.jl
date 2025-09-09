@@ -10,7 +10,7 @@ using Statistics
 const N = 3  # repetitions
 
 # file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "coffee.opf")
-file = "/Users/rvezy/Documents/dev/VPalm_test/tests/test2/test.opf"
+file = Downloads.download("https://api.figshare.com/v2/file/download/57762715")
 opf = read_opf(file)
 plantviz(opf, color=:green)
 
