@@ -36,25 +36,29 @@ This avoids repeated pairwise merges and additional allocations.
 function merge_simple_meshes(meshes::AbstractVector{<:Meshes.SimpleMesh})
     isempty(meshes) && error("No meshes to merge.")
 
-    # Determine point type from first mesh
-    v0 = collect(Meshes.vertices(meshes[1]))
-    points = Vector{eltype(v0)}()
-    connec = Meshes.Connectivity{eltype(v0),3}[] #! can we be more specific? I tried with eltype and elements() but no success
+    # Points: collect and concatenate (type inferred from first mesh)
+    points = Vector{eltype(Meshes.vertices(meshes[1]))}()
+
+    # Connectivity blocks (one per mesh), preserving concrete element types per block.
+    conn_blocks = Vector{Vector}(undef, length(meshes))
 
     offset = 0
-    for m in meshes
+    for (i, m) in enumerate(meshes)
         v = collect(Meshes.vertices(m))
-        t = Meshes.topology(m)
-        for e in Meshes.elements(t)
+        append!(points, v)
+
+        elems = collect(Meshes.elements(Meshes.topology(m)))
+        block = map(elems) do e
             PL = Meshes.pltype(e)
             c = Meshes.indices(e)
-            c′ = ntuple(i -> c[i] + offset, length(c))
-            push!(connec, Meshes.connect(c′, PL))
+            c′ = ntuple(j -> c[j] + offset, length(c))
+            Meshes.connect(c′, PL)
         end
-        append!(points, v)
+        conn_blocks[i] = block
         offset += length(v)
     end
 
+    connec = reduce(vcat, conn_blocks)
     return Meshes.SimpleMesh(points, connec)
 end
 
