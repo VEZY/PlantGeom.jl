@@ -21,9 +21,41 @@ function build_merged_mesh_with_map(mtg; filter_fun=nothing, symbol=nothing, sca
     any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
     length(meshes) > 0 || error("No geometry meshes found to merge.")
 
-    merged_mesh = reduce(Meshes.merge, meshes)
+    merged_mesh = merge_simple_meshes(meshes)
 
     return merged_mesh, face2node
+end
+
+"""
+    merge_simple_meshes(meshes::AbstractVector{<:Meshes.SimpleMesh}) -> Meshes.SimpleMesh
+
+Merge a collection of `Meshes.SimpleMesh` into a single mesh in one pass by
+concatenating vertices and reindexing element connectivities with running offsets.
+This avoids repeated pairwise merges and additional allocations.
+"""
+function merge_simple_meshes(meshes::AbstractVector{<:Meshes.SimpleMesh})
+    isempty(meshes) && error("No meshes to merge.")
+
+    # Determine point type from first mesh
+    v0 = collect(Meshes.vertices(meshes[1]))
+    points = Vector{eltype(v0)}()
+    connec = Meshes.Connectivity{eltype(v0),3}[] #! can we be more specific? I tried with eltype and elements() but no success
+
+    offset = 0
+    for m in meshes
+        v = collect(Meshes.vertices(m))
+        t = Meshes.topology(m)
+        for e in Meshes.elements(t)
+            PL = Meshes.pltype(e)
+            c = Meshes.indices(e)
+            c′ = ntuple(i -> c[i] + offset, length(c))
+            push!(connec, Meshes.connect(c′, PL))
+        end
+        append!(points, v)
+        offset += length(v)
+    end
+
+    return Meshes.SimpleMesh(points, connec)
 end
 
 """
