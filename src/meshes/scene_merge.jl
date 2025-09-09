@@ -14,18 +14,16 @@ function build_merged_mesh_with_map(mtg; filter_fun=nothing, symbol=nothing, sca
         if node[:geometry] !== nothing
             any_node_selected[] = true
             m = refmesh_to_mesh(node)
-            if length(meshes) == 0
-                push!(meshes, m)
-            else
-                meshes[1] = Meshes.merge(meshes[1], m)
-            end
+            push!(meshes, m) #! merge the nodes directly here? 
             append!(face2node, fill(MultiScaleTreeGraph.node_id(node), Meshes.nelements(m)))
         end
     end
     any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
     length(meshes) > 0 || error("No geometry meshes found to merge.")
 
-    return meshes[1], face2node
+    merged_mesh = reduce(Meshes.merge, meshes)
+
+    return merged_mesh, face2node
 end
 
 """
