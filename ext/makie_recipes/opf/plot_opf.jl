@@ -142,26 +142,30 @@ function compute_vertex_colors!(colorant_value::AttributeColorant, plot, f, symb
         vertex_colors = Vector{Colorant}()
         MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
             m = PlantGeom.refmesh_to_mesh(node)
+            nverts = Meshes.nvertices(m)
             # Colors for this mesh's vertices
             val = node[color_attribute]
-            local cols
-            if val === nothing
-                cols = fill(color_missing, Meshes.nvertices(m))
-            else
-                cols_any = get_color(val, color_range, index; colormap=colormap)
-                if cols_any isa AbstractVector{<:Colorant}
-                    cols = cols_any
-                else
-                    cols = fill(cols_any, Meshes.nvertices(m))
-                end
-            end
-            append!(vertex_colors, cols)
+            cols_any = get_color(val, color_range, index; colormap=colormap)
+            # Function barrier to ensure a stable Vector{Colorant}
+            append!(vertex_colors, _coerce_vertex_colors(cols_any, nverts, color_missing))
         end
 
         return vertex_colors
     end
 
     return plot
+end
+
+# Ensure a stable Vector{Colorant} regardless of whether `cols_any` is a single
+# Colorant or a vector of Colorants.
+@inline function _coerce_vertex_colors(cols_any, nverts::Int, color_missing)
+    if cols_any === nothing
+        return fill(color_missing, nverts)
+    elseif cols_any isa AbstractVector{<:Colorant}
+        return Vector{Colorant}(cols_any)
+    else
+        return fill(cols_any, nverts)
+    end
 end
 
 # Dict-by-refmesh colors
