@@ -45,13 +45,11 @@ function merge_simple_meshes(meshes::AbstractVector{<:Meshes.SimpleMesh})
     end
     points, connec = mapreduce(
         m -> begin
-            v = collect(Meshes.vertices(m))
-            elems = collect(Meshes.elements(Meshes.topology(m)))
+            v = Meshes.vertices(m)
+            elems = Meshes.elements(Meshes.topology(m))
             conns = map(elems) do e
-                PL = Meshes.pltype(e)
                 c = Meshes.indices(e)
-                c′ = ntuple(i -> c[i] + off[], length(c))
-                Meshes.connect(c′, PL)
+                Meshes.connect(ntuple(i -> c[i] + off[], length(c)), Meshes.pltype(e))
             end
             off[] += length(v)
             (v, conns)
