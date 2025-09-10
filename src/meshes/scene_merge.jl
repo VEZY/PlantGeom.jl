@@ -8,21 +8,37 @@ index in the merged mesh to the originating MTG node id.
 """
 function build_merged_mesh_with_map(mtg; filter_fun=nothing, symbol=nothing, scale=nothing, link=nothing)
     meshes = Meshes.SimpleMesh[]
-    face2node = Int[]
+    node_ids = Int[]
+    ne_per_mesh = Int[]
     any_node_selected = Ref(false)
+
     MultiScaleTreeGraph.traverse!(mtg; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
-        if node[:geometry] !== nothing
+        geom = node[:geometry]
+        if geom !== nothing
             any_node_selected[] = true
-            m = refmesh_to_mesh(node)
-            push!(meshes, m) #! merge the nodes directly here? 
-            append!(face2node, fill(MultiScaleTreeGraph.node_id(node), Meshes.nelements(m)))
+            m = (geom.mesh === nothing) ? refmesh_to_mesh(node) : geom.mesh
+            push!(meshes, m)
+            push!(node_ids, MultiScaleTreeGraph.node_id(node))
+            push!(ne_per_mesh, Meshes.nelements(m))
         end
     end
+
     any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
     length(meshes) > 0 || error("No geometry meshes found to merge.")
 
-    merged_mesh = merge_simple_meshes(meshes)
+    # Preallocate and fill face2node in one pass
+    total_elems = sum(ne_per_mesh)
+    face2node = Vector{Int}(undef, total_elems)
+    ofs = 0
+    @inbounds for i in eachindex(meshes)
+        ne = ne_per_mesh[i]
+        if ne > 0
+            face2node[ofs + 1 : ofs + ne] .= node_ids[i]
+            ofs += ne
+        end
+    end
 
+    merged_mesh = merge_simple_meshes(meshes)
     return merged_mesh, face2node
 end
 
