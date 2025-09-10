@@ -36,29 +36,27 @@ This avoids repeated pairwise merges and additional allocations.
 function merge_simple_meshes(meshes::AbstractVector{<:Meshes.SimpleMesh})
     isempty(meshes) && error("No meshes to merge.")
 
-    # Points: collect and concatenate (type inferred from first mesh)
-    points = Vector{eltype(Meshes.vertices(meshes[1]))}()
+    # Collect vertex blocks and concatenate
+    verts_blocks = map(m -> collect(Meshes.vertices(m)), meshes)
+    points = vcat(verts_blocks...)
 
-    # Connectivity blocks (one per mesh), preserving concrete element types per block.
-    conn_blocks = Vector{Vector}(undef, length(meshes))
+    # Compute running offsets for connectivity reindexing
+    lens = map(length, verts_blocks)
+    # offsets[i] = sum(lens[1:i-1])
+    offsets = length(lens) == 0 ? Int[] : cumsum(vcat(0, lens[1:end-1]))
 
-    offset = 0
-    for (i, m) in enumerate(meshes)
-        v = collect(Meshes.vertices(m))
-        append!(points, v)
-
+    # Map each mesh to its reindexed connectivity block
+    connec_blocks = map(zip(meshes, offsets)) do (m, off)
         elems = collect(Meshes.elements(Meshes.topology(m)))
-        block = map(elems) do e
+        map(elems) do e
             PL = Meshes.pltype(e)
             c = Meshes.indices(e)
-            c′ = ntuple(j -> c[j] + offset, length(c))
+            c′ = ntuple(i -> c[i] + off, length(c))
             Meshes.connect(c′, PL)
         end
-        conn_blocks[i] = block
-        offset += length(v)
     end
+    connec = any(!isempty, connec_blocks) ? reduce(vcat, connec_blocks) : Any[]
 
-    connec = reduce(vcat, conn_blocks)
     return Meshes.SimpleMesh(points, connec)
 end
 
