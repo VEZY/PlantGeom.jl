@@ -64,29 +64,33 @@ function plot_opf(plot, mtg_name=:mtg)
     Makie.map!(plot.attributes, [:index], :index_resolved) do idx
         isnothing(idx) ? 1 : idx
     end
+
     Makie.map!(plot.attributes, [:colorrange, mtg_name, :colorant], :colorrange_resolved) do cr, mtg, colorant
         get_color_range(cr, mtg, colorant)
     end
 
-    if hasproperty(plot, :filter_fun) && !isnothing(Makie.to_value(plot[:filter_fun])) #! remove the hasproperty checks when ditching the call from Meshes.viz
-        user_function = Makie.to_value(plot[:filter_fun])
-        f = node -> node[:geometry] !== nothing && user_function(node)
-    else
-        f = node -> node[:geometry] !== nothing
+    Makie.map!(plot.attributes, [:filter_fun], :filter_fun_resolved) do filter_fun
+        if isnothing(filter_fun)
+            f = node -> node[:geometry] !== nothing
+        else
+            f = node -> node[:geometry] !== nothing && filter_fun(node)
+        end
+
+        return f
     end
 
     symbol = hasproperty(plot, :symbol) ? Makie.to_value(plot[:symbol]) : nothing #! should be using map! here (and for all other arguments too!)
     scale = hasproperty(plot, :scale) ? Makie.to_value(plot[:scale]) : nothing
     link = hasproperty(plot, :link) ? Makie.to_value(plot[:link]) : nothing
 
-    return plot_opf_merged(plot, f, symbol, scale, link, mtg_name, Makie.to_value(plot[:cache]))
+    return plot_opf_merged(plot, symbol, scale, link, mtg_name, Makie.to_value(plot[:cache]))
 
     return plot
 end
 
-function plot_opf_merged(plot, f, symbol, scale, link, mtg_name, cache=true)
+function plot_opf_merged(plot, symbol, scale, link, mtg_name, cache=true)
     # Compute the mesh at the scene scale:
-    Makie.map!(plot.attributes, [mtg_name, :filter_fun], [:merged_mesh, :face2node]) do opf, filter_fun
+    Makie.map!(plot.attributes, [mtg_name, :filter_fun_resolved], [:merged_mesh, :face2node]) do opf, filter_fun
         return scene_mesh!(opf, filter_fun, symbol, scale, link, cache)
     end
 
