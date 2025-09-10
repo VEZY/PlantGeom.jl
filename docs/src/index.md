@@ -11,7 +11,7 @@ The package is designed around [MultiScaleTreeGraph](https://github.com/VEZY/Mul
 The package provides different functionalities, the main ones being:
 
 - IO for the OPF file format (see [`read_opf`](@ref) and [`write_opf`](@ref));
-- plotting using `plantviz` and `plantviz!`, optionally using coloring by attribute;
+- plotting using `plantviz` and `plantviz!`, optionally using coloring by attribute. Rendering is merged-by-default for performance;
 - mesh transformations using [`transform_mesh!`](@ref)
 
 Note that PlantGeom reserves the `:geometry` attribute in the nodes (*e.g.* organs). It uses it to store the 3D geometry as a special structure ([`Geometry`](@ref)).
