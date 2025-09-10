@@ -16,7 +16,7 @@ Plant architecture is often represented at multiple scales - from fine details l
 - **Scale-appropriate analysis**: When analysis is performed at a coarser scale (e.g., axis level), there's no need to maintain separate geometries for each component
 - **Streamlined visualization**: Rendering performance improves significantly with fewer meshes
 
-PlantGeom provides tools to merge fine-scale geometries into coarser representations while preserving the complete geometric detail.
+PlantGeom provides tools to merge fine-scale geometries into coarser representations while preserving the complete geometric detail. Note: the PlantViz plotting recipe renders using a single merged mesh by default for performance; the utilities in this page are about structurally merging geometry across MTG scales.
 
 ## The `merge_children_geometry!` Function
 
