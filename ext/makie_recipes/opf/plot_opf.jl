@@ -141,8 +141,7 @@ function compute_vertex_colors!(colorant_value::AttributeColorant, plot, f, symb
         color_attribute = colorant.color
         vertex_colors = Vector{Colorant}()
         MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
-            geom = node[:geometry] # we need the geometry to know how many vertices there are
-            m = geom.mesh === nothing ? PlantGeom.refmesh_to_mesh(node) : geom.mesh
+            m = PlantGeom.refmesh_to_mesh(node)
             # Colors for this mesh's vertices
             val = node[color_attribute]
             local cols
@@ -171,8 +170,8 @@ function compute_vertex_colors!(colorant_value::DictRefMeshColorant, plot, f, sy
     map!(plot.attributes, [:colorant, :color_missing, :colormap_resolved, :colorrange_resolved, :index_resolved, mtg_name], :vertex_colors) do colorant, color_missing, colormap, color_range, index, opf
         vertex_colors = Vector{Colorant}()
         MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
-            geom = node[:geometry] # we need the geometry to know how many vertices there are
-            m = geom.mesh === nothing ? PlantGeom.refmesh_to_mesh(node) : geom.mesh
+            geom = node[:geometry]
+            m = PlantGeom.refmesh_to_mesh(node)
             # Determine color from refmesh name; if a per-vertex vector is provided use it
             name = get_ref_mesh_name(node)
             cols = get(colorant.colors, name, material_single_color(geom.ref_mesh.material))
@@ -189,7 +188,7 @@ function compute_vertex_colors!(colorant_value::DictVertexRefMeshColorant, plot,
         vertex_colors = Vector{Colorant}()
         MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
             geom = node[:geometry] # we need the geometry to know how many vertices there are
-            m = geom.mesh === nothing ? PlantGeom.refmesh_to_mesh(node) : geom.mesh
+            m = PlantGeom.refmesh_to_mesh(node)
             # Determine color from refmesh name; if a per-vertex vector is provided use it
             name = get_ref_mesh_name(node)
             cols = get(colorant.colors, name, fill(material_single_color(geom.ref_mesh.material), Meshes.nvertices(m)))
@@ -207,7 +206,7 @@ function compute_vertex_colors!(::RefMeshColorant, plot, f, symbol, scale, link,
         vertex_colors = Vector{Colorant}()
         MultiScaleTreeGraph.traverse!(opf; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
             geom = node[:geometry] # we need the geometry to know how many vertices there are
-            m = geom.mesh === nothing ? PlantGeom.refmesh_to_mesh(node) : geom.mesh
+            m = PlantGeom.refmesh_to_mesh(node)
             # Determine color from refmesh name; if a per-vertex vector is provided use it
             cols = fill(material_single_color(geom.ref_mesh.material), Meshes.nvertices(m))
             append!(vertex_colors, cols)

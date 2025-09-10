@@ -98,8 +98,7 @@ function add_geometry!(mtg, refmesh_cylinder, refmesh_leaf)
                              Meshes.Rotate(RotZ(π))  # Point downward
             
             # Attach geometry to this node
-            node.geometry = PlantGeom.Geometry(ref_mesh=refmesh_cylinder,
-                                              transformation=transformation)
+            node.geometry = PlantGeom.Geometry(ref_mesh=refmesh_cylinder, transformation=transformation)
             
             # Update the depth for the next root segment
             root_depth -= root_length
@@ -260,8 +259,7 @@ function add_geometry!(mtg, refmesh_cylinder, refmesh_leaf)
                              Meshes.Rotate(RotZ(π))  # Point downward
             
             # Attach geometry to this node
-            node.geometry = PlantGeom.Geometry(ref_mesh=refmesh_cylinder,
-                                              transformation=transformation)
+            node.geometry = PlantGeom.Geometry(ref_mesh=refmesh_cylinder, transformation=transformation)
             
             # Update the depth for the next root segment
             root_depth -= root_length

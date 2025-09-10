@@ -9,7 +9,7 @@
 ## Architecture Overview
 - Core types: `RefMesh` (reference geometry) and `Geometry` (ref mesh, transformation, cached mesh). MTG nodes store geometry in the `:geometry` attribute.
 - Transforms: built on `TransformsBase` and `Meshes` (`Translate`, `Rotate`, `Scale`, `Affine`) and composed via `→`/`SequentialTransform`; conversion to 4×4 matrices via `get_transformation_matrix`.
-- Data flow: OPF/OPS parsed to MTG (`read_opf`, `read_ops`), per-node geometry computed lazily or explicitly via `refmesh_to_mesh!`/`transform_mesh!`. Scene transforms from OPS are tracked (`opf.scene_transformation`).
+- Data flow: OPF/OPS parsed to MTG (`read_opf`, `read_ops`), per-node geometry computed via `refmesh_to_mesh`.
 - Visualization: Makie recipes live in `ext/makie_recipes/`; `plantviz` is the high-level plotting entry. Colors come from attributes or dictionaries and are mapped with `get_colormap`/`get_color`; some values are cached with `UUIDs`-named observables.
 - Interop: Heavily relies on `MultiScaleTreeGraph` for the MTG container and on `Meshes` for mesh primitives and plotting glue.
 

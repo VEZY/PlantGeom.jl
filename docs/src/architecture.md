@@ -11,7 +11,7 @@ OPF/OPS files ──► read_opf/read_ops ──► MTG (MultiScaleTreeGraph)
                                   ▼
                     Geometry (ref_mesh + transform)
                                   │
-                    (lazy) refmesh_to_mesh! per node
+                    (lazy) refmesh_to_mesh per node
                                   │
                                   ▼
             Merge all meshes into a single Meshes.SimpleMesh geometry
@@ -22,7 +22,7 @@ OPF/OPS files ──► read_opf/read_ops ──► MTG (MultiScaleTreeGraph)
 
 - Core types: `RefMesh` stores template geometry; `Geometry` attaches a `ref_mesh`, a transform (`Translate`, `Rotate`, `Scale`, `Affine`, or `SequentialTransform`), and an optional cached mesh to an MTG node attribute `:geometry`.
 - IO: `read_opf`/`read_ops` populate MTG nodes and scene transforms; `write_opf`/`write_ops` serialize meshes and transforms back to disk.
-- Computation: meshes are computed lazily; call `refmesh_to_mesh!` to materialize or `transform_mesh!` to apply composed transforms. Matrix generation uses `get_transformation_matrix`. At render time, node meshes are merged to a single `SimpleMesh`.
+- Computation: meshes are computed lazily; call `refmesh_to_mesh` to materialize. Matrix generation uses `get_transformation_matrix`. At render time, node meshes are merged to a single `SimpleMesh`.
 - Visualization: `plantviz` builds on Makie’s ComputeGraph. It maps colors from attributes or user dictionaries via `get_mtg_color`/`get_color`/`get_colormap`, wires them as compute nodes with `map!`, and renders the merged mesh once.
 
 Minimal example
@@ -30,7 +30,6 @@ Minimal example
 ```julia
 using PlantGeom
 opf = read_opf("test/files/simple_plant.opf")
-refmesh_to_mesh!(opf)              # materialize per-node meshes
 fig, ax, plt = plantviz(opf)       # visualize
 ```
 

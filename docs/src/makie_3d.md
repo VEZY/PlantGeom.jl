@@ -39,7 +39,6 @@ using Bonito
 Page()
 CairoMakie.activate!()
 mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf"))
-transform!(mtg, refmesh_to_mesh!)
 ref_meshes = get_ref_meshes(mtg);
 transform!(mtg, :Area => (x -> [x*i for i in 1:12]) => :dummy_var, ignore_nothing = true)
 ```
@@ -57,18 +56,6 @@ By:
 ```julia
 using GLMakie
 ```
-
-### Set-up
-
-The first step is to compute the node meshes using the reference meshes and the transformation matrices. This is done very easily by mapping `refmesh_to_mesh!` to each node of the MTG like so:
-
-```@example 2
-using MultiScaleTreeGraph
-transform!(mtg, refmesh_to_mesh!)
-```
-
-!!! note
-    This step is optional, and not needed if only few plots are performed because it is done automatically when plotting an MTG, but the results are discarded afterward to avoid too much memory usage. If you plant to make many plots, we advise to do this step to avoid to wait a long time each time.
 
 ### Default colors
 
@@ -169,7 +156,7 @@ f
 
 ```julia
 # Compute the z position of each vertices in each mesh:
-transform!(mtg, :geometry => (x -> [Meshes.coords(i).z for i in Meshes.vertices(x.mesh)]) => :z, ignore_nothing = true)
+transform!(mtg, (x -> [Meshes.coords(i).z for i in Meshes.vertices(refmesh_to_mesh(x))]) => :z_vertex, filter_fun= node -> hasproperty(node, :geometry))
 plantviz(mtg, color = :z, showfacets = true)
 ```
 

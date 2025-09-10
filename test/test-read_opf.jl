@@ -33,7 +33,6 @@ end
     @test isa(Internode[:geometry], PlantGeom.Geometry)
 
     geom = Internode[:geometry]
-    @test isnothing(geom.mesh)
     @test geom.ref_mesh === mtg[:ref_meshes][1] #! update this number 
     @test typeof(geom.transformation[1]) <: Affine{3,SMatrix{3,3,Float64,9},<:Meshes.Vec}
     @test isa(geom.transformation[2], Translate{3})

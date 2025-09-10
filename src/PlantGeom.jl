@@ -75,7 +75,6 @@ export read_ops_file, read_ops, write_ops
 export taper
 export refmesh_to_mesh, get_ref_meshes_color
 export xmax, ymax, zmax, xmin, ymin, zmin
-export refmesh_to_mesh!
 export transform_mesh!
 export Material, Phong
 export RefMesh

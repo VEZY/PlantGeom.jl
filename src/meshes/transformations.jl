@@ -44,8 +44,6 @@ plantviz!(opf3)
 # Same but rotate only the second leaf around the Z axis:
 clean_cache!(opf)
 opf4 = deepcopy(opf)
-# Build the meshes from the reference meshes (need it because we want the coordinates of the parent):
-transform!(opf4, refmesh_to_mesh!)
 
 # Get the second leaf in the OPF:
 leaf_node = get_node(opf4, 8)
@@ -67,10 +65,6 @@ plantviz!(opf4)
 function transform_mesh!(node::MultiScaleTreeGraph.Node, transformation)
     if node[:geometry] !== nothing
         node[:geometry].transformation = node[:geometry].transformation → transformation
-        # If the node has a computed mesh, update it:
-        if node[:geometry].mesh !== nothing
-            refmesh_to_mesh!(node)
-        end
     end
 end
 

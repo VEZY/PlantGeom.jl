@@ -16,7 +16,7 @@ function build_merged_mesh_with_map(mtg; filter_fun=nothing, symbol=nothing, sca
         geom = node[:geometry]
         if geom !== nothing
             any_node_selected[] = true
-            m = (geom.mesh === nothing) ? refmesh_to_mesh(node) : geom.mesh
+            m = refmesh_to_mesh(node)
             push!(meshes, m)
             push!(node_ids, MultiScaleTreeGraph.node_id(node))
             push!(ne_per_mesh, Meshes.nelements(m))

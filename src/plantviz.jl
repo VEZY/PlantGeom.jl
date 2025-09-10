@@ -4,10 +4,7 @@
 
 Vizualise the 3D geometry of an MTG (usually read from an OPF). This function search for
 the `:geometry` attribute in each node of the MTG, and build the vizualisation using the
-`mesh` field, or the reference meshes and the associated transformation matrix if missing.
-
-The `:geometry` attribute is usually added by the `refmesh_to_mesh!` function first, which
-can be called with the `transform!` function. See the examples below.
+reference meshes and the associated transformation matrix.
 
 # Arguments
 
@@ -36,14 +33,10 @@ file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant
 mtg = read_opf(file)
 plantviz(mtg)
 
-# If you need to plot the mtg several times, you better cache the mesh in the node geometry
-# like so:
-transform!(mtg, refmesh_to_mesh!)
-
 # Then plot it again like before, and it will be faster:
 plantviz(mtg)
 
-# We can also color the 3d plot with several options:
+# We can color the 3d plot with several options:
 # With one shared color:
 plantviz(mtg, color = :red)
 # One color per reference mesh:
@@ -52,8 +45,7 @@ plantviz(mtg, color = Dict(1 => :burlywood4, 2 => :springgreen4, 3 => :burlywood
 # Or just changing the color of some:
 plantviz(mtg, color = Dict(1 => :burlywood4))
 
-# Or coloring by mtg attribute, e.g. using the mesh max Z coordinates (NB: need to use
-# `refmesh_to_mesh!` before, see above):
+# Or coloring by mtg attribute, e.g. using the mesh max Z coordinates:
 transform!(mtg, zmax => :z_max, ignore_nothing = true)
 plantviz(mtg, color = :z_max)
 
@@ -63,7 +55,7 @@ vertex_color = get_color(1:nvertices(get_ref_meshes(mtg))[1], [1,nvertices(get_r
 plantviz(mtg, color = Dict(1 => vertex_color))
 
 # Or even coloring by the value of the Z coordinates of each vertex:
-transform!(mtg, :geometry => (x -> [Meshes.coords(i).z for i in Meshes.vertices(x.mesh)]) => :z, ignore_nothing = true)
+transform!(mtg, (x -> [Meshes.coords(i).z for i in Meshes.vertices(refmesh_to_mesh(x))]) => :z_vertex, filter_fun= node -> hasproperty(node, :geometry))
 plantviz(mtg, color = :z, showsegments = true)
 
 f,a,p = plantviz(mtg, color = :z, showsegments = true)

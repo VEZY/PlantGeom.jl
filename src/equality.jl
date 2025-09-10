@@ -22,6 +22,5 @@ function Base.:(==)(a::T, b::T) where {T<:Geometry}
         isequal(a.transformation(Meshes.Point(1, 2, 3)), b.transformation(Meshes.Point(1, 2, 3))) &&
         # NB: transform a point here because transformations can't be compared directly
         isequal(a.dUp, b.dUp) &&
-        isequal(a.dDwn, b.dDwn) &&
-        isequal(a.mesh, b.mesh)
+        isequal(a.dDwn, b.dDwn)
 end

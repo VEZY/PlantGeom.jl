@@ -2,7 +2,7 @@
 file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
 opf = read_opf(file)
 meshes = get_ref_meshes(opf)
-transform!(opf, refmesh_to_mesh!)
+
 @testset "Makie recipes: reference meshes -> plot structure" begin
     f, ax, p = plantviz(meshes)
     @test p.converted.value[][1] == meshes
@@ -32,7 +32,6 @@ end
 
 opf = read_opf(file)
 meshes = get_ref_meshes(opf)
-transform!(opf, refmesh_to_mesh!)
 
 @testset "Makie recipes: whole MTG -> image references" begin
     @test_reference "reference_images/opf_basic.png" plantviz(opf)
@@ -44,7 +43,7 @@ transform!(opf, refmesh_to_mesh!)
     transform!(opf, zmax => :z_max, ignore_nothing=true)
     @test_reference "reference_images/opf_color_attribute.png" plantviz(opf, color=:z_max)
 
-    transform!(opf, :geometry => (x -> [Meshes.coords(i).z for i in Meshes.vertices(x.mesh)]) => :z, ignore_nothing=true)
+    transform!(opf, (x -> [Meshes.coords(i).z for i in Meshes.vertices(refmesh_to_mesh(x))]) => :z, filter_fun=node -> hasproperty(node, :geometry))
     @test_reference "reference_images/opf_color_attribute_vertex.png" plantviz(opf, color=:z, showsegments=true)
 
     fig2, ax2, p2 = plantviz(opf, color=:z)
