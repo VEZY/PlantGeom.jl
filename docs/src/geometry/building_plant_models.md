@@ -108,7 +108,6 @@ end
 
 mtg = build_mtg()
 add_geometry!(mtg, refmesh_cylinder, refmesh_leaf)
-
 ```
 
 ## Overview

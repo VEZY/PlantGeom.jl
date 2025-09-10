@@ -30,6 +30,15 @@ end
     )
 end
 
+file_coffee = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "coffee.opf")
+mtg_coffee = read_opf(file_coffee)
+@testset "Makie recipes: whole MTG -> attribute colors" begin
+    f, ax, p = plantviz(mtg_coffee, color=:Area)
+    @test length(p.vertex_colors[]) == Meshes.nvertices(p.merged_mesh[])
+    @test_reference "reference_images/coffee_area.png" f
+end
+
+
 opf = read_opf(file)
 meshes = get_ref_meshes(opf)
 

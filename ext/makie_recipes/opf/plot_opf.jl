@@ -145,7 +145,7 @@ function compute_vertex_colors!(colorant_value::AttributeColorant, plot, f, symb
             nverts = Meshes.nvertices(m)
             # Colors for this mesh's vertices
             val = node[color_attribute]
-            cols_any = get_color(val, color_range, index; colormap=colormap)
+            cols_any = isnothing(val) ? nothing : get_color(val, color_range, index; colormap=colormap)
             # Function barrier to ensure a stable Vector{Colorant}
             append!(vertex_colors, _coerce_vertex_colors(cols_any, nverts, color_missing))
         end
