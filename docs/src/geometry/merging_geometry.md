@@ -20,7 +20,11 @@ PlantGeom provides tools to merge fine-scale geometries into coarser representat
 
 ## The `merge_children_geometry!` Function
 
-The `merge_children_geometry!` function allows you to merge geometries from lower-scale nodes into higher-scale parent nodes without losing geometric detail.
+Advanced: structural merging across scales
+
+The `merge_children_geometry!` function allows you to merge geometries from lower-scale nodes into higher-scale parent nodes without losing geometric detail. This is useful when reconstruction happens at a fine scale (e.g., metamers/leaves) but you want to persist geometry at a coarser organizational scale (e.g., axis) for downstream processing or storage.
+
+Note: This is not required to get responsive plots. PlantViz renders using a single merged mesh by default at draw time and does not need structural merging for interactive performance. Use `merge_children_geometry!` only when you deliberately want to relocate geometry across MTG scales.
 
 ```julia
 merge_children_geometry!(mtg; from, into, delete=:nodes, verbose=true, child_link_fun=x -> new_child_link(x, verbose))
@@ -122,7 +126,7 @@ The visual result is still the same, but now the MTG structure has been simplifi
 
 ### Performance Comparison
 
-The performance improvements from merging geometry can be substantial:
+If your MTG has many little meshes, you will see performance improvements from merging these into a higher-level scale, because they will be merged into a single mesh. But for many cases, you will not see a big difference if your use-case is only plotting a single figure.
 
 ```@example merge_geometry
 using Statistics
@@ -137,15 +141,6 @@ ax = Axis(table_fig[1, 1], title="Rendering Time (ms)", xticks = (1:3, ["Origina
 barplot!(ax, 1:3, [original_time, merged1_time, merged2_time])
 table_fig
 ```
-
-## Use Cases
-
-Geometry merging is particularly useful for:
-
-1. **Light interception calculations** computed at the triangle level but integrated at axis scale
-2. **Large-scale simulations** where computational efficiency is crucial
-3. **Visualization of complex plants** where rendering performance matters
-4. **Scale-appropriate modeling** where geometry is needed at higher scales but not at fine scales
 
 ## Notes
 
