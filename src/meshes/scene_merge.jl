@@ -36,25 +36,30 @@ This avoids repeated pairwise merges and additional allocations.
 function merge_simple_meshes(meshes::AbstractVector{<:Meshes.SimpleMesh})
     isempty(meshes) && error("No meshes to merge.")
 
-    # Single map pass that builds vertex blocks and their reindexed connectivity,
-    # using a running vertex offset captured via Ref.
+    # Single mapreduce pass with running offset for connectivity reindexing
     off = Ref(0)
-    blocks = map(meshes) do m
-        v = collect(Meshes.vertices(m))
-        elems = collect(Meshes.elements(Meshes.topology(m)))
-        conns = map(elems) do e
-            PL = Meshes.pltype(e)
-            c = Meshes.indices(e)
-            c′ = ntuple(i -> c[i] + off[], length(c))
-            Meshes.connect(c′, PL)
-        end
-        off[] += length(v)
-        (v, conns)
+    combine = (a, b) -> begin
+        append!(a[1], b[1])
+        append!(a[2], b[2])
+        a
     end
+    points, connec = mapreduce(
+        m -> begin
+            v = collect(Meshes.vertices(m))
+            elems = collect(Meshes.elements(Meshes.topology(m)))
+            conns = map(elems) do e
+                PL = Meshes.pltype(e)
+                c = Meshes.indices(e)
+                c′ = ntuple(i -> c[i] + off[], length(c))
+                Meshes.connect(c′, PL)
+            end
+            off[] += length(v)
+            (v, conns)
+        end,
+        combine,
+        meshes
+    )
 
-    points = vcat((b[1] for b in blocks)...)
-    connec_blocks = [b[2] for b in blocks]
-    connec = any(!isempty, connec_blocks) ? reduce(vcat, connec_blocks) : Any[]
     return Meshes.SimpleMesh(points, connec)
 end
 
