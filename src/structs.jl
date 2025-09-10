@@ -123,7 +123,8 @@ mutable struct Geometry{M<:RefMesh,S}
     dDwn::S
 end
 
-function Geometry(; ref_mesh, transformation=Identity(), dUp=1.0, dDwn=1.0)
+function Geometry(; ref_mesh, transformation=Identity(), dUp=1.0, dDwn=1.0, mesh=nothing)
+    mesh !== nothing && @warn "The `mesh` argument is deprecated and will be removed in future versions. The mesh is now computed on-the-fly using `refmesh_to_mesh(node)`."
     Geometry(
         ref_mesh,
         transformation,
