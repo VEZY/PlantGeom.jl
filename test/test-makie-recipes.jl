@@ -123,12 +123,9 @@ end
 end
 
 @testset "Makie recipes: testing cache" begin
-    # Ensure plotting works with default refmesh colors in merged mode
     file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
     opf = read_opf(file)
-    # Precompute meshes for stability
-    transform!(opf, refmesh_to_mesh!)
-    fig, ax, p = plantviz(opf, merged=true)
+    fig, ax, p = plantviz(opf)
     # Check that face2node mapping was produced and cached scene exists
     root = MultiScaleTreeGraph.get_root(opf)
     cache = root[:_scene_cache]

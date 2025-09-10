@@ -16,7 +16,7 @@ function scene_mesh!(opf, filter_fun, symbol, scale, link, cache=true)
 
     if cache
         # Cache key based on refmesh color dict and filters
-        key = PlantGeom.scene_cache_key(opf; merged=true, symbol=symbol, scale=scale, link=link, filter_fun=filter_fun)
+        key = PlantGeom.scene_cache_key(opf; symbol=symbol, scale=scale, link=link, filter_fun=filter_fun)
 
         cached = PlantGeom.get_cached_scene(opf, key)
         !isnothing(cached) && return cached.mesh, cached.face2node

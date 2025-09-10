@@ -33,7 +33,7 @@ function build_merged_mesh_with_map(mtg; filter_fun=nothing, symbol=nothing, sca
     @inbounds for i in eachindex(meshes)
         ne = ne_per_mesh[i]
         if ne > 0
-            face2node[ofs + 1 : ofs + ne] .= node_ids[i]
+            face2node[ofs+1:ofs+ne] .= node_ids[i]
             ofs += ne
         end
     end
@@ -101,16 +101,14 @@ function bump_scene_version!(mtg; by=1)
 end
 
 """
-    scene_cache_key(mtg; merged=true, colorant_tag=:solid, color_id=nothing,
-                    colormap_id=nothing, colorrange_id=nothing,
-                    symbol=nothing, scale=nothing, link=nothing, filter_fun=nothing) -> UInt
+    scene_cache_key(mtg; symbol=nothing, scale=nothing, link=nothing, filter_fun=nothing) -> UInt
 
 Compute a stable cache key for the current scene rendering request.
 """
-function scene_cache_key(mtg; merged=true, symbol=nothing, scale=nothing, link=nothing, filter_fun=nothing)
+function scene_cache_key(mtg; symbol=nothing, scale=nothing, link=nothing, filter_fun=nothing)
     ver = scene_version(mtg)
     fid = isnothing(filter_fun) ? 0 : objectid(filter_fun)
-    return hash((ver, merged, symbol, scale, link, fid))
+    return hash((ver, symbol, scale, link, fid))
 end
 
 """
