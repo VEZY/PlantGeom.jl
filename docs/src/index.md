@@ -11,7 +11,7 @@ The package is designed around [MultiScaleTreeGraph](https://github.com/VEZY/Mul
 The package provides different functionalities, the main ones being:
 
 - IO for the OPF file format (see [`read_opf`](@ref) and [`write_opf`](@ref));
-- plotting using `plantviz` and `plantviz!`, optionally using coloring by attribute;
+- plotting using `plantviz` and `plantviz!`, optionally using coloring by attribute. Rendering is merged-by-default for performance;
 - mesh transformations using [`transform_mesh!`](@ref)
 
 Note that PlantGeom reserves the `:geometry` attribute in the nodes (*e.g.* organs). It uses it to store the 3D geometry as a special structure ([`Geometry`](@ref)).
@@ -22,12 +22,10 @@ using Bonito
 Page()
 opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 
-# First, we compute the 3D coordinates for each node in the MTG:
-transform!(opf, refmesh_to_mesh!)
 # And compute the max z of each node based on their mesh:
 transform!(opf, zmax => :z_node, ignore_nothing = true)
 # Or the z coordinate of each vertez of each node mesh:
-transform!(opf, :geometry => (x -> [Meshes.coords(i).z for i in Meshes.vertices(x.mesh)]) => :z_vertex, ignore_nothing = true)
+transform!(opf, (x -> [Meshes.coords(i).z for i in Meshes.vertices(refmesh_to_mesh(x))]) => :z_vertex, filter_fun= node -> hasproperty(node, :geometry))
 
 # Then we make a Makie figure:
 f = Figure()
@@ -60,14 +58,10 @@ If you want to reproduce the animation, you can look at the code below. Otherwis
 ```julia
 using CairoMakie, Meshes, PlantGeom, MultiScaleTreeGraph
 opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
-
-# First, we compute the 3D coordinates for each node in the MTG:
-transform!(opf, refmesh_to_mesh!)
 # And compute the max z of each node based on their mesh:
 transform!(opf, zmax => :z_node, ignore_nothing = true)
 # Or the z coordinate of each vertex of each node mesh:
-transform!(opf, :geometry => (x -> [Meshes.coords(i)z for i in Meshes.vertices(x.mesh)]) => :z_vertex, ignore_nothing = true)
-
+transform!(opf, (x -> [Meshes.coords(i).z for i in Meshes.vertices(refmesh_to_mesh(x))]) => :z_vertex, filter_fun= node -> hasproperty(node, :geometry))
 
 # Then we make a Makie figure:
 f = Figure()

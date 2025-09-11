@@ -25,6 +25,7 @@ The plot object can have the following optional arguments:
 - `symbol`: Plot only nodes with this symbol. Should be a String or a vector of.
 - `scale`: Plot only nodes with this scale. Should be an Int or a vector of.
 - `link`: Plot only nodes with this link. Should be a String or a vector of.
+- `cache=true`: Whether to cache the results.
 
 # Examples
 
@@ -53,155 +54,184 @@ plot_opf(opf; color=:red, colormap=:viridis, segmentcolor=:red, showsegments=tru
 
 """
 function plot_opf(plot, mtg_name=:mtg)
-    opf = plot[mtg_name]
-    color = plot[:color]
-
-    # Get the colors for the meshes:
-    colorant = Makie.@lift PlantGeom.get_mtg_color($color, opf[]) #! not using `$opf` as it would trigger the computation of the color again on change, which is not what we want here.
-
-    if hasproperty(plot, :filter_fun) && !isnothing(plot[:filter_fun][]) #! remove the hasproperty checks when ditching the call from Meshes.viz
-        user_function = plot[:filter_fun][]
-        f = node -> node[:geometry] !== nothing && user_function(node)
-    else
-        f = node -> node[:geometry] !== nothing
+    # Register derived nodes on the ComputeGraph for clarity and reuse
+    Makie.map!(plot.attributes, [:color, mtg_name], :colorant) do col, mtg
+        PlantGeom.get_mtg_color(col, mtg)
+    end
+    Makie.map!(plot.attributes, [:colormap], :colormap_resolved) do cm
+        get_colormap(cm)
+    end
+    Makie.map!(plot.attributes, [:index], :index_resolved) do idx
+        isnothing(idx) ? 1 : idx
     end
 
-    symbol = hasproperty(plot, :symbol) ? plot[:symbol][] : nothing # we should lift here Makie.lift(x -> x, plot[:symbol])
-    scale = hasproperty(plot, :scale) ? plot[:scale][] : nothing
-    link = hasproperty(plot, :link) ? plot[:link][] : nothing
-
-    plot_opf(colorant, plot, f, symbol, scale, link, mtg_name)
-
-    return plot
-end
-
-# Case where the color is a colorant (e.g. `:red`, or `RGB(0.1,0.5,0.1)`):
-function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, link, mtg_name) where {T<:Colorant}
-    color_attr_name = MultiScaleTreeGraph.cache_name("Color name")
-    any_node_selected = Ref(false)
-    MultiScaleTreeGraph.traverse!(plot[mtg_name][]; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
-        any_node_selected[] = true
-        # get the color based on a colormap and the normalized attribute value
-        node[color_attr_name] = Makie.lift(x -> x, colorant)
-
-        MeshesMakieExt.viz!(
-            plot,
-            Makie.Attributes(plot),
-            node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
-            color=node[color_attr_name],
-        )
+    Makie.map!(plot.attributes, [:colorrange, mtg_name, :colorant], :colorrange_resolved) do cr, mtg, colorant
+        get_color_range(cr, mtg, colorant)
     end
-    any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
 
-    return plot
-end
-
-# Case where the color is a vector of colors / symbols (e.g. `fill(:red, length(mtg))`):
-function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, link, mtg_name) where {T<:Union{PlantGeom.VectorColorant,PlantGeom.VectorSymbol}}
-    color_attr_name = MultiScaleTreeGraph.cache_name("Color name")
-    any_node_selected = Ref(false)
-    i = Ref(0) # index to access the color vector
-
-    MultiScaleTreeGraph.traverse!(plot[mtg_name][]; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
-        i[] += 1
-        any_node_selected[] = true
-        # get the color based on a colormap and the normalized attribute value
-        node[color_attr_name] = Makie.lift(x -> x.colors[i[]], colorant)
-        MeshesMakieExt.viz!(
-            plot,
-            Makie.Attributes(plot),
-            node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
-            color=node[color_attr_name],
-        )
-    end
-    any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
-
-    return plot
-end
-
-# Case where the color is a color for each reference mesh:
-function plot_opf(colorant::Observables.Observable{T}, plot, f, symbol, scale, link, mtg_name) where {T<:Union{RefMeshColorant,DictRefMeshColorant,DictVertexRefMeshColorant}}
-
-    color_attr_name = MultiScaleTreeGraph.cache_name("Color name")
-
-    opf = plot[mtg_name]
-    any_node_selected = Ref(false)
-
-    # Make the plot, case where the color is a color for each reference mesh:
-    MultiScaleTreeGraph.traverse!(opf[]; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
-        any_node_selected[] = true
-
-        node[color_attr_name] = Makie.@lift color_from_refmeshes($colorant, node)
-        MeshesMakieExt.viz!(
-            plot,
-            Makie.Attributes(plot),
-            node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
-            color=node[color_attr_name],
-        )
-    end
-    any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
-
-    return plot
-end
-
-function color_from_refmeshes(color::RefMeshColorant, node)
-    material_single_color(node.geometry.ref_mesh.material)
-end
-
-function color_from_refmeshes(color::Union{DictRefMeshColorant,DictVertexRefMeshColorant}, node)
-    get(color.colors, get_ref_mesh_name(node), material_single_color(node.geometry.ref_mesh.material))
-end
-
-# Case where the color is an attribute of the MTG:
-function plot_opf(colorant::Observables.Observable{AttributeColorant}, plot, f, symbol, scale, link, mtg_name)
-
-    # Set the value of the cached color attribute (will be written in the MTG!)
-    # This is usefull when we make several plots at once and need different colors at the same time (e.g. plotting the same plant on two different days).
-    color_attr_name = hasproperty(plot, :color_cache_name) ? plot[:color_cache_name] : MultiScaleTreeGraph.cache_name("Color name")
-
-    opf = plot[mtg_name]
-    colormap_ = plot[:colormap]
-    colormap = Makie.@lift get_colormap($colormap_)
-
-    # Because we extend the `Viz` type, we cannot use the standard way of getting the attribute
-    # from the plot. Instead, we need to check here if the argument is given, and give the default
-    # value if not.
-    # Note: If we defined our own e.g. `PlantViz` type, we could have defined a `color_missing` and 
-    # `colorrange` fields in it directly.
-
-    # Are the colors given for each vertex in the meshes, or for each reference mesh?
-    # Note that we can have several values if we have several timesteps too.
-    color_missing = hasproperty(plot, :color_missing) ? plot[:color_missing] : Observables.Observable(RGBA(0, 0, 0, 0.3))
-
-    color_range = Makie.@lift get_color_range($(plot[:colorrange]), opf[], $colorant)
-    #! Important note: we use `opf` here and not `$opf` because the code below will modify the OPF, and we don't want to trigger
-    #! this again on change, as it will do a stack overflow error (infinite recursion).
-
-    index = Makie.lift(x -> isnothing(x) ? 1 : x, plot[:index])
-
-    any_node_selected = Ref(false)
-    # Make the plot, case where the color is a color for each reference mesh:
-    MultiScaleTreeGraph.traverse!(opf[]; filter_fun=f, symbol=symbol, scale=scale, link=link) do node
-        any_node_selected[] = true
-        color_attribute = Makie.@lift PlantGeom.attr_colorant_name($colorant) # the attribute name used for coloring
-
-        if node[color_attribute[]] === nothing
-            node[color_attr_name] = color_missing
+    Makie.map!(plot.attributes, [:filter_fun], :filter_fun_resolved) do filter_fun
+        if isnothing(filter_fun)
+            f = node -> node[:geometry] !== nothing
         else
-            # get the color based on a colormap and the normalized attribute value
-            node[color_attr_name] = Makie.@lift get_color(node[$color_attribute], $color_range, $index; colormap=$colormap)
+            f = node -> node[:geometry] !== nothing && filter_fun(node)
         end
 
-        MeshesMakieExt.viz!(
-            plot,
-            Makie.Attributes(plot),
-            node[:geometry].mesh === nothing ? refmesh_to_mesh(node) : node[:geometry].mesh,
-            color=node[color_attr_name],
-            colormap=colormap,
-        )
+        return f
     end
-    any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
+
+    return plot_opf_merged(plot, mtg_name, Makie.to_value(plot[:cache]))
 
     return plot
 end
 
+function plot_opf_merged(plot, mtg_name, cache=true)
+    # Compute the mesh at the scene scale:
+    Makie.map!(plot.attributes, [mtg_name, :filter_fun_resolved, :symbol, :scale, :link], [:merged_mesh, :face2node]) do opf, filter_fun, symbol, scale, link
+        return scene_mesh!(opf, filter_fun, symbol, scale, link, cache)
+    end
+
+    compute_vertex_colors!(Makie.to_value(plot[:colorant]), plot, mtg_name)
+
+    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), plot[:merged_mesh], color=plot[:vertex_colors], colormap=plot[:colormap_resolved])
+
+    return plot
+end
+
+# Fallback for unsupported color specs
+function compute_vertex_colors!(colorant, plot, mtg_name)
+    error("colorant type not supported: $colorant")
+end
+
+# Simple colorant (single color only)
+function compute_vertex_colors!(::T, plot, mtg_name) where {T<:Colorant}
+    map!(plot.attributes, :colorant, :vertex_colors) do colorant
+        return colorant
+    end
+
+    return plot
+end
+
+function compute_vertex_colors!(::PlantGeom.VectorColorant, plot, mtg_name)
+    Makie.map!(plot.attributes, [mtg_name, :colorant, :filter_fun_resolved, :symbol, :scale, :link], :vertex_colors) do opf, colorant, filter_fun, symbol, scale, link
+        cols = colorant.colors
+        vertex_colors = Vector{Colorant}()
+        n_nodes_colored = Ref(0)
+        MultiScaleTreeGraph.traverse!(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
+            n_nodes_colored[] += 1
+            nverts = Meshes.nvertices(PlantGeom.refmesh_to_mesh(node))
+            append!(vertex_colors, fill(cols[n_nodes_colored[]], nverts))
+        end
+
+        if n_nodes_colored[] != length(cols)
+            error(
+                "Length of the color vector (", length(cols), ") does not match number of selected nodes for coloring (", n_nodes_colored[], "). ",
+                "Please ensure that the color vector is the same length as the number of nodes that have geometry and are selected ",
+                "(i.e. if `filter_fun`, `symbol`, or `scale` are used). You can check the number of selected nodes by calling ",
+                "`length(descendants(mtg, :geometry; ignore_nothing=true, self=true, filter_fun=..., symbol=..., scale=...))`."
+            )
+        end
+
+        return vertex_colors
+    end
+
+    return plot
+end
+
+# Attribute-based color
+function compute_vertex_colors!(::AttributeColorant, plot, mtg_name)
+    # Then, compute the colors (this one uses Makie's compute graph):
+    map!(
+        plot.attributes,
+        [:colorant, :color_missing, :colormap_resolved, :colorrange_resolved, :index_resolved, mtg_name, :filter_fun_resolved, :symbol, :scale, :link],
+        :vertex_colors
+    ) do colorant, color_missing, colormap, color_range, index, opf, filter_fun, symbol, scale, link
+        color_attribute = colorant.color
+        vertex_colors = Vector{Colorant}()
+        MultiScaleTreeGraph.traverse!(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
+            m = PlantGeom.refmesh_to_mesh(node)
+            nverts = Meshes.nvertices(m)
+            # Colors for this mesh's vertices
+            val = node[color_attribute]
+            cols_any = isnothing(val) ? nothing : get_color(val, color_range, index; colormap=colormap)
+            # Function barrier to ensure a stable Vector{Colorant}
+            append!(vertex_colors, _coerce_vertex_colors(cols_any, nverts, color_missing))
+        end
+
+        return vertex_colors
+    end
+
+    return plot
+end
+
+# Ensure a stable Vector{Colorant} regardless of whether `cols_any` is a single
+# Colorant or a vector of Colorants.
+@inline function _coerce_vertex_colors(cols_any, nverts::Int, color_missing)
+    if cols_any === nothing
+        return fill(color_missing, nverts)
+    elseif cols_any isa AbstractVector{<:Colorant}
+        return Vector{Colorant}(cols_any)
+    else
+        return fill(cols_any, nverts)
+    end
+end
+
+# Dict-by-refmesh colors
+function compute_vertex_colors!(::DictRefMeshColorant, plot, mtg_name)
+    # Then, compute the colors (this one uses Makie's compute graph):
+    map!(
+        plot.attributes,
+        [:colorant, :color_missing, mtg_name, :filter_fun_resolved, :symbol, :scale, :link],
+        :vertex_colors
+    ) do colorant, color_missing, opf, filter_fun, symbol, scale, link
+        vertex_colors = Vector{Colorant}()
+        MultiScaleTreeGraph.traverse!(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
+            geom = node[:geometry]
+            m = PlantGeom.refmesh_to_mesh(node)
+            # Determine color from refmesh name; if a per-vertex vector is provided use it
+            name = get_ref_mesh_name(node)
+            cols = get(colorant.colors, name, material_single_color(geom.ref_mesh.material))
+            append!(vertex_colors, fill(cols, Meshes.nvertices(m)))
+        end
+        return vertex_colors
+    end
+
+    return plot
+end
+
+function compute_vertex_colors!(::DictVertexRefMeshColorant, plot, mtg_name)
+    map!(
+        plot.attributes,
+        [:colorant, :color_missing, mtg_name, :filter_fun_resolved, :symbol, :scale, :link],
+        :vertex_colors
+    ) do colorant, color_missing, opf, filter_fun, symbol, scale, link
+        vertex_colors = Vector{Colorant}()
+        MultiScaleTreeGraph.traverse!(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
+            geom = node[:geometry] # we need the geometry to know how many vertices there are
+            m = PlantGeom.refmesh_to_mesh(node)
+            # Determine color from refmesh name; if a per-vertex vector is provided use it
+            name = get_ref_mesh_name(node)
+            cols = get(colorant.colors, name, fill(material_single_color(geom.ref_mesh.material), Meshes.nvertices(m)))
+            append!(vertex_colors, cols)
+        end
+        return vertex_colors
+    end
+
+    return plot
+end
+
+# Default refmesh colors
+function compute_vertex_colors!(::RefMeshColorant, plot, mtg_name)
+    map!(plot.attributes, [mtg_name, :filter_fun_resolved, :symbol, :scale, :link], :vertex_colors) do opf, filter_fun, symbol, scale, link
+        vertex_colors = Vector{Colorant}()
+        MultiScaleTreeGraph.traverse!(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
+            geom = node[:geometry] # we need the geometry to know how many vertices there are
+            m = PlantGeom.refmesh_to_mesh(node)
+            # Determine color from refmesh name; if a per-vertex vector is provided use it
+            cols = fill(material_single_color(geom.ref_mesh.material), Meshes.nvertices(m))
+            append!(vertex_colors, cols)
+        end
+        return vertex_colors
+    end
+
+    return plot
+end

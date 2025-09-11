@@ -16,6 +16,9 @@ The package provides different functionalities, the main ones being:
 - plotting using `plantviz` and `plantviz!`, optionally using coloring by attribute;
 - mesh transformations using `transform_mesh!`
 
+See the Architecture overview for a high-level data flow and performance notes:
+- Docs: https://VEZY.github.io/PlantGeom.jl/dev/architecture/
+
 Note that `:geometry` is a reserved attribute in nodes (*e.g.* organs) used for the 3D geometry. It is stored as a special structure (`Geometry`).
 
 ## Example usage
@@ -41,14 +44,8 @@ plantviz(mtg)
 Colour by attribute, *e.g.* using the mesh max Z coordinates:
 
 ```julia
-transform!(mtg, refmesh_to_mesh!, zmax => :z_max, ignore_nothing = true)
+transform!(mtg, zmax => :z_max, ignore_nothing = true)
 plantviz(mtg, color = :z_max)
-```
-
-By design the 3D geometry of each node is stored in the `:geometry` attribute. It stores a reference mesh, a transformation matrix, and the resulting mesh. The resulting mesh is computed lazily, meaning it is computed only the first time it is needed. To compute it explicitly, you can use `refmesh_to_mesh!` (like above):
-
-```julia
-transform!(mtg, refmesh_to_mesh!)
 ```
 
 ## Roadmap
@@ -68,7 +65,6 @@ transform!(mtg, refmesh_to_mesh!)
   - [x] Mesh for the nodes
   - [x] Reference meshes + transformation matrix (e.g. from OPF)
   - [ ] Reference meshes + Length and/or Width/diameter for scaling. If only Length, scale the whole mesh by a factor, if Length + Width, scale accordingly, etc... This would be a shortcut to using Meshes.jl's scaling.
-- [ ] Remove coffee.opf from tests and add PlantBiophysics as a dependency instead. It will make PlantGeom much lighter.
 - [x] Improve the OPF parser using e.g. our own XML parser. See <https://github.com/ordovician/PLists.jl> for an example pure Julia XML parser, and the corresponding [blogpost here](https://blog.devgenius.io/how-to-easily-write-an-xml-parser-in-julia-7cd02f19d8c6). Make the reading in parallel ? For reference, reading a 80Mo OPF takes 8Go of memory and 4.5 minutes... -> The issue came from SVectors that took forever to be allocated. I replaced them by normal vectors. It is much faster now (~11s on my computer).
 - [ ] Make read_opf even faster (we should aim for e.g. 2-3s for an 80Mo OPF (largest file we have). We can make it parallel, but I think we can improve some things first (e.g. using structs instead of Dicts everywhere).
 - [ ] Improve the OPF writer similarly.

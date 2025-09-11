@@ -53,7 +53,6 @@ function plot_refmesh(plot, mtg_name=:mtg)
     end
 
     for (name, refmesh) in p
-        @show name refmesh
         MeshesMakieExt.viz!(plot, refmesh, color=new_color[name], segmentcolor=plot[:segmentcolor], showsegments=plot[:showsegments], colormap=plot[:colormap])
     end
 end

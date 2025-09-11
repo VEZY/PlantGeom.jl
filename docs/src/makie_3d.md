@@ -39,7 +39,6 @@ using Bonito
 Page()
 CairoMakie.activate!()
 mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf"))
-transform!(mtg, refmesh_to_mesh!)
 ref_meshes = get_ref_meshes(mtg);
 transform!(mtg, :Area => (x -> [x*i for i in 1:12]) => :dummy_var, ignore_nothing = true)
 ```
@@ -57,18 +56,6 @@ By:
 ```julia
 using GLMakie
 ```
-
-### Set-up
-
-The first step is to compute the node meshes using the reference meshes and the transformation matrices. This is done very easily by mapping `refmesh_to_mesh!` to each node of the MTG like so:
-
-```@example 2
-using MultiScaleTreeGraph
-transform!(mtg, refmesh_to_mesh!)
-```
-
-!!! note
-    This step is optional, and not needed if only few plots are performed because it is done automatically when plotting an MTG, but the results are discarded afterward to avoid too much memory usage. If you plant to make many plots, we advise to do this step to avoid to wait a long time each time.
 
 ### Default colors
 
@@ -169,12 +156,12 @@ f
 
 ```julia
 # Compute the z position of each vertices in each mesh:
-transform!(mtg, :geometry => (x -> [Meshes.coords(i).z for i in Meshes.vertices(x.mesh)]) => :z, ignore_nothing = true)
-plantviz(mtg, color = :z, showfacets = true)
+transform!(mtg, (x -> [Meshes.coords(i).z for i in Meshes.vertices(refmesh_to_mesh(x))]) => :z_vertex, filter_fun= node -> hasproperty(node, :geometry))
+plantviz(mtg, color = :z_vertex, showsegments = true)
 ```
 
 !!! note
-    This one is not shown because CairoMakie and WGLMakie are not compatible with coloring each vertices differently. But you can still see the results on your computer using GLMakie.
+    Per-vertex coloring is best supported with GLMakie. CairoMakie produces static outputs; WGLMakie may not render distinct vertex colors in all cases.
 
 ### Map time step to color
 
@@ -204,3 +191,10 @@ end
 ```
 
 ![](coffee_steps.mp4)
+
+## Performance and Caching
+
+- Merged rendering: PlantViz renders using a single merged mesh by default for responsiveness, even if geometry lives per node.
+- Scene cache: The merged `SimpleMesh` and `face2node` mapping are cached on the MTG root as a single entry. Re-coloring reuses the same mesh, which means the second plot will be computed more quickly.
+- Invalidating: If geometry changes, you can call `PlantGeom.bump_scene_version!(mtg)` to invalidate the cache.
+- Backends: For large scenes, prefer `GLMakie` for interactive work; `CairoMakie` for fast, static figures; `WGLMakie` for web.

@@ -48,10 +48,11 @@ include("ops/read_ops.jl")
 include("ops/write_ops.jl")
 include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
+include("meshes/scene_merge.jl")
 include("plots_recipes/plots_recipe.jl")
 include("colors/get_color_type.jl")
-include("colors/colors.jl")
 include("colors/get_mtg_color.jl")
+include("colors/colors.jl")
 include("opf/mtg_recipe_helpers.jl")
 include("opf/diagram.jl")
 include("mesh_simplification.jl")
@@ -74,7 +75,6 @@ export read_ops_file, read_ops, write_ops
 export taper
 export refmesh_to_mesh, get_ref_meshes_color
 export xmax, ymax, zmax, xmin, ymin, zmin
-export refmesh_to_mesh!
 export transform_mesh!
 export Material, Phong
 export RefMesh
@@ -85,6 +85,7 @@ function colorbar end # Extended in PlantGeomMakie extension
 export colorbar
 
 export get_transformation_matrix
+export bump_scene_version!
 
 # Defining the main functions for PlantViz:
 include("plantviz.jl")
@@ -97,8 +98,8 @@ MeshesMakieExt = Base.get_extension(Meshes, :MeshesMakieExt)
 include("../ext/makie_recipes/opf_recipe.jl")
 include("../ext/makie_recipes/RefMeshes_recipes.jl")
 include("../ext/makie_recipes/opf/plot_opf.jl")
+include("../ext/makie_recipes/opf/scene_mesh.jl")
 include("../ext/makie_recipes/mtg_tree_recipe.jl")
 include("../ext/makie_recipes/colorbar.jl")
-
 
 end

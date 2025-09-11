@@ -6,10 +6,7 @@ Makie.plottype(::MultiScaleTreeGraph.Node) = MeshesMakieExt.Viz{<:Tuple{MultiSca
 
 Vizualise the 3D geometry of an MTG (usually read from an OPF). This function search for
 the `:geometry` attribute in each node of the MTG, and build the vizualisation using the
-`mesh` field, or the reference meshes and the associated transformation matrix if missing.
-
-The `:geometry` attribute is usually added by the `refmesh_to_mesh!` function first, which
-can be called with the `transform!` function. See the examples below.
+reference meshes and the associated transformation matrix.
 
 # Arguments
 
@@ -38,14 +35,7 @@ file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant
 opf = read_opf(file)
 viz(opf)
 
-# If you need to plot the opf several times, you better cache the mesh in the node geometry
-# like so:
-transform!(opf, refmesh_to_mesh!)
-
-# Then plot it again like before, and it will be faster:
-viz(opf)
-
-# We can also color the 3d plot with several options:
+# We can color the 3d plot with several options:
 # With one shared color:
 viz(opf, color = :red)
 # One color per reference mesh:
@@ -54,9 +44,8 @@ viz(opf, color = Dict(1 => :burlywood4, 2 => :springgreen4, 3 => :burlywood4))
 # Or just changing the color of some:
 viz(opf, color = Dict(1 => :burlywood4))
 
-# Or coloring by opf attribute, e.g. using the mesh max Z coordinates (NB: need to use
-# `refmesh_to_mesh!` before, see above):
-transform!(opf, zmax => :z_max, ignore_nothing = true)
+# Or coloring by opf attribute, e.g. using the mesh max Z coordinates:
+transform!(opf, zmax => :z_max)
 viz(opf, color = :z_max)
 
 # One color for each vertex of the refmesh 1:
@@ -65,7 +54,8 @@ vertex_color = get_color(1:nvertices(get_ref_meshes(opf))[1], [1,nvertices(get_r
 viz(opf, color = Dict(1 => vertex_color))
 
 # Or even coloring by the value of the Z coordinates of each vertex:
-transform!(opf, :geometry => (x -> [Meshes.coords(i).z for i in Meshes.vertices(x.mesh)]) => :z, ignore_nothing = true)
+transform!(opf, (x -> [Meshes.coords(i).z for i in Meshes.vertices(refmesh_to_mesh(x))]) => :z_vertex, filter_fun= node -> hasproperty(node, :geometry))
+
 viz(opf, color = :z, showsegments = true)
 
 f,a,p = viz(opf, color = :z, showsegments = true)
@@ -132,7 +122,8 @@ Makie.@recipe PlantViz (mtg,) begin
     "Filter the MTG nodes to be plotted by link"
     link = nothing
     visible = true
-    cache = false
+    "Cache the meshes computations for speeding-up plotting with only changes in coloring."
+    cache = true
 end
 
 Makie.args_preferred_axis(mtg::MultiScaleTreeGraph.Node) = Makie.LScene

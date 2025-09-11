@@ -1,9 +1,9 @@
-xmax(x::Node) = x[:geometry] !== nothing ? xmax(x[:geometry].mesh) : nothing
-xmin(x::Node) = x[:geometry] !== nothing ? xmin(x[:geometry].mesh) : nothing
-ymax(x::Node) = x[:geometry] !== nothing ? ymax(x[:geometry].mesh) : nothing
-ymin(x::Node) = x[:geometry] !== nothing ? ymin(x[:geometry].mesh) : nothing
-zmax(x::Node) = x[:geometry] !== nothing ? zmax(x[:geometry].mesh) : nothing
-zmin(x::Node) = x[:geometry] !== nothing ? zmin(x[:geometry].mesh) : nothing
+xmax(x::Node) = x[:geometry] !== nothing ? xmax(refmesh_to_mesh(x)) : nothing
+xmin(x::Node) = x[:geometry] !== nothing ? xmin(refmesh_to_mesh(x)) : nothing
+ymax(x::Node) = x[:geometry] !== nothing ? ymax(refmesh_to_mesh(x)) : nothing
+ymin(x::Node) = x[:geometry] !== nothing ? ymin(refmesh_to_mesh(x)) : nothing
+zmax(x::Node) = x[:geometry] !== nothing ? zmax(refmesh_to_mesh(x)) : nothing
+zmin(x::Node) = x[:geometry] !== nothing ? zmin(refmesh_to_mesh(x)) : nothing
 
 xmax(x) = map_coord(maximum, x, 1)
 xmin(x) = map_coord(minimum, x, 1)
