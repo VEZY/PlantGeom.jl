@@ -97,16 +97,8 @@ end
 # Implementing our own plot recipe for PlantViz (plantviz and plantviz!):
 Makie.@recipe PlantViz (mtg,) begin
     color = :slategray3
-    alpha = nothing
     colormap = nothing
     colorrange = nothing
-    showsegments = false
-    segmentcolor = :gray30
-    segmentsize = 1.5
-    showpoints = false
-    pointmarker = :circle
-    pointcolor = :gray30
-    pointsize = 4 #  use `pointsize = @inherit markersize` instead?
     "An integer giving the index of the attribute value to be vizualised. This is useful when the attribute is a vector of values for *e.g.* each timestep."
     index = nothing
     "The name of the color cache. Should be a string (default to a random string)."

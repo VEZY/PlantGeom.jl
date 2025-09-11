@@ -12,47 +12,54 @@ function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{Union{T,Vector{T}}}}) wher
 end
 
 function plot_refmesh(plot, mtg_name=:mtg)
-    # Mesh list:
-    p = PlantGeom.align_ref_meshes(plot[mtg_name][])
-    n_meshes = length(p)
+    Makie.map!(plot.attributes, [:colormap], :colormap_resolved) do cm
+        get_colormap(cm)
+    end
 
-    # Plot options:
-    color = plot[:color]
+    Makie.map!(plot.attributes, [mtg_name, :color], [:reference_meshes, :colorant]) do opf, c
+        p = PlantGeom.align_ref_meshes(opf)
+        ref_meshes_keys = keys(p)
+        refmesh_vector = [p[k] for k in ref_meshes_keys]
+        n_meshes = length(p)
 
-    # use the color from the reference mesh if the default is used, else use the user-input color
-    if isa(color[], Symbol) || typeof(color[]) <: Colorant
-        if color[] == :slategray3
-            # Overides the default color given by MeshViz (:slategray3) with value in the ref meshes
-            # see here for default value in MeshViz:
-            # https://github.com/JuliaGeometry/MeshViz.jl/blob/6e37908c78c06212f09229e3e8d92483535ffa16/src/MeshViz.jl#L50
-            ref_colors = get_ref_meshes_color(plot[mtg_name][])
-            colorant = Observables.Observable(ref_colors)
+        # use the color from the reference mesh if the default is used, else use the user-input color
+        if c == :slategray3 #isnothing(c)
+            colorant = get_ref_meshes_color(opf)
+        elseif isa(c, Symbol) || typeof(c) <: Colorant
+            colorant = Dict(zip(keys(p), repeat([c], n_meshes)))
+        elseif length(c) != n_meshes && !isa(c, Dict)
+            error(
+                "color argument should be of type Colorant ",
+                "(see [Colors.jl](https://juliagraphics.github.io/Colors.jl/stable/)), or ",
+                "a vector of colors, or Dict{Int,T} such as Dict(1 => :green) or ",
+                "Dict(2 => [colors...])"
+            )
         else
-            colorant = Makie.lift(x -> Dict(zip(keys(p), repeat([x], n_meshes))), color)
+            colorant = c
         end
-    elseif length(color[]) != n_meshes && !isa(color[], Dict)
-        error(
-            "color argument should be of type Colorant ",
-            "(see [Colors.jl](https://juliagraphics.github.io/Colors.jl/stable/)), or ",
-            "a vector of colors, or Dict{Int,T} such as Dict(1 => :green) or ",
-            "Dict(2 => [colors...])"
-        )
-    else
-        colorant = color
-    end
 
-    # Parsing the colors in the dictionary into Colorants:
-    new_color = Dict{String,Union{Colorant,Vector{<:Colorant}}}([k => isa(v, AbstractArray) ? parse.(Colorant, v) : parse(Colorant, v) for (k, v) in colorant[]])
+        # Parsing the colors in the dictionary into Colorants:
+        colorant_dict = Dict{String,Union{Colorant,Vector{<:Colorant}}}([k => isa(v, AbstractArray) ? parse.(Colorant, v) : fill(parse(Colorant, v), Meshes.nvertices(p[k])) for (k, v) in colorant])
 
-    if length(colorant[]) != n_meshes
-        ref_cols = get_ref_meshes_color(plot[mtg_name][])
-        missing_mesh_input = setdiff(collect(keys(ref_cols)), collect(keys(colorant[])))
-        for i in missing_mesh_input
-            push!(new_color, i => ref_cols[i])
+        if length(colorant) != n_meshes
+            ref_cols = get_ref_meshes_color(opf)
+            missing_mesh_input = setdiff(collect(keys(ref_cols)), collect(keys(colorant)))
+            for i in missing_mesh_input
+                push!(colorant_dict, i => fill(ref_cols[i], Meshes.nvertices(p[i])))
+            end
         end
+
+        colorant_vector = vcat([colorant_dict[k] for k in ref_meshes_keys]...)
+
+        return refmesh_vector, colorant_vector
     end
 
-    for (name, refmesh) in p
-        MeshesMakieExt.viz!(plot, refmesh, color=new_color[name], segmentcolor=plot[:segmentcolor], showsegments=plot[:showsegments], colormap=plot[:colormap])
+    # Merge the meshes:
+    Makie.map!(plot.attributes, :reference_meshes, [:vertices, :faces]) do meshes
+        return meshes_to_makie(merge_simple_meshes(meshes))
     end
+
+    Makie.mesh!(plot, Makie.Attributes(plot), plot[:vertices], plot[:faces], color=plot[:colorant], colormap=plot[:colormap_resolved])
+
+    return plot
 end

@@ -50,7 +50,8 @@ function PlantGeom.colorbar(parent, plotobject; kwargs...)
         # Get the attribute values without nothing values:    
         colorbar_limits = Makie.@lift PlantGeom.attribute_range($mtg, $color, ustrip=true)
     end
-    colormap = Makie.lift(get_colormap, plotobject.attributes.colormap)
+    #! to update, colormap does nott exist anymore:
+    #!colormap = Makie.lift(get_colormap, plotobject.attributes.colormap)
 
     Makie.Colorbar(
         parent,

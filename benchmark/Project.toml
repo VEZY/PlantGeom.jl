@@ -2,5 +2,6 @@
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 MultiScaleTreeGraph = "dd4a991b-8a45-4075-bede-262ee62d5583"
 PlantGeom = "5edaa67e-25db-4eb9-bf81-05d793b2238d"

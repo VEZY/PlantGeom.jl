@@ -79,7 +79,7 @@ export transform_mesh!
 export Material, Phong
 export RefMesh
 export (==), names
-export get_color, get_colormap
+export get_color
 
 function colorbar end # Extended in PlantGeomMakie extension
 export colorbar
@@ -97,6 +97,7 @@ MeshesMakieExt = Base.get_extension(Meshes, :MeshesMakieExt)
 
 include("../ext/makie_recipes/opf_recipe.jl")
 include("../ext/makie_recipes/RefMeshes_recipes.jl")
+include("../ext/makie_recipes/opf/meshes_to_makie.jl")
 include("../ext/makie_recipes/opf/plot_opf.jl")
 include("../ext/makie_recipes/opf/scene_mesh.jl")
 include("../ext/makie_recipes/mtg_tree_recipe.jl")

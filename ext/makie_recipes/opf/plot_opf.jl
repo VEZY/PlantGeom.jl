@@ -50,8 +50,6 @@ plot_opf(opf; color=Dict(1=>RGB(0.1,0.5,0.1), 2=>RGB(0.1,0.1,0.5)))
 plot_opf(opf; color=:red, colormap=:viridis)
 
 plot_opf(opf; color=:red, colormap=:viridis, segmentcolor=:red, showsegments=true)
-
-
 """
 function plot_opf(plot, mtg_name=:mtg)
     # Register derived nodes on the ComputeGraph for clarity and reuse
@@ -92,7 +90,11 @@ function plot_opf_merged(plot, mtg_name, cache=true)
 
     compute_vertex_colors!(Makie.to_value(plot[:colorant]), plot, mtg_name)
 
-    MeshesMakieExt.viz!(plot, Makie.Attributes(plot), plot[:merged_mesh], color=plot[:vertex_colors], colormap=plot[:colormap_resolved])
+    Makie.map!(plot.attributes, :merged_mesh, [:vertices, :faces]) do mesh
+        return meshes_to_makie(mesh)
+    end
+
+    Makie.mesh!(plot, Makie.Attributes(plot), plot[:vertices], plot[:faces], color=plot[:vertex_colors], colormap=plot[:colormap_resolved])
 
     return plot
 end

@@ -19,6 +19,7 @@ if isnothing(MeshesMakieExt)
     println("Couldn't import the MeshesMakieExt extension, please load the Meshes package before loading PlantGeom")
 else
     include("makie_recipes/RefMeshes_recipes.jl")
+    include("makie_recipes/opf/meshes_to_makie.jl")
     include("makie_recipes/opf/plot_opf.jl")
     include("makie_recipes/opf_recipe.jl")
     include("makie_recipes/mtg_tree_recipe.jl")

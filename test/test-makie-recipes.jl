@@ -7,10 +7,8 @@ meshes = get_ref_meshes(opf)
     f, ax, p = plantviz(meshes)
     @test p.converted.value[][1] == meshes
     @test typeof(p) <: Plot{plantviz,Tuple{Vector{T}}} where {T<:RefMesh}
-    @test typeof(p.plots[1]) <: Plot{viz}
+    @test typeof(p.plots[1]) <: Makie.Mesh
     aligned_meshes = PlantGeom.align_ref_meshes(meshes)
-    @test p.plots[1].converted.value[][1] == aligned_meshes["Mesh0"]
-    @test p.plots[2].converted.value[][1] == aligned_meshes["Mesh1"]
 end
 
 @testset "Makie recipes: reference meshes -> image references" begin
@@ -61,7 +59,7 @@ meshes = get_ref_meshes(opf)
     @test_reference "reference_images/opf_color_attribute.png" plantviz(opf, color=:z_max)
 
     transform!(opf, (x -> [Meshes.coords(i).z for i in Meshes.vertices(refmesh_to_mesh(x))]) => :z, filter_fun=node -> hasproperty(node, :geometry))
-    @test_reference "reference_images/opf_color_attribute_vertex.png" plantviz(opf, color=:z, showsegments=true)
+    @test_reference "reference_images/opf_color_attribute_vertex.png" plantviz(opf, color=:z)
 
     fig2, ax2, p2 = plantviz(opf, color=:z)
     colorbar(fig2[1, 2], p2)
