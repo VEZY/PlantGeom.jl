@@ -49,6 +49,14 @@ meshes = get_ref_meshes(opf)
     @test_reference "reference_images/opf_one_color_one_ref.png" plantviz(opf, color=Dict("Mesh0" => :burlywood4))
     vertex_color = get_color(1:nvertices.(get_ref_meshes(opf))[1], [1, nvertices.(get_ref_meshes(opf))[1]])
     @test_reference "reference_images/opf_color_ref_vertex.png" plantviz(opf, color=Dict("Mesh0" => vertex_color))
+
+    n_nodes = length(descendants(opf, :geometry; ignore_nothing=true, self=true))
+    color_vec_rgb = get_color(1:n_nodes, [1, n_nodes])
+    @test_reference "reference_images/opf_color_vector_rgb.png" plantviz(opf, color=color_vec_rgb)
+
+    color_vec_symbol = [:red, :green, :blue, :yellow]
+    @test_reference "reference_images/opf_color_vector_symbol.png" plantviz(opf, color=color_vec_symbol)
+
     transform!(opf, zmax => :z_max, ignore_nothing=true)
     @test_reference "reference_images/opf_color_attribute.png" plantviz(opf, color=:z_max)
 

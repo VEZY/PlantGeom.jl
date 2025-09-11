@@ -111,8 +111,8 @@ function compute_vertex_colors!(::T, plot, mtg_name) where {T<:Colorant}
     return plot
 end
 
-function compute_vertex_colors!(::T, plot, mtg_name) where {T<:Union{PlantGeom.VectorColorant,PlantGeom.VectorSymbol}}
-    Makie.map!(plot.attributes, [mtg_name, :colorant, :filter_fun_resolved, :symbol, :scale, :link], [:vertex_colors]) do opf, colorant, filter_fun, symbol, scale, link
+function compute_vertex_colors!(::PlantGeom.VectorColorant, plot, mtg_name)
+    Makie.map!(plot.attributes, [mtg_name, :colorant, :filter_fun_resolved, :symbol, :scale, :link], :vertex_colors) do opf, colorant, filter_fun, symbol, scale, link
         cols = colorant.colors
         vertex_colors = Vector{Colorant}()
         n_nodes_colored = Ref(0)
@@ -122,7 +122,7 @@ function compute_vertex_colors!(::T, plot, mtg_name) where {T<:Union{PlantGeom.V
             append!(vertex_colors, fill(cols[n_nodes_colored[]], nverts))
         end
 
-        if n_nodes_colored != length(cols)
+        if n_nodes_colored[] != length(cols)
             error(
                 "Length of the color vector (", length(cols), ") does not match number of selected nodes for coloring (", n_nodes_colored[], "). ",
                 "Please ensure that the color vector is the same length as the number of nodes that have geometry and are selected ",
@@ -138,7 +138,7 @@ function compute_vertex_colors!(::T, plot, mtg_name) where {T<:Union{PlantGeom.V
 end
 
 # Attribute-based color
-function compute_vertex_colors!(colorant_value::AttributeColorant, plot, mtg_name)
+function compute_vertex_colors!(::AttributeColorant, plot, mtg_name)
     # Then, compute the colors (this one uses Makie's compute graph):
     map!(
         plot.attributes,
@@ -176,13 +176,13 @@ end
 end
 
 # Dict-by-refmesh colors
-function compute_vertex_colors!(colorant_value::DictRefMeshColorant, plot, mtg_name)
+function compute_vertex_colors!(::DictRefMeshColorant, plot, mtg_name)
     # Then, compute the colors (this one uses Makie's compute graph):
     map!(
         plot.attributes,
-        [:colorant, :color_missing, :colormap_resolved, :colorrange_resolved, :index_resolved, mtg_name, :filter_fun_resolved, :symbol, :scale, :link],
+        [:colorant, :color_missing, mtg_name, :filter_fun_resolved, :symbol, :scale, :link],
         :vertex_colors
-    ) do colorant, color_missing, colormap, color_range, index, opf, filter_fun, symbol, scale, link
+    ) do colorant, color_missing, opf, filter_fun, symbol, scale, link
         vertex_colors = Vector{Colorant}()
         MultiScaleTreeGraph.traverse!(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
             geom = node[:geometry]
@@ -198,12 +198,12 @@ function compute_vertex_colors!(colorant_value::DictRefMeshColorant, plot, mtg_n
     return plot
 end
 
-function compute_vertex_colors!(colorant_value::DictVertexRefMeshColorant, plot, mtg_name)
+function compute_vertex_colors!(::DictVertexRefMeshColorant, plot, mtg_name)
     map!(
         plot.attributes,
-        [:colorant, :color_missing, :colormap_resolved, :colorrange_resolved, :index_resolved, mtg_name, :filter_fun_resolved, :symbol, :scale, :link],
+        [:colorant, :color_missing, mtg_name, :filter_fun_resolved, :symbol, :scale, :link],
         :vertex_colors
-    ) do colorant, color_missing, colormap, color_range, index, opf, filter_fun, symbol, scale, link
+    ) do colorant, color_missing, opf, filter_fun, symbol, scale, link
         vertex_colors = Vector{Colorant}()
         MultiScaleTreeGraph.traverse!(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
             geom = node[:geometry] # we need the geometry to know how many vertices there are
