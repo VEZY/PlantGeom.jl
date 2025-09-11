@@ -102,7 +102,7 @@ function compute_vertex_colors!(colorant, plot, mtg_name)
     error("colorant type not supported: $colorant")
 end
 
-# Simple colorant (single color only, experimental)
+# Simple colorant (single color only)
 function compute_vertex_colors!(::T, plot, mtg_name) where {T<:Colorant}
     map!(plot.attributes, :colorant, :vertex_colors) do colorant
         return colorant
@@ -111,26 +111,27 @@ function compute_vertex_colors!(::T, plot, mtg_name) where {T<:Colorant}
     return plot
 end
 
-function compute_vertex_colors!(colorant_value::T, plot, mtg_name) where {T<:Union{PlantGeom.VectorColorant,PlantGeom.VectorSymbol}}
-    Makie.map!(plot.attributes, [mtg_name, :filter_fun_resolved, :symbol, :scale, :link], [:id2idx]) do opf, filter_fun, symbol, scale, link
-        # Compute mapping from node id -> color index in the user-provided color vector using the same traversal and filters used to build the merged mesh and face2node.
-        ids = Int[]
-        MultiScaleTreeGraph.traverse!(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
-            push!(ids, MultiScaleTreeGraph.node_id(node))
-        end
-        return Dict(id => i for (i, id) in enumerate(ids))
-    end
-
-    # Expand per-node colors to per-face colors using face2node mapping
-    map!(plot.attributes, [:colorant, :face2node, :id2idx], :vertex_colors) do colorant, face2node, id2idx #! This is not really vertex colors, but rather facet colors
+function compute_vertex_colors!(::T, plot, mtg_name) where {T<:Union{PlantGeom.VectorColorant,PlantGeom.VectorSymbol}}
+    Makie.map!(plot.attributes, [mtg_name, :colorant, :filter_fun_resolved, :symbol, :scale, :link], [:vertex_colors]) do opf, colorant, filter_fun, symbol, scale, link
         cols = colorant.colors
-        length(id2idx) == length(cols) || error("Vector color length (", length(cols), ") does not match number of selected nodes (", length(id2idx), ").")
-        # Preserve element type (Colorant or Symbol)
-        out = Vector{typeof(cols[1])}(undef, length(face2node))
-        @inbounds for i in eachindex(face2node)
-            out[i] = cols[id2idx[face2node[i]]]
+        vertex_colors = Vector{Colorant}()
+        n_nodes_colored = Ref(0)
+        MultiScaleTreeGraph.traverse!(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
+            n_nodes_colored[] += 1
+            nverts = Meshes.nvertices(PlantGeom.refmesh_to_mesh(node))
+            append!(vertex_colors, fill(cols[n_nodes_colored[]], nverts))
         end
-        out
+
+        if n_nodes_colored != length(cols)
+            error(
+                "Length of the color vector (", length(cols), ") does not match number of selected nodes for coloring (", n_nodes_colored[], "). ",
+                "Please ensure that the color vector is the same length as the number of nodes that have geometry and are selected ",
+                "(i.e. if `filter_fun`, `symbol`, or `scale` are used). You can check the number of selected nodes by calling ",
+                "`length(descendants(mtg, :geometry; ignore_nothing=true, self=true, filter_fun=..., symbol=..., scale=...))`."
+            )
+        end
+
+        return vertex_colors
     end
 
     return plot
