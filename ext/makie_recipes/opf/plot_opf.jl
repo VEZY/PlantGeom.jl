@@ -79,12 +79,12 @@ function plot_opf(plot, mtg_name=:mtg)
         return f
     end
 
-    return plot_opf_merged(plot, symbol, scale, link, mtg_name, Makie.to_value(plot[:cache]))
+    return plot_opf_merged(plot, mtg_name, Makie.to_value(plot[:cache]))
 
     return plot
 end
 
-function plot_opf_merged(plot, symbol, scale, link, mtg_name, cache=true)
+function plot_opf_merged(plot, mtg_name, cache=true)
     # Compute the mesh at the scene scale:
     Makie.map!(plot.attributes, [mtg_name, :filter_fun_resolved, :symbol, :scale, :link], [:merged_mesh, :face2node]) do opf, filter_fun, symbol, scale, link
         return scene_mesh!(opf, filter_fun, symbol, scale, link, cache)
