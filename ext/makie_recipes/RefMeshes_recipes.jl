@@ -1,14 +1,7 @@
-Makie.plottype(::Vector{T}) where {T<:RefMesh} = MeshesMakieExt.Viz{<:Tuple{Vector{T}}}
 Makie.args_preferred_axis(::Union{T,Vector{T}}) where {T<:RefMesh} = Makie.LScene
 
 function Makie.plot!(plot::PlantViz{<:Tuple{Union{T,Vector{T}}}}) where {T<:RefMesh}
     plot_refmesh(plot, :mtg)
-end
-
-# Documentation is in opf_recipe.jl
-function Makie.plot!(plot::MeshesMakieExt.Viz{<:Tuple{Union{T,Vector{T}}}}) where {T<:RefMesh}
-    @warn "The `viz` function is deprecated, use `plantviz` instead."
-    plot_refmesh(plot, :object)
 end
 
 function plot_refmesh(plot, mtg_name=:mtg)
