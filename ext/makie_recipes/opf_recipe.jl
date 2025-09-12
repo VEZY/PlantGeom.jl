@@ -1,6 +1,6 @@
 # Implementing our own plot recipe for PlantViz (plantviz and plantviz!):
 Makie.@recipe PlantViz (mtg,) begin
-    color = :slategray3
+    color = nothing
     colormap = nothing
     colorrange = nothing
     colorscale = identity

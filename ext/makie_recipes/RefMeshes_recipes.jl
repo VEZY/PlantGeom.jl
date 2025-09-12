@@ -16,7 +16,7 @@ function plot_refmesh(plot, mtg_name=:mtg)
         n_meshes = length(p)
 
         # use the color from the reference mesh if the default is used, else use the user-input color
-        if c == :slategray3 #isnothing(c)
+        if isnothing(c)
             colorant = get_ref_meshes_color(opf)
         elseif isa(c, Symbol) || typeof(c) <: Colorant
             colorant = Dict(zip(keys(p), repeat([c], n_meshes)))
