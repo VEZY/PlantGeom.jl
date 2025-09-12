@@ -62,9 +62,7 @@ color_type(Dict(1=>RGB(0.1,0.5,0.1), 2=>RGB(0.5,0.1,0.1)), opf)
 ```
 """
 function color_type(color::T, opf) where {T<:Symbol}
-    if isnothing(color)
-        return RefMeshColorantType
-    elseif color in get_attributes(opf)
+    if color in get_attributes(opf)
         return AttributeColorantType
     else
         # Try parsing the symbol into a color, if we can't, that means that the user probably wants and attribute that does not exist.
@@ -76,6 +74,10 @@ function color_type(color::T, opf) where {T<:Symbol}
 
         return T
     end
+end
+
+function color_type(color::Nothing, opf)
+    return RefMeshColorantType
 end
 
 function color_type(color::T, opf) where {T<:AbstractDict}
