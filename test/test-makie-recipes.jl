@@ -85,8 +85,16 @@ end
     fig, ax, p = plantviz(opf, color=:Length, colorrange=(0, 0.2))
     @test p.attributes.colorrange[] == (0, 0.2)
     colorbar(fig[1, 2], p)
-    p.colorrange = (0, 0.1)
+    p.colorrange[] = (0, 0.1)
     @test p.attributes.colorrange[] == (0, 0.1)
+    @test_reference "reference_images/opf_dynamic_colorbar.png" fig # Should come back to this plot in the end
+end
+
+@testset "Makie recipes: testing Makie.Colorbar" begin
+    # Same as before but with Makie.Colorbar
+    fig, ax, p = plantviz(opf, color=:Length, colorrange=(0, 0.1))
+    Makie.Colorbar(fig[1, 2], p)
+    @test_reference "reference_images/opf_dynamic_colorbar.png" fig # Should come back to this plot in the end
 end
 
 @testset "Makie recipes: change variable for coloring" begin

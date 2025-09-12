@@ -94,7 +94,7 @@ function plot_opf_merged(plot, mtg_name, cache=true)
         return meshes_to_makie(mesh)
     end
 
-    Makie.mesh!(plot, Makie.Attributes(plot), plot[:vertices], plot[:faces], color=plot[:vertex_colors], colormap=plot[:colormap_resolved])
+    Makie.mesh!(plot, Makie.Attributes(plot), plot[:vertices], plot[:faces], color=plot[:vertex_colors], colormap=plot[:colormap_resolved], colorrange=plot[:colorrange_resolved])
 
     return plot
 end

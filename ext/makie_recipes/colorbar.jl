@@ -1,8 +1,7 @@
 """
     colorbar(parent, plotobject, kwargs...)
 
-Add a colorbar based on the attribute chose to color the plot. plotobject must be a plot of
-an MTG colored by an attribute. Use Makie.Colorbar for any other use case instead.
+Like Makie.Colorbar but faster (does not re-resolve the whole coloring).
 
 # Arguments
 
@@ -22,41 +21,10 @@ colorbar(f[1, 2], p)
 f
 """
 function PlantGeom.colorbar(parent, plotobject; kwargs...)
-    color = plotobject.attributes.color
-    mtg = plotobject[1]
-
-    if !(typeof(mtg[]) <: MultiScaleTreeGraph.Node)
-        error("This is not a plot of an MTG. Use Makie.Colorbar instead.")
-    end
-
-    if !(color[] in get_attributes(mtg[]))
-        error(
-            "The plot must be colored by an MTG attribute for making a colorbar.",
-            "Use Makie.Colorbar instead."
-        )
-    end
-
-    #! Because we extend the `Viz` type, we need to check if the user has given a color range.
-    #! If we defined our own e.g. `PlantViz` type, we could have defined a `colorrange` field in it directly.
-
-    if hasproperty(plotobject.attributes, :colorrange) && (!isa(plotobject.attributes.colorrange, Observables.Observable) || plotobject.attributes.colorrange[] !== nothing)
-        if isa(plotobject.attributes.colorrange, Observables.Observable)
-            # colorbar_limits = Unitful.ustrip.(plotobject.attributes.colorrange[])
-            colorbar_limits = Makie.lift(x -> Unitful.ustrip.(x), plotobject.attributes.colorrange)
-        else
-            colorbar_limits = Observables.Observable(plotobject.attributes.colorrange)
-        end
-    else
-        # Get the attribute values without nothing values:    
-        colorbar_limits = Makie.@lift PlantGeom.attribute_range($mtg, $color, ustrip=true)
-    end
-    #! to update, colormap does nott exist anymore:
-    #!colormap = Makie.lift(get_colormap, plotobject.attributes.colormap)
-
     Makie.Colorbar(
         parent,
-        colormap=colormap,
-        limits=colorbar_limits;
+        colormap=Makie.ComputePipeline.get_observable!(plotobject[:colormap_resolved]),
+        limits=Makie.ComputePipeline.get_observable!(plotobject[:colorrange_resolved]);
         kwargs...
     )
 end

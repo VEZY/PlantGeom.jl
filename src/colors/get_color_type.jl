@@ -66,6 +66,13 @@ function color_type(color::T, opf) where {T<:Symbol}
     elseif color in get_attributes(opf)
         return AttributeColorantType
     else
+        # Try parsing the symbol into a color, if we can't, that means that the user probably wants and attribute that does not exist.
+        try
+            parse(Colorant, color)
+        catch e
+            error("The symbol used to define the color ($color) is not a color nor an attribute of the MTG. See `get_attributes` to list the attributes.")
+        end
+
         return T
     end
 end
