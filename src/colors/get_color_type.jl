@@ -30,9 +30,12 @@ Return the type of the color, whether it is an attribute, a colorant, or a RefMe
 
 # Returns
 
-- `RefMeshColorant`: If the color is :slategray3, then it is the default color given by Meshes,
-so we assume nothing was passed by the user and color by reference mesh instead.
-- `AttributeColorant`: If the color is an attribute of the MTG, then we color by that attribute.
+- `RefMeshColorantType`: If `color` is `nothing` (the default) to color by reference mesh.
+- `DictRefMeshColorantType`: If the color is a dictionary mapping reference meshes to colorants.
+- `DictVertexRefMeshColorantType`: If the color is a dictionary mapping vertices to colorants.
+- `VectorColorantType`: If the color is a vector of colorants, then we color each mesh by that vector.
+- `VectorSymbolType`: If the color is a vector of symbols, then we color each mesh by that vector.
+- `AttributeColorantType`: If the color is an attribute of the MTG, then we color by that attribute.
 - `T`: If the color is a colorant, then we color everything by that color.
 
 # Examples
@@ -52,22 +55,29 @@ color_type(RGB(0.1,0.5,0.1), opf)
 color_type(:Length, opf)
 
 # Default color:
-color_type(:slategray3, opf)
+color_type(nothing, opf)
 
 # Dict of colors:
 color_type(Dict(1=>RGB(0.1,0.5,0.1), 2=>RGB(0.5,0.1,0.1)), opf)
 ```
 """
 function color_type(color::T, opf) where {T<:Symbol}
-    # If the color is :slategray3, then it is the default color given by Meshes,
-    # so we assume nothing was passed by the user and color by reference mesh instead.
-    if color == :slategray3
-        return RefMeshColorantType
-    elseif color in get_attributes(opf)
+    if color in get_attributes(opf)
         return AttributeColorantType
     else
+        # Try parsing the symbol into a color, if we can't, that means that the user probably wants and attribute that does not exist.
+        try
+            parse(Colorant, color)
+        catch e
+            error("The symbol used to define the color ($color) is not a color nor an attribute of the MTG. See `get_attributes` to list the attributes.")
+        end
+
         return T
     end
+end
+
+function color_type(color::Nothing, opf)
+    return RefMeshColorantType
 end
 
 function color_type(color::T, opf) where {T<:AbstractDict}

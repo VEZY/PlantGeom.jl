@@ -1,9 +1,9 @@
 RecipesBase.@recipe function f(mtg::MultiScaleTreeGraph.Node;
-    mode = "2d",
-    node_color = :black,
-    colormap = :viridis,
-    edge_color = nothing,
-    color_missing = RGBA(0, 0, 0, 0.3)
+    mode="2d",
+    node_color=:black,
+    colormap=:viridis,
+    edge_color=nothing,
+    color_missing=RGBA(0, 0, 0, 0.3)
 )
 
     if edge_color === nothing
@@ -12,7 +12,7 @@ RecipesBase.@recipe function f(mtg::MultiScaleTreeGraph.Node;
 
     colormap = get_colormap(colormap)
     df_coordinates, node_color_in, edge_color, text_color =
-        mtg_XYZ_color(mtg, node_color, edge_color, colormap, color_missing = color_missing)
+        mtg_XYZ_color(mtg, node_color, edge_color, colormap, color_missing=color_missing)
 
     x = df_coordinates.XX
     y = df_coordinates.YY

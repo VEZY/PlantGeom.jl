@@ -29,9 +29,12 @@ Get the color range from the `colorrange` argument or from the MTG attribute.
 
 - `colorrange`: the color range as a tuple of two values.
 """
-function get_color_range(colorrange, opf, colorant::AttributeColorant)
-    # If it's nothing, get the range from the mtg attribute:
+function get_color_range(colorrange::Nothing, opf, colorant::AttributeColorant)
     return PlantGeom.attribute_range(opf, colorant, ustrip=true)
+end
+
+function get_color_range(colorrange, opf, colorant::AttributeColorant)
+    return Unitful.ustrip.(colorrange)
 end
 
 # If we don't color by attribute, no need to get a range

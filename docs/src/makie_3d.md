@@ -144,7 +144,7 @@ CairoMakie.Colorbar(f[1,2], label = "Area")
 f
 ```
 
-We can see that the colorbar is only in relative values (0-1). If you need absolute values, you can use PlantGeom's colorbar instead:
+`CairoMakie.Colorbar` computations does not scale very well with very large scenes. This is why we also provide `colorbar` instead:
 
 ```@example 2
 f, ax, p = plantviz(mtg, color = :Area)
