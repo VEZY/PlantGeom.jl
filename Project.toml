@@ -1,7 +1,7 @@
 name = "PlantGeom"
 uuid = "5edaa67e-25db-4eb9-bf81-05d793b2238d"
-authors = ["remi.vezy <VEZY@users.noreply.github.com> and contributors"]
 version = "0.14.0"
+authors = ["remi.vezy <VEZY@users.noreply.github.com> and contributors"]
 
 [deps]
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
@@ -20,12 +20,18 @@ TransformsBase = "28dd2a49-a57a-4bfb-84ca-1a49db9b96b8"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
+[weakdeps]
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+
+[extensions]
+PlantGeomMakie = "Makie"
+
 [compat]
 ColorSchemes = "3"
 Colors = "0.12, 0.13"
 EzXML = "1"
 Makie = "0.24"
-Meshes = "0.54"
+Meshes = "0.54, 0.56"
 MultiScaleTreeGraph = "0.14.3"
 OrderedCollections = "1.7.0"
 RecipesBase = "1"
@@ -35,12 +41,6 @@ Tables = "1"
 TransformsBase = "1"
 Unitful = "1.17"
 julia = "1.10"
-
-[extensions]
-PlantGeomMakie = "Makie"
-
-[weakdeps]
-Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
