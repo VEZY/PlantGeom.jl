@@ -65,6 +65,7 @@ using Colors
 get_color(1, 1:2, colormap = colorschemes[:viridis]) # returns RGB{N0f8}(0.267004,0.00487433,0.329415)
 get_color(1:2, 1:10, colormap = colorschemes[:viridis]) # returns RGB{N0f8}(0.267004,0.00487433,0.329415)
 get_color(1:2, 1:10, 1, colormap = colorschemes[:viridis]) # returns RGB{N0f8}(0.267004,0.00487433,0.329415)
+```
 """
 function get_color(var::T, range_var, index::Nothing=nothing; colormap=colorschemes[:viridis]) where {T<:AbstractArray}
     range_var = Unitful.ustrip.(range_var)
@@ -83,7 +84,11 @@ function get_color(var, range_var, index::I=1; colormap=colorschemes[:viridis]) 
     get(colormap, (Unitful.ustrip(var) - range_var[1]) / (range_var[2] - range_var[1]))
 end
 
-function get_color(var::T, range_var, index::I=1; colormap=colorschemes[:viridis]) where {I<:Integer,T<:Union{Symbol,Colorant}}
+function get_color(var::T, range_var, index::I=1; colormap=colorschemes[:viridis]) where {I<:Integer,T<:Symbol}
+    parse(Colorant, var)
+end
+
+function get_color(var::T, range_var, index::I=1; colormap=colorschemes[:viridis]) where {I<:Integer,T<:Colorant}
     var
 end
 
