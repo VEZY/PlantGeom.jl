@@ -367,9 +367,9 @@ version = "0.6.3"
 
 [[deps.CoordRefSystems]]
 deps = ["Random", "Rotations", "StaticArrays", "Unitful", "Zygote"]
-git-tree-sha1 = "95ea92b18687fdfc4938ab04c4d3f19f4b052181"
+git-tree-sha1 = "2434aedb324ad6ec5244188cd169791790fc613d"
 uuid = "b46f11dc-f210-4604-bfba-323c1ec968cb"
-version = "0.18.10"
+version = "0.19.12"
 
 [[deps.Crayons]]
 git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
@@ -1289,9 +1289,9 @@ version = "0.3.3"
 
 [[deps.Meshes]]
 deps = ["Bessels", "CircularArrays", "Colorfy", "CoordRefSystems", "DelaunayTriangulation", "Distances", "LinearAlgebra", "NearestNeighbors", "Random", "Rotations", "ScopedValues", "SparseArrays", "StaticArrays", "StatsBase", "TiledIteration", "TransformsBase", "Unitful"]
-git-tree-sha1 = "0891577aef3a12c00740351b154723c9580b8a56"
+git-tree-sha1 = "2d3103c1df504d38f60b7e2aa05f1fd2261f5eef"
 uuid = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
-version = "0.54.6"
+version = "0.56.3"
 weakdeps = ["Makie"]
 
     [deps.Meshes.extensions]
