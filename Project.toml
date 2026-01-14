@@ -1,6 +1,6 @@
 name = "PlantGeom"
 uuid = "5edaa67e-25db-4eb9-bf81-05d793b2238d"
-version = "0.14.0"
+version = "0.14.1"
 authors = ["remi.vezy <VEZY@users.noreply.github.com> and contributors"]
 
 [deps]
