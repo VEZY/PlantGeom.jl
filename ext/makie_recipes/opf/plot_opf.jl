@@ -50,6 +50,7 @@ plot_opf(opf; color=Dict(1=>RGB(0.1,0.5,0.1), 2=>RGB(0.1,0.1,0.5)))
 plot_opf(opf; color=:red, colormap=:viridis)
 
 plot_opf(opf; color=:red, colormap=:viridis, segmentcolor=:red, showsegments=true)
+```
 """
 function plot_opf(plot, mtg_name=:mtg)
     # Register derived nodes on the ComputeGraph for clarity and reuse

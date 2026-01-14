@@ -19,6 +19,7 @@ import Tables
 # import PlyIO
 import Colors: RGBA, Colorant, RGB
 import ColorSchemes: get, rainbow, colorschemes, ColorScheme
+import FixedPointNumbers: N0f8
 
 # Read OPF:
 import EzXML: readxml, root, StreamReader, attributes, expandtree # For reading OPF files

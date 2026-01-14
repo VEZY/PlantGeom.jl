@@ -174,8 +174,11 @@ function attribute_range(mtg, attr; ustrip=false)
         )
 
     if first(vals) isa Symbol || first(vals) isa Colorant
-        # If the attribute value is already a colorant or a symbol, return their unique values
-        return unique(vals)
+        # If the attribute value is already a colorant or a symbol, make sure all values are unique and 
+        # of type colorant:
+        # unique_vals = unique(vals)
+        # unique_vals isa Vector{Colorant{N0f8}} || (unique_vals = color_as_colorant.(unique_vals))
+        return nothing
     elseif length(vals[1]) == 1
         # vals is a vector of values
         range_val = extrema(vals)
@@ -197,3 +200,8 @@ end
 
 attr_colorant_name(x::AttributeColorant) = x.color
 attr_colorant_name(x) = x
+
+color_as_colorant(color::T) where {T<:Colorant{N0f8}} = color
+color_as_colorant(color::T) where {T<:Colorant} = convert(Colorant{N0f8}, color)
+color_as_colorant(color::T) where {T<:Symbol} = parse(Colorant{N0f8}, color)
+color_as_colorant(color) = error("Cannot convert $color to Colorant.")
