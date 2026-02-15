@@ -16,12 +16,14 @@ end
 
 @testset "OPF files" begin
     include("test-read_opf.jl")
+    include("test-read_gwa.jl")
     include("test-write_opf.jl")
 end
 
 @testset "OPS files" begin
     include("test-read_ops_file.jl")
     include("test-read_ops.jl")
+    include("test-read_ops_gwa.jl")
     include("test-write_ops.jl")
 end
 

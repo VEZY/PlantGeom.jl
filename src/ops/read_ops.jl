@@ -23,8 +23,16 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG)
             end
             push!(opfs, opf)
         else
-            opf = read_opf(joinpath(dirname(file), opf_file), attr_type=attr_type, mtg_type=mtg_type, read_id=false, max_id=node_max_id)
-            delete!(node_attributes(opf), :ref_meshes)
+            object_path = joinpath(dirname(file), opf_file)
+            ext = lowercase(splitext(opf_file)[2])
+            opf = if ext == ".opf"
+                read_opf(object_path, attr_type=attr_type, mtg_type=mtg_type, read_id=false, max_id=node_max_id)
+            elseif ext == ".gwa"
+                read_gwa(object_path, attr_type=attr_type, mtg_type=mtg_type, read_id=false, max_id=node_max_id)
+            else
+                error("Unsupported OPS object extension: $ext in $file")
+            end
+            haskey(node_attributes(opf), :ref_meshes) && delete!(node_attributes(opf), :ref_meshes)
             push!(opfs, opf)
             opf_orig_position[opf_file] = length(opfs)
         end
