@@ -1,5 +1,4 @@
 using CairoMakie
-using Meshes
 using PlantGeom
 using Statistics
 using Documenter

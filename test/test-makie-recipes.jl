@@ -32,7 +32,7 @@ file_coffee = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "co
 mtg_coffee = read_opf(file_coffee)
 @testset "Makie recipes: whole MTG -> attribute colors" begin
     f, ax, p = plantviz(mtg_coffee, color=:Area)
-    @test length(p.vertex_colors[]) == Meshes.nvertices(p.merged_mesh[])
+    @test length(p.vertex_colors[]) == PlantGeom.nvertices(p.merged_mesh[])
     @test_reference "reference_images/coffee_area.png" f
 end
 
@@ -58,7 +58,7 @@ meshes = get_ref_meshes(opf)
     transform!(opf, zmax => :z_max, ignore_nothing=true)
     @test_reference "reference_images/opf_color_attribute.png" plantviz(opf, color=:z_max)
 
-    transform!(opf, (x -> [Meshes.coords(i).z for i in Meshes.vertices(refmesh_to_mesh(x))]) => :z, filter_fun=node -> hasproperty(node, :geometry))
+    transform!(opf, (x -> [p[3] for p in GeometryBasics.coordinates(refmesh_to_mesh(x))]) => :z, filter_fun=node -> hasproperty(node, :geometry))
     @test_reference "reference_images/opf_color_attribute_vertex.png" plantviz(opf, color=:z)
 
     fig2, ax2, p2 = plantviz(opf, color=:z)
@@ -154,5 +154,5 @@ end
     @test cache !== nothing
     @test hasproperty(cache, :mesh) && hasproperty(cache, :face2node) && hasproperty(cache, :hash)
     @test !isnothing(cache.mesh) && !isnothing(cache.face2node)
-    @test length(cache.face2node) == Meshes.nelements(cache.mesh)
+    @test length(cache.face2node) == PlantGeom.nelements(cache.mesh)
 end

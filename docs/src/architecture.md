@@ -14,15 +14,15 @@ OPF/OPS files ──► read_opf/read_ops ──► MTG (MultiScaleTreeGraph)
                     (lazy) refmesh_to_mesh per node
                                   │
                                   ▼
-            Merge all meshes into a single Meshes.SimpleMesh geometry
+            Merge all meshes into a single GeometryBasics.Mesh geometry
                                   │
                                   ▼
              plantviz (Makie recipe) ──► Makie Figure/Axis
 ```
 
-- Core types: `RefMesh` stores template geometry; `Geometry` attaches a `ref_mesh`, a transform (`Translate`, `Rotate`, `Scale`, `Affine`, or `SequentialTransform`), and an optional cached mesh to an MTG node attribute `:geometry`.
+- Core types: `RefMesh` stores template geometry; `Geometry` attaches a `ref_mesh` and a `CoordinateTransformations.Transformation` (`Translation`, `LinearMap`, `AffineMap`, composed with `∘`) to an MTG node attribute `:geometry`.
 - IO: `read_opf`/`read_ops` populate MTG nodes and scene transforms; `write_opf`/`write_ops` serialize meshes and transforms back to disk.
-- Computation: meshes are computed lazily; call `refmesh_to_mesh` to materialize. Matrix generation uses `get_transformation_matrix`. At render time, node meshes are merged to a single `SimpleMesh`.
+- Computation: meshes are computed lazily; call `refmesh_to_mesh` to materialize. Matrix generation uses `get_transformation_matrix`. At render time, node meshes are merged to a single `GeometryBasics.Mesh`.
 - Visualization: `plantviz` builds on Makie’s ComputeGraph. It maps colors from attributes or user dictionaries via `get_mtg_color`/`get_color`/`get_colormap`, wires them as compute nodes with `map!`, and renders the merged mesh once.
 
 Minimal example
@@ -53,7 +53,7 @@ Per-node color values (or per-refmesh/per-vertex inputs)
  Makie plot attributes (colormap, colorrange, color per vertex)
           │
           ▼
-        plantviz recipe renders via Meshes/Makie
+        plantviz recipe renders via GeometryBasics/Makie
 ```
 
 - Inputs: single color, `Dict("RefMeshName" => color)`, attribute symbol (e.g., `:z_max`), or per-vertex arrays. A vector of colors/symbols per node is also supported; it expands to per-face colors using the `face2node` mapping of the merged mesh.
@@ -64,14 +64,14 @@ Per-node color values (or per-refmesh/per-vertex inputs)
 
 ### Rendering Model (Merged by Default)
 
-- Build: traverses selected nodes, transforms ref meshes, materializes node meshes if needed, and merges them into one `SimpleMesh` for rendering. The merge is performed in a single pass for performance.
+- Build: traverses selected nodes, transforms ref meshes, materializes node meshes if needed, and merges them into one `GeometryBasics.Mesh` for rendering. The merge is performed in a single pass for performance.
 - Colors: computes a single per-vertex color array and passes it to Makie. Attribute colors honor `colormap` and `colorrange`; dictionary inputs by refmesh are supported; per-vertex dictionaries pass through directly.
 - Mapping: `face2node` is stored alongside the merged mesh in `:_scene_cache` to map triangles back to node IDs. This enables expanding per-node color vectors to per-face arrays.
 - Use: `plantviz(opf, color=:z_max)`; invalidate cache after geometry/attribute changes via `bump_scene_version!(opf)`. The merged mesh and `face2node` are reused across color updates.
 
 ## Key Components
 
-- `build_merged_mesh_with_map(mtg; ...)`: collects selected node meshes and returns `(merged::SimpleMesh, face2node::Vector{Int})`. The `face2node` array maps each element of the merged mesh back to its originating node id.
+- `build_merged_mesh_with_map(mtg; ...)`: collects selected node meshes and returns `(merged::GeometryBasics.Mesh, face2node::Vector{Int})`. The `face2node` array maps each element of the merged mesh back to its originating node id.
 - Scene cache helpers:
   - `scene_version`, `bump_scene_version!`: version the scene to invalidate cache.
   - `scene_cache_key`: builds a stable key for the current selection/options.

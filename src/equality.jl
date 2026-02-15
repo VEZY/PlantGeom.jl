@@ -18,8 +18,11 @@ end
 Test RefMesh equality.
 """
 function Base.:(==)(a::T, b::T) where {T<:Geometry}
+    ta = a.transformation(SVector{3,Float64}(1, 2, 3))
+    tb = b.transformation(SVector{3,Float64}(1, 2, 3))
+
     isequal(a.ref_mesh, b.ref_mesh) &&
-        isequal(a.transformation(Meshes.Point(1, 2, 3)), b.transformation(Meshes.Point(1, 2, 3))) &&
+        isapprox(collect(ta), collect(tb); atol=1.0e-8, rtol=1.0e-8) &&
         # NB: transform a point here because transformations can't be compared directly
         isequal(a.dUp, b.dUp) &&
         isequal(a.dDwn, b.dDwn)

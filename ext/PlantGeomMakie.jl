@@ -3,10 +3,10 @@ module PlantGeomMakie
 using PlantGeom
 import PlantGeom: RefMeshColorant, DictRefMeshColorant, DictVertexRefMeshColorant, AttributeColorant, diagram, diagram!, RefMesh
 import PlantGeom: material_single_color, get_color_range, get_colormap
-import PlantGeom: merge_simple_meshes, get_ref_mesh_name
+import PlantGeom: merge_simple_meshes, get_ref_mesh_name, nvertices
 import PlantGeom: plantviz, plantviz!
 import Makie
-import Meshes
+import GeometryBasics
 import Colors: RGBA, Colorant, RGB
 # import Observables # For to_value (get an observable value)
 import MultiScaleTreeGraph

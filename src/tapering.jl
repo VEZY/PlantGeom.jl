@@ -5,20 +5,22 @@ Tapering a mesh transforms it into a tapered version (*i.e.* pointy) or enlarged
 """
 function taper(mesh, dUp, dDwn)
     if dUp != 1.0 && dDwn != 1.0 && !isnan(dUp) && !isnan(dDwn)
-        mesh_points = Meshes.vertices(mesh)
+        mesh_points = _vertices(mesh)
         delta = dDwn - dUp
-        Xs = map(x -> Meshes.coords(x).x, mesh_points)
+        Xs = map(p -> p[1], mesh_points)
         xmin = minimum(Xs)
         xmax = maximum(Xs)
         deltaX = xmax - xmin
-        scaled_mesh = Array{eltype(mesh_points)}(undef, length(mesh_points))
-        for i = 1:length(mesh_points)
-            dX = (Meshes.coords(mesh_points[i]).x - xmin)
+
+        scaled_mesh = Vector{Point3}(undef, length(mesh_points))
+        for i in eachindex(mesh_points)
+            p = mesh_points[i]
+            dX = p[1] - xmin
             factor = dDwn - delta * (dX / deltaX)
-            p = Meshes.coords(mesh_points[i])
-            scaled_mesh[i] = Meshes.Point(p.x, p.y * factor, p.z * factor)
+            scaled_mesh[i] = point3(p[1], p[2] * factor, p[3] * factor)
         end
-        mesh = Meshes.SimpleMesh(scaled_mesh, Meshes.topology(mesh))
+
+        mesh = _mesh(scaled_mesh, _faces(mesh))
     end
 
     return mesh

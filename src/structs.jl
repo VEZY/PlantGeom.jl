@@ -80,7 +80,7 @@ RefMesh type. Stores all information about a Mesh:
 The reference meshes are then transformed on each node of the MTG using a transformation matrix
 to match the actual mesh.
 """
-struct RefMesh{S<:String,ME<:Meshes.Mesh{<:Meshes.𝔼{3}},M<:Union{Material,Colorant},N<:AbstractVector,T<:Union{AbstractVector,Nothing}}
+struct RefMesh{S<:String,ME<:GeometryBasics.AbstractMesh{3},M<:Union{Material,Colorant},N<:AbstractVector,T<:Union{AbstractVector,Nothing}}
     name::S
     mesh::ME
     normals::N
@@ -108,22 +108,22 @@ Base.deepcopy_internal(x::RefMesh, dict::IdDict) = x
 # see: https://github.com/JuliaLang/julia/blob/9acf1129c91cddd9194f529ad9cc82afd2694190/base/deepcopy.jl
 
 """
-    Geometry(; ref_mesh<:RefMesh, transformation=Identity(), dUp=1.0, dDwn=1.0)
+    Geometry(; ref_mesh<:RefMesh, transformation=IdentityTransformation(), dUp=1.0, dDwn=1.0)
 
 A Node geometry with the reference mesh, its transformation (as a function) and the resulting
 mesh (optional, may be lazily computed).
 
-The `transformation` field should be a `TransformsBase.Transform`, such as `TransformsBase.Identity`, or the ones implemented in 
-`Meshes.jl`, *e.g.* `Translate`, `Scale`... If you already have the transformation matrix, you can pass it to `Meshes.Affine()`. 
+The `transformation` field should be a `CoordinateTransformations.Transformation`,
+such as `IdentityTransformation`, `Translation`, `LinearMap` or `AffineMap`.
 """
 mutable struct Geometry{M<:RefMesh,S}
     ref_mesh::M
-    transformation::Transform
+    transformation::Transformation
     dUp::S
     dDwn::S
 end
 
-function Geometry(; ref_mesh, transformation=Identity(), dUp=1.0, dDwn=1.0, mesh=nothing)
+function Geometry(; ref_mesh, transformation=IdentityTransformation(), dUp=1.0, dDwn=1.0, mesh=nothing)
     mesh !== nothing && @warn "The `mesh` argument is deprecated and will be removed in future versions. The mesh is now computed on-the-fly using `refmesh_to_mesh(node)`."
     Geometry(
         ref_mesh,

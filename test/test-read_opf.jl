@@ -14,14 +14,14 @@ end
     ref_meshes = mtg[:ref_meshes]
     @test length(ref_meshes) == 2
     first_mesh = ref_meshes[1]
-    @test isa(first_mesh.mesh, Meshes.SimpleMesh)
-    @test length(first_mesh.mesh) == 50
+    @test isa(first_mesh.mesh, GeometryBasics.AbstractMesh{3})
+    @test PlantGeom.nvertices(first_mesh) == 50
     @test isa(first_mesh.material, Phong)
     @test first_mesh.name == "Mesh0"
-    @test eltype(first_mesh.normals) <: Meshes.Vec
+    @test eltype(first_mesh.normals) <: PlantGeom.Vec3
     @test length(first_mesh.normals) == 50
     @test first_mesh.taper == true
-    @test eltype(first_mesh.texture_coords) <: Meshes.Point
+    @test eltype(first_mesh.texture_coords) <: GeometryBasics.Point{2,Float64}
     @test length(first_mesh.texture_coords) == 50
 end
 
@@ -34,9 +34,8 @@ end
 
     geom = Internode[:geometry]
     @test geom.ref_mesh === mtg[:ref_meshes][1] #! update this number 
-    @test typeof(geom.transformation[1]) <: Affine{3,SMatrix{3,3,Float64,9},<:Meshes.Vec}
-    @test isa(geom.transformation[2], Translate{3})
-    @test [p.val for p in to(geom.transformation(Meshes.Point(1.0, 1.0, 1.0)))] ≈ [-1.0, 1.0, 10.0] atol = 1.0e-6
+    @test geom.transformation(SVector{3,Float64}(0.0, 0.0, 0.0)) isa SVector{3,Float64}
+    @test collect(geom.transformation(SVector{3,Float64}(1.0, 1.0, 1.0))) ≈ [-1.0, 1.0, 10.0] atol = 1.0e-6
     # NB: last one is 10 because there is some tappering
 end
 

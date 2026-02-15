@@ -1,9 +1,9 @@
 using CairoMakie
-using Meshes
 using Test
 using ReferenceTests
 using Documenter # for doctests
 using Colors, ColorSchemes
+using GeometryBasics
 using StaticArrays
 using MultiScaleTreeGraph
 using LinearAlgebra
@@ -36,6 +36,10 @@ using Plots # Add this dependency because else the tests on plot recipes return 
 end
 
 include("test-simplify_geometry.jl")
+
+@testset "Meshes interop" begin
+    include("test-meshes-interop.jl")
+end
 
 if VERSION >= v"1.10"
     # Some formating changed in Julia 1.10, e.g. @NamedTuple instead of NamedTuple.

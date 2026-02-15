@@ -32,13 +32,13 @@ function plot_refmesh(plot, mtg_name=:mtg)
         end
 
         # Parsing the colors in the dictionary into Colorants:
-        colorant_dict = Dict{String,Union{Colorant,Vector{<:Colorant}}}([k => isa(v, AbstractArray) ? parse.(Colorant, v) : fill(parse(Colorant, v), Meshes.nvertices(p[k])) for (k, v) in colorant])
+        colorant_dict = Dict{String,Union{Colorant,Vector{<:Colorant}}}([k => isa(v, AbstractArray) ? parse.(Colorant, v) : fill(parse(Colorant, v), PlantGeom.nvertices(p[k])) for (k, v) in colorant])
 
         if length(colorant) != n_meshes
             ref_cols = get_ref_meshes_color(opf)
             missing_mesh_input = setdiff(collect(keys(ref_cols)), collect(keys(colorant)))
             for i in missing_mesh_input
-                push!(colorant_dict, i => fill(ref_cols[i], Meshes.nvertices(p[i])))
+                push!(colorant_dict, i => fill(ref_cols[i], PlantGeom.nvertices(p[i])))
             end
         end
 

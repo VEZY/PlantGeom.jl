@@ -50,12 +50,15 @@ transform!(mtg, zmax => :z_max, ignore_nothing = true)
 plantviz(mtg, color = :z_max)
 
 # One color for each vertex of the refmesh 1:
-using Meshes
 vertex_color = get_color(1:nvertices(get_ref_meshes(mtg))[1], [1,nvertices(get_ref_meshes(mtg))[1]])
 plantviz(mtg, color = Dict(1 => vertex_color))
 
 # Or even coloring by the value of the Z coordinates of each vertex:
-transform!(mtg, (x -> [Meshes.coords(i).z for i in Meshes.vertices(refmesh_to_mesh(x))]) => :z_vertex, filter_fun= node -> hasproperty(node, :geometry))
+transform!(
+    mtg,
+    (x -> [v[3] for v in GeometryBasics.decompose(Point3, refmesh_to_mesh(x))]) => :z_vertex,
+    filter_fun=node -> hasproperty(node, :geometry)
+)
 plantviz(mtg, color = :z, showsegments = true)
 
 f,a,p = plantviz(mtg, color = :z, showsegments = true)
@@ -92,7 +95,7 @@ function plantviz end
 """
     viplantviz!(mtg; [options])
 
-Visualize the 3D meshes of an mtg using Meshes.jl and makie.
+Visualize the 3D meshes of an MTG using GeometryBasics and Makie.
 This function adds the plot to an existing scene with `options` forwarded to [`plantviz`](@ref).
 """
 function plantviz! end
