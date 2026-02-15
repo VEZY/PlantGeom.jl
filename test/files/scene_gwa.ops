@@ -1,0 +1,4 @@
+# T xOrigin yOrigin zOrigin xSize ySize flat
+T 0 0 0 1 1 flat
+#[Archimed] pavement
+1	1	pave1x1.gwa	0	0	0	1	0	0	0

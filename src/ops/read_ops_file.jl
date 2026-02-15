@@ -14,7 +14,7 @@ of two `Point3` with the origin point and opposite point of the scene.
 The object table is an array of `NamedTuple` with the following fields:
 - `sceneID::Int`: Scene ID.
 - `plantID::Int`: Plant ID.
-- `filePath::String`: Path to the `.opf` file.
+- `filePath::String`: Path to the `.opf` or `.gwa` file.
 - `pos::Point3`: Position of the object.
 - `scale::Float64`: Scale of the object.
 - `inclinationAzimut::Float64`: Inclination azimut of the object.
@@ -42,7 +42,7 @@ function read_ops_file(file)
             continue
         end
 
-        if occursin(r"^\d+\t\d+\t.*\.opf\t([+-]?\d+(\.\d+)?\t){6}[+-]?\d+(\.\d+)?$", line)
+        if occursin(r"^\d+\t\d+\t.*\.(opf|gwa)\t([+-]?\d+(\.\d+)?\t){6}[+-]?\d+(\.\d+)?$", line)
             if functional_group == ""
                 error("Functional group not found for line $(i+scene_dim_line+1): $line in file $file")
             end
