@@ -17,28 +17,13 @@ CairoMakie.activate!()
 
 const Tri = GeometryBasics.TriangleFace{Int}
 
-function prism_mesh(radius=0.5, height=1.0)
-    v = [
-        PlantGeom.Point3(-radius, -radius, 0.0),
-        PlantGeom.Point3(radius, -radius, 0.0),
-        PlantGeom.Point3(radius, radius, 0.0),
-        PlantGeom.Point3(-radius, radius, 0.0),
-        PlantGeom.Point3(-radius, -radius, height),
-        PlantGeom.Point3(radius, -radius, height),
-        PlantGeom.Point3(radius, radius, height),
-        PlantGeom.Point3(-radius, radius, height),
-    ]
-
-    f = Tri[
-        Tri(1, 2, 3), Tri(1, 3, 4),
-        Tri(5, 7, 6), Tri(5, 8, 7),
-        Tri(1, 6, 2), Tri(1, 5, 6),
-        Tri(2, 7, 3), Tri(2, 6, 7),
-        Tri(3, 8, 4), Tri(3, 7, 8),
-        Tri(4, 5, 1), Tri(4, 8, 5),
-    ]
-
-    GeometryBasics.Mesh(v, f)
+function cylinder_mesh(radius=0.5f0, height=1.0f0)
+    c = GeometryBasics.Cylinder(
+        GeometryBasics.Point3f(0.0, 0.0, 0.0),
+        GeometryBasics.Point3f(0.0, 0.0, height),
+        Float32(radius),
+    )
+    GeometryBasics.mesh(c)
 end
 
 function leaf_mesh()
@@ -60,7 +45,7 @@ function leaf_mesh()
     GeometryBasics.Mesh(v, f)
 end
 
-refmesh_cylinder = RefMesh("Cylinder", prism_mesh(), RGB(0.5, 0.5, 0.5))
+refmesh_cylinder = RefMesh("Cylinder", cylinder_mesh(), RGB(0.5, 0.5, 0.5))
 refmesh_leaf = RefMesh("Leaf", leaf_mesh(), RGB(0.1, 0.5, 0.2))
 
 function build_mtg(n_internode=5, n_roots=3)

@@ -10,31 +10,16 @@ CairoMakie.activate!()
 
 const Tri = GeometryBasics.TriangleFace{Int}
 
-function cylinder_like_mesh(radius=0.5, height=1.0)
-    v = [
-        PlantGeom.Point3(-radius, -radius, 0.0),
-        PlantGeom.Point3(radius, -radius, 0.0),
-        PlantGeom.Point3(radius, radius, 0.0),
-        PlantGeom.Point3(-radius, radius, 0.0),
-        PlantGeom.Point3(-radius, -radius, height),
-        PlantGeom.Point3(radius, -radius, height),
-        PlantGeom.Point3(radius, radius, height),
-        PlantGeom.Point3(-radius, radius, height),
-    ]
-
-    f = Tri[
-        Tri(1, 2, 3), Tri(1, 3, 4),
-        Tri(5, 7, 6), Tri(5, 8, 7),
-        Tri(1, 6, 2), Tri(1, 5, 6),
-        Tri(2, 7, 3), Tri(2, 6, 7),
-        Tri(3, 8, 4), Tri(3, 7, 8),
-        Tri(4, 5, 1), Tri(4, 8, 5),
-    ]
-
-    GeometryBasics.Mesh(v, f)
+function cylinder_mesh(radius=0.5f0, height=1.0f0)
+    c = GeometryBasics.Cylinder(
+        GeometryBasics.Point3f(0.0, 0.0, 0.0),
+        GeometryBasics.Point3f(0.0, 0.0, height),
+        Float32(radius),
+    )
+    GeometryBasics.mesh(c)
 end
 
-cyl = cylinder_like_mesh()
+cyl = cylinder_mesh()
 cylinder_refmesh = RefMesh("cylinder_1", cyl)
 ```
 
