@@ -156,7 +156,11 @@ f
 
 ```julia
 # Compute the z position of each vertices in each mesh:
-transform!(mtg, (x -> [Meshes.coords(i).z for i in Meshes.vertices(refmesh_to_mesh(x))]) => :z_vertex, filter_fun= node -> hasproperty(node, :geometry))
+transform!(
+    mtg,
+    (x -> [v[3] for v in GeometryBasics.decompose(PlantGeom.Point3, refmesh_to_mesh(x))]) => :z_vertex,
+    filter_fun=node -> hasproperty(node, :geometry),
+)
 plantviz(mtg, color = :z_vertex, showsegments = true)
 ```
 

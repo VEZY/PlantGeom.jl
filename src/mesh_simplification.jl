@@ -31,7 +31,7 @@ function merge_children_geometry!(mtg; from, into, delete=:nodes, verbose=true, 
 
     # Traverse the tree and simplify the geometry
     MultiScaleTreeGraph.traverse!(mtg, symbol=into) do node_into
-        meshes_vec = MultiScaleTreeGraph.traverse(node_into, filter_fun=x -> haskey(x, :geometry), type=Meshes.SimpleMesh, symbol=from) do node_from
+        meshes_vec = MultiScaleTreeGraph.traverse(node_into, filter_fun=x -> haskey(x, :geometry), symbol=from) do node_from
             refmesh_to_mesh(node_from)
         end
         if isempty(meshes_vec)
@@ -47,7 +47,7 @@ function merge_children_geometry!(mtg; from, into, delete=:nodes, verbose=true, 
             return nothing
         end
         # Build a new reference mesh out of the children nodes
-        ref_mesh = RefMesh(string(into, MultiScaleTreeGraph.node_id(node_into)), reduce(merge, meshes_vec))
+        ref_mesh = RefMesh(string(into, MultiScaleTreeGraph.node_id(node_into)), _merge_meshes(meshes_vec))
         node_into.geometry = Geometry(ref_mesh=ref_mesh)
         return nothing
     end

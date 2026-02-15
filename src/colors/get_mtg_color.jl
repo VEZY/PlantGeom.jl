@@ -83,7 +83,7 @@ function get_mtg_color(::Type{DictVertexRefMeshColorantType}, color, opf)
     new_color = Dict{String,Vector{Colorant}}()
     for (k, v) in color
         ref_mesh = ref_meshes[findfirst(x -> x.name == k, ref_meshes)]
-        n_verts = Meshes.nvertices(ref_mesh)
+        n_verts = nvertices(ref_mesh)
         if v isa AbstractVector
             @assert length(v) == n_verts "The length of the color vector for refmesh $k does not match the number of vertices of that refmesh ($(length(v)) != $n_verts)"
             col = v isa AbstractVector{Colorant} ? v : parse.(Colorant, v)

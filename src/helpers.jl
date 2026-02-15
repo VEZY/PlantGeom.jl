@@ -1,56 +1,59 @@
 """
     nvertices(meshes::RefMesh)
 
-Return the number of vertices of a reference mesh
+Return the number of vertices of a reference mesh.
 """
-function Meshes.nvertices(mesh::RefMesh)
-    Meshes.nvertices(mesh.mesh)
+function nvertices(mesh::RefMesh)
+    _nvertices(mesh.mesh)
 end
 
 """
     nelements(meshes::RefMesh)
 
-Return the number of elements of a reference mesh
+Return the number of triangular elements of a reference mesh.
 """
-function Meshes.nelements(mesh::RefMesh)
-    Meshes.nelements(mesh.mesh)
+function nelements(mesh::RefMesh)
+    _nfaces(mesh.mesh)
 end
 
-function normals(mesh::RefMesh{S,ME,M,N,T}) where {S,ME<:Meshes.SimpleMesh,M,N,T}
+function nvertices(mesh)
+    _nvertices(mesh)
+end
+
+function nelements(mesh)
+    _nfaces(mesh)
+end
+
+function normals(mesh::RefMesh)
     if length(mesh.normals) == 0
-        return [Meshes.normal(tri) for tri in mesh.mesh]
+        verts = _vertices(mesh.mesh)
+        [face_normal(verts[f[1]], verts[f[2]], verts[f[3]]) for f in _faces(mesh.mesh)]
     else
-        return mesh.normals
+        mesh.normals
     end
-    # TODO: Implement for RefMesh with GeometryBasics
 end
 
 """
-    normals_vertex(mesh::Meshes.SimpleMesh)
+    normals_vertex(mesh)
 
-Compute per vertex normals and return them as a `StaticArrays.SVector`.
-
-#! This is a naive approach because I have no time right know.
-#! We just put the face mesh as a vertex mesh (and ovewritting values for common points)
-# TODO: Use a real computation instead. See e.g.:
-# https://stackoverflow.com/questions/45477806/general-method-for-calculating-smooth-vertex-normals-with-100-smoothness?noredirect=1&lq=1
+Compute per vertex normals and return them as `GeometryBasics.Vec{3,Float64}`.
 """
 function normals_vertex(mesh::RefMesh)
     normals_vertex(mesh.mesh)
 end
 
-function normals_vertex(mesh::Meshes.SimpleMesh)
-    zero_vec = Meshes.Vec(0.0, 0.0, 0.0)
-    n_vertices = Meshes.nvertices(mesh)
-    vertex_normals = fill(zero_vec, n_vertices)
-    tri_normals = [Meshes.normal(tri) for tri in mesh]
+function normals_vertex(mesh)
+    zero_vec = Vec3(0.0, 0.0, 0.0)
+    verts = _vertices(mesh)
+    faces = _faces(mesh)
+    vertex_normals = fill(zero_vec, length(verts))
 
-    for (i, tri) in enumerate(Meshes.topology(mesh))
-        tri_indices = Meshes.indices(tri)
-        vertex_normals[tri_indices[1]] = tri_normals[i]
-        vertex_normals[tri_indices[2]] = tri_normals[i]
-        vertex_normals[tri_indices[3]] = tri_normals[i]
+    for f in faces
+        n = face_normal(verts[f[1]], verts[f[2]], verts[f[3]])
+        vertex_normals[f[1]] = n
+        vertex_normals[f[2]] = n
+        vertex_normals[f[3]] = n
     end
 
-    return vertex_normals
+    vertex_normals
 end

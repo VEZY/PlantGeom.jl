@@ -1,17 +1,29 @@
 using BenchmarkTools
-using PlantGeom
-using MultiScaleTreeGraph
 using CairoMakie
 using Downloads
+using MultiScaleTreeGraph
+using PlantGeom
 
-# auxiliary variables
-file_small = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
-file_medium = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "coffee.opf")
-file_large = Downloads.download("https://api.figshare.com/v2/file/download/57762715")
+# Fixtures
+const PKG_ROOT = dirname(dirname(pathof(PlantGeom)))
+const TEST_FILES = joinpath(PKG_ROOT, "test", "files")
+const OPF_SMALL_FILE = joinpath(TEST_FILES, "simple_plant.opf")
+const OPF_MEDIUM_FILE = joinpath(TEST_FILES, "coffee.opf")
+const OPS_SCENE_FILE = joinpath(TEST_FILES, "scene.ops")
+const OPF_LARGE_URL = "https://api.figshare.com/v2/file/download/57762715"
+
+function get_large_fixture(url)
+    try
+        return Downloads.download(url)
+    catch
+        return nothing
+    end
+end
+
+const OPF_LARGE_FILE = get_large_fixture(OPF_LARGE_URL)
 
 # initialize benchmark suite
 const SUITE = BenchmarkGroup()
-
 const cache = false # Disable caching for benchmarking
 
 # ---------
@@ -19,48 +31,86 @@ const cache = false # Disable caching for benchmarking
 # ---------
 
 SUITE["OPF read"] = BenchmarkGroup()
-SUITE["OPF read"]["small file"] = @benchmarkable read_opf($file_small)
-SUITE["OPF read"]["medium file"] = @benchmarkable read_opf($file_medium)
-SUITE["OPF read"]["large file"] = @benchmarkable read_opf($file_large)
+SUITE["OPF read"]["small file"] = @benchmarkable read_opf($OPF_SMALL_FILE)
+SUITE["OPF read"]["medium file"] = @benchmarkable read_opf($OPF_MEDIUM_FILE)
+if !isnothing(OPF_LARGE_FILE)
+    SUITE["OPF read"]["large file"] = @benchmarkable read_opf($OPF_LARGE_FILE)
+end
 
 # ---------
 # Plotting
 # ---------
-plantviz_display(opf; kwargs...) = display(plantviz(opf; kwargs...))
+plantviz_display(opf; kwargs...) = (display(plantviz(opf; kwargs...)); nothing)
 
 SUITE["OPF plotting"] = BenchmarkGroup()
+SUITE["OPF plotting"]["single color"] = BenchmarkGroup()
+SUITE["OPF plotting"]["attribute color"] = BenchmarkGroup()
 
-opf_small = read_opf(file_small)
-opf_medium = read_opf(file_medium)
-opf_large = read_opf(file_large)
+opf_small = read_opf(OPF_SMALL_FILE)
+opf_medium = read_opf(OPF_MEDIUM_FILE)
+opf_small_attr = deepcopy(opf_small)
+opf_medium_attr = deepcopy(opf_medium)
 
-# @benchmark plantviz(opf_medium, cache=false)
-# BenchmarkTools.Trial: 25 samples with 1 evaluation per sample.
-#  Range (min … max):  163.945 ms … 474.082 ms  ┊ GC (min … max):  0.00% … 65.93%
-#  Time  (median):     183.381 ms               ┊ GC (median):    11.58%
-#  Time  (mean ± σ):   206.254 ms ±  78.629 ms  ┊ GC (mean ± σ):  20.88% ± 16.36%
-#   ▄  █                                                           
-#   █▁▄██▆▆█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▄▁▁▄ ▁
-#   164 ms           Histogram: frequency by time          474 ms <
-#  Memory estimate: 269.29 MiB, allocs estimate: 5625477
-
-# Reference mesh:
-SUITE["OPF plotting"]["single color"]["small file"] = @benchmarkable plantviz_display($opf_small, cache=$cache)
-SUITE["OPF plotting"]["single color"]["medium file"] = @benchmarkable plantviz_display($opf_medium, cache=$cache)
-SUITE["OPF plotting"]["single color"]["large file"] = @benchmarkable plantviz_display($opf_large, cache=$cache)
-
-# Single color:
 color = :green
 SUITE["OPF plotting"]["single color"]["small file"] = @benchmarkable plantviz_display($opf_small, color=$color, cache=$cache)
 SUITE["OPF plotting"]["single color"]["medium file"] = @benchmarkable plantviz_display($opf_medium, color=$color, cache=$cache)
-SUITE["OPF plotting"]["single color"]["large file"] = @benchmarkable plantviz_display($opf_large, color=$color, cache=$cache)
+if !isnothing(OPF_LARGE_FILE)
+    opf_large = read_opf(OPF_LARGE_FILE)
+    SUITE["OPF plotting"]["single color"]["large file"] = @benchmarkable plantviz_display($opf_large, color=$color, cache=$cache)
+end
 
-# Attribute color:
-color = :mesh_index
+color_attr = :mesh_index
 global i = Ref(0)
-transform!(opf_small, :geometry => (x -> i[] += 1) => color, ignore_nothing=true)
-transform!(opf_medium, :geometry => (x -> i[] += 1) => color, ignore_nothing=true)
-transform!(opf_large, :geometry => (x -> i[] += 1) => color, ignore_nothing=true)
-SUITE["OPF plotting"]["attribute color"]["small file"] = @benchmarkable plantviz_display($opf_small, color=$color, cache=$cache)
-SUITE["OPF plotting"]["attribute color"]["medium file"] = @benchmarkable plantviz_display($opf_medium, color=$color, cache=$cache)
-SUITE["OPF plotting"]["attribute color"]["large file"] = @benchmarkable plantviz_display($opf_large, color=$color, cache=$cache)
+transform!(opf_small_attr, :geometry => (_ -> i[] += 1) => color_attr, ignore_nothing=true)
+transform!(opf_medium_attr, :geometry => (_ -> i[] += 1) => color_attr, ignore_nothing=true)
+SUITE["OPF plotting"]["attribute color"]["small file"] = @benchmarkable plantviz_display($opf_small_attr, color=$color_attr, cache=$cache)
+SUITE["OPF plotting"]["attribute color"]["medium file"] = @benchmarkable plantviz_display($opf_medium_attr, color=$color_attr, cache=$cache)
+if !isnothing(OPF_LARGE_FILE)
+    opf_large_attr = read_opf(OPF_LARGE_FILE)
+    transform!(opf_large_attr, :geometry => (_ -> i[] += 1) => color_attr, ignore_nothing=true)
+    SUITE["OPF plotting"]["attribute color"]["large file"] = @benchmarkable plantviz_display($opf_large_attr, color=$color_attr, cache=$cache)
+end
+
+function bench_write_opf(mtg)
+    output = tempname() * ".opf"
+    try
+        write_opf(output, mtg)
+    finally
+        isfile(output) && rm(output)
+    end
+    return nothing
+end
+
+function bench_write_ops(scene_dimensions, object_table)
+    output = tempname() * ".ops"
+    try
+        write_ops(output, scene_dimensions, object_table)
+    finally
+        isfile(output) && rm(output)
+    end
+    return nothing
+end
+
+function bench_plot_render_png(opf; kwargs...)
+    fig, _, _ = plantviz(opf; kwargs...)
+    io = IOBuffer()
+    show(io, MIME("image/png"), fig)
+    return nothing
+end
+
+ops_scene = read_ops_file(OPS_SCENE_FILE)
+
+SUITE["OPF write"] = BenchmarkGroup()
+SUITE["OPF write"]["small file"] = @benchmarkable bench_write_opf(tree) setup = (tree = read_opf($OPF_SMALL_FILE))
+SUITE["OPF write"]["medium file"] = @benchmarkable bench_write_opf(tree) setup = (tree = read_opf($OPF_MEDIUM_FILE))
+
+SUITE["OPS IO"] = BenchmarkGroup()
+SUITE["OPS IO"]["read scene"] = @benchmarkable read_ops($OPS_SCENE_FILE)
+SUITE["OPS IO"]["write scene"] = @benchmarkable bench_write_ops($ops_scene.scene_dimensions, $ops_scene.object_table)
+
+SUITE["OPF plotting"]["default color"] = BenchmarkGroup()
+SUITE["OPF plotting"]["default color"]["small file"] = @benchmarkable plantviz_display($opf_small, cache=$cache)
+SUITE["OPF plotting"]["default color"]["medium file"] = @benchmarkable plantviz_display($opf_medium, cache=$cache)
+
+SUITE["OPF plotting"]["render png"] = BenchmarkGroup()
+SUITE["OPF plotting"]["render png"]["small file"] = @benchmarkable bench_plot_render_png($opf_small, cache=$cache)

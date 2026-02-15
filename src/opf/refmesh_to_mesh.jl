@@ -22,11 +22,9 @@ refmesh_to_mesh
 
 function refmesh_to_mesh(node)
     if node[:geometry] !== nothing
-
         ref_mesh = node[:geometry].ref_mesh.mesh
 
-        # Get the reference mesh and taper it in z and y (the principal axis is following x already):
-        if node[:geometry].ref_mesh.taper # Taper only if enableScale="true" in the OPF: taper == true
+        if node[:geometry].ref_mesh.taper
             ref_mesh = taper(ref_mesh, node[:geometry].dUp, node[:geometry].dDwn)
         end
 
@@ -36,8 +34,8 @@ function refmesh_to_mesh(node)
     end
 end
 
-function apply_transformation(transformation, ref_mesh)
-    Meshes.SimpleMesh([transformation(p) for p in Meshes.eachvertex(ref_mesh)], Meshes.topology(ref_mesh))
+function apply_transformation(transformation::Transformation, ref_mesh)
+    apply_transformation_to_mesh(transformation, ref_mesh)
 end
 
 function refmesh_to_mesh!(node)

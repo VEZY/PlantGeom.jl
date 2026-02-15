@@ -3,13 +3,10 @@ module PlantGeom
 using MultiScaleTreeGraph
 
 # For 3D (OPF):
-import Meshes
-import Meshes: Translate, Affine, Rotate, Scale, Vec
-import Meshes: viz, viz!
-import TransformsBase: parameters, Identity, Transform, →, SequentialTransform
-import TransformsBase: isrevertible, isinvertible
-import TransformsBase: apply, revert, reapply, inverse
-import TransformsBase: parameters
+import CoordinateTransformations
+import CoordinateTransformations: Transformation, IdentityTransformation, Translation, LinearMap, AffineMap, ComposedTransformation
+import CoordinateTransformations: compose, ∘, recenter
+import GeometryBasics
 import Rotations: Rotation, RotZ
 import Unitful
 import Unitful: @u_str
@@ -28,7 +25,7 @@ import EzXML: XMLDocument, ElementNode, setroot!, addelement!, hasnodename
 import EzXML: prettyprint # to remove
 import StaticArrays: SMatrix, SVector
 import StaticArrays
-import LinearAlgebra: I, UniformScaling, Diagonal # Used for geometry parsing in OPF
+import LinearAlgebra: I, UniformScaling, Diagonal, norm, cross # Used for geometry parsing in OPF
 import RecipesBase
 import Base
 import OrderedCollections
@@ -36,6 +33,7 @@ import OrderedCollections
 # For random name of the color attribute for caching:
 import UUIDs
 
+include("geometry_backend.jl")
 include("structs.jl")
 include("equality.jl")
 include("helpers.jl")
@@ -64,7 +62,6 @@ include("deprecated.jl")
 
 # 3D Plotting (OPF):
 export get_ref_meshes
-export viz, viz!
 
 export merge_children_geometry!
 
@@ -81,9 +78,15 @@ export Material, Phong
 export RefMesh
 export (==), names
 export get_color
+export Point3, Vec3, compose_lr
+export nvertices, nelements
 
 function colorbar end # Extended in PlantGeomMakie extension
 export colorbar
+
+function to_meshes end # Extended in PlantGeomMeshesInterop extension
+function to_geometrybasics end # Extended in PlantGeomMeshesInterop extension
+export to_meshes, to_geometrybasics
 
 export get_transformation_matrix
 export bump_scene_version!
@@ -91,17 +94,5 @@ export bump_scene_version!
 # Defining the main functions for PlantViz:
 include("plantviz.jl")
 export plantviz, plantviz!
-
-# Code that should be moved to PlantGeomMakie:
-# import Makie
-# MeshesMakieExt = Base.get_extension(Meshes, :MeshesMakieExt)
-
-# include("../ext/makie_recipes/opf_recipe.jl")
-# include("../ext/makie_recipes/RefMeshes_recipes.jl")
-# include("../ext/makie_recipes/opf/meshes_to_makie.jl")
-# include("../ext/makie_recipes/opf/plot_opf.jl")
-# include("../ext/makie_recipes/opf/scene_mesh.jl")
-# include("../ext/makie_recipes/mtg_tree_recipe.jl")
-# include("../ext/makie_recipes/colorbar.jl")
 
 end

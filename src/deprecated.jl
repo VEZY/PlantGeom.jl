@@ -1,4 +1,4 @@
-@deprecate geometry(; ref_mesh, ref_mesh_index=nothing, transformation=Identity(), dUp=1.0, dDwn=1.0, mesh=nothing) Geometry(; ref_mesh, transformation=Identity(), dUp=1.0, dDwn=1.0)
+@deprecate geometry(; ref_mesh, ref_mesh_index=nothing, transformation=IdentityTransformation(), dUp=1.0, dDwn=1.0, mesh=nothing) Geometry(; ref_mesh, transformation=IdentityTransformation(), dUp=1.0, dDwn=1.0)
 
 function viz(refmesh::T, args...; kwars...) where {T<:Union{RefMesh,AbstractVector{<:RefMesh}}}
     @warn "The `viz` function is deprecated, use `plantviz` instead."

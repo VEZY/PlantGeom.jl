@@ -2,18 +2,6 @@
     get_ref_meshes(mtg)
 
 Get all reference meshes from an mtg, usually from an OPF.
-
-# Examples
-
-```julia
-using PlantGeom
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf")
-opf = read_opf(file)
-meshes = get_ref_meshes(opf)
-
-using GLMakie
-plantviz(meshes)
-```
 """
 function get_ref_meshes(mtg)
     if !isroot(mtg)
@@ -23,7 +11,6 @@ function get_ref_meshes(mtg)
         x = mtg
     end
 
-    # Get all reference meshes from the MTG:
     ref_meshes = OrderedCollections.OrderedSet{RefMesh}()
     traverse!(x) do node
         if haskey(node, :geometry) && isa(node[:geometry], Geometry)
@@ -41,8 +28,6 @@ Get the name of the reference mesh used for the current node.
 function get_ref_mesh_name(node)
     return node[:geometry].ref_mesh.name
 end
-
-
 
 """
     parse_ref_meshes(mtg)
@@ -67,10 +52,7 @@ function parse_ref_meshes(x)
         )
     end
 
-    # We create RefMeshes just now in case they were not sorted in the opf file
     refmeshes = RefMesh[]
-    #! Do we really need to sort them? If not, we directly build it above instead of using
-    #! an intermediary Dict
     for i in sort(collect(keys(meshes)))
         push!(refmeshes, meshes[i])
     end
@@ -78,18 +60,8 @@ function parse_ref_meshes(x)
     return refmeshes
 end
 
-
 """
     meshBDD_to_meshes(x)
-
-# Examples
-
-```julia
-using MultiScaleTreeGraph
-file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))),"test","files","simple_plant.opf")
-opf = read_opf(file)
-meshBDD_to_meshes(opf[:meshBDD])
-```
 """
 function meshBDD_to_meshes(x)
     meshes = Dict{Int,Any}()
@@ -99,10 +71,10 @@ function meshBDD_to_meshes(x)
         mesh_points = pop!(value, "points")
         mesh_faces = pop!(value, "faces")
 
-        points3d = Meshes.Point[mesh_points[p:(p+2)] for p = 1:3:length(mesh_points)]
-        faces3d = [Meshes.connect((mesh_faces[p:(p+2)]...,), Meshes.Ngon) for p = 1:3:length(mesh_faces)]
+        points3d = [point3(mesh_points[p], mesh_points[p + 1], mesh_points[p + 2]) for p in 1:3:length(mesh_points)]
+        faces3d = [face3(mesh_faces[p], mesh_faces[p + 1], mesh_faces[p + 2]) for p in 1:3:length(mesh_faces)]
 
-        push!(mesh, "mesh" => Meshes.SimpleMesh(points3d, faces3d))
+        push!(mesh, "mesh" => _mesh(points3d, faces3d))
         merge!(mesh, value)
 
         push!(meshes, key => mesh)
@@ -110,7 +82,6 @@ function meshBDD_to_meshes(x)
 
     return meshes
 end
-
 
 """
 Parse a material in opf format to a [`Phong`](@ref) material.
@@ -125,23 +96,22 @@ function materialBDD_to_material(x)
     )
 end
 
-
 """
     align_ref_meshes(meshes::Vector{<:RefMesh})
 
 Align all reference meshes along the X axis. Used for visualisation only.
 """
 function align_ref_meshes(meshes::Vector{T}) where {T<:RefMesh}
-    meshes_dict = Dict{String,Meshes.SimpleMesh}()
-    trans = Translate(0.0, 0.0, 0.0)
+    meshes_dict = Dict{String,Any}()
+    x_offset = 0.0
 
     for i in meshes
-        push!(meshes_dict, i.name => trans(i.mesh))
-        # Maximum X coordinates of the newly translated mesh:
-        xmax_ = Meshes.coords(maximum(Meshes.boundingbox(i.mesh))).x
+        trans = Translation(x_offset, 0.0, 0.0)
+        mesh_ = apply_transformation_to_mesh(trans, i.mesh)
+        push!(meshes_dict, i.name => mesh_)
 
-        # Update the translation for the next mesh to begin at xmax*1.1 from the last one
-        trans = Translate(xmax_.val * 1.1, 0.0, 0.0)
+        xmax_ = maximum(p -> p[1], _vertices(mesh_))
+        x_offset = xmax_ * 1.1
     end
 
     return meshes_dict
@@ -153,16 +123,6 @@ align_ref_meshes(refmesh::T) where {T<:RefMesh} = Dict(refmesh.name => refmesh.m
     get_ref_meshes_color(meshes::Vector{<:RefMesh})
 
 Get the reference meshes colors (only the diffuse part for now).
-
-# Examples
-
-```julia
-using MultiScaleTreeGraph, PlantGeom
-file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))),"test","files","simple_plant.opf")
-opf = read_opf(file)
-meshes = get_ref_meshes(opf)
-PlantGeom.get_ref_meshes_color(meshes)
-```
 """
 function get_ref_meshes_color(meshes::Vector{T}) where {T<:RefMesh}
     Dict(i.name => material_single_color(i.material) for i in meshes)

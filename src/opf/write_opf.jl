@@ -2,25 +2,8 @@
     write_opf(file, opf)
 
 Write an MTG with explicit geometry to disk as an OPF file.
-
-# Notes
-
-Node attribute `:geometry` is treated as a reserved keyword and
-should not be used without knowing their meaning.
-
-# Examples
-
-```julia
-using PlantGeom
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf")
-opf = read_opf(file)
-write_opf("test.opf", opf)
-opf2 = read_opf("test.opf")
-plantviz(opf2)
-```
 """
 function write_opf(file, mtg)
-    # First, we remove the cached variables from the MTG (we don't want to write them in the OPF):
     clean_cache!(mtg)
 
     doc = XMLDocument()
@@ -29,7 +12,6 @@ function write_opf(file, mtg)
     opf_elm["version"] = 2.0
     opf_elm["editable"] = true
 
-    # Writing the reference meshes (meshBDD):
     meshBDD = addelement!(opf_elm, "meshBDD")
 
     if mtg[:ref_meshes] === nothing
@@ -40,118 +22,58 @@ function write_opf(file, mtg)
         mesh_elm = addelement!(meshBDD, "mesh")
         mesh_elm["name"] = mesh_.name
         mesh_elm["shape"] = ""
-        mesh_elm["Id"] = key - 1 # opf uses 0-based indexing
+        mesh_elm["Id"] = key - 1
         mesh_elm["enableScale"] = mesh_.taper
 
-        addelement!(
-            mesh_elm,
-            "points",
-            string("\n", join(Iterators.flatten(Unitful.ustrip.(u"cm", Meshes.to(p)) for p in Meshes.eachvertex(mesh_.mesh)), "\t"), "\n")
-        )
-        # p |> LengthUnit(u"cm")
-        if length(mesh_.normals) == Meshes.nelements(mesh_) && length(mesh_.normals) != Meshes.nvertices(mesh_)
-            # If the normals are per triangle, re-compute them per vertex:
+        points_cm = Iterators.flatten((p[1] * 100, p[2] * 100, p[3] * 100) for p in _vertices(mesh_.mesh))
+        addelement!(mesh_elm, "points", string("\n", join(points_cm, "\t"), "\n"))
+
+        if length(mesh_.normals) == nelements(mesh_) && length(mesh_.normals) != nvertices(mesh_)
             vertex_normals = normals_vertex(mesh_)
         else
             vertex_normals = mesh_.normals
         end
 
-        norm_elm = addelement!(
-            mesh_elm,
-            "normals",
-            string("\n", join(Iterators.flatten(Unitful.ustrip.(u"cm", p) for p in vertex_normals), "\t"), "\n")
-        )
-
+        normals_flat = Iterators.flatten((n[1], n[2], n[3]) for n in vertex_normals)
+        addelement!(mesh_elm, "normals", string("\n", join(normals_flat, "\t"), "\n"))
 
         if mesh_.texture_coords !== nothing && length(mesh_.texture_coords) > 0
-            # texture_coords are optional
-            norm_elm = addelement!(
-                mesh_elm,
-                "textureCoords",
-                string("\n", join(Iterators.flatten(Unitful.ustrip.(u"cm", Meshes.to(p)) for p in mesh_.texture_coords), "\t"), "\n")
-            )
+            uv_flat = Iterators.flatten((uv[1] * 100, uv[2] * 100) for uv in mesh_.texture_coords)
+            addelement!(mesh_elm, "textureCoords", string("\n", join(uv_flat, "\t"), "\n"))
         end
 
         faces_elm = addelement!(mesh_elm, "faces")
-
-
-        face_id = [0]
-        for tri in Meshes.elements(Meshes.topology(mesh_.mesh))
-            face_elm = addelement!(
-                faces_elm,
-                "face",
-                string("\n", join(Meshes.indices(tri) .- 1, "\t"), "\n")
-            )
-            #? NB: we remove one because face index are 0-based in the opf
-            face_elm["Id"] = face_id[1]
-            face_id[1] = face_id[1] + 1
+        face_id = 0
+        for tri in _faces(mesh_.mesh)
+            face_elm = addelement!(faces_elm, "face", string("\n", join((tri[1] - 1, tri[2] - 1, tri[3] - 1), "\t"), "\n"))
+            face_elm["Id"] = face_id
+            face_id += 1
         end
     end
 
-    # Parsing the materialBDD section.
     materialBDD = addelement!(opf_elm, "materialBDD")
     for (key, mesh_) in enumerate(mtg[:ref_meshes])
         mat_elm = addelement!(materialBDD, "material")
-        mat_elm["Id"] = key - 1 # opf uses 0-based indexing
+        mat_elm["Id"] = key - 1
 
         mat = material_to_opf_string(mesh_.material)
-        addelement!(
-            mat_elm,
-            "emission",
-            mat[:emission]
-        )
-
-        addelement!(
-            mat_elm,
-            "ambient",
-            mat[:ambient]
-        )
-
-        addelement!(
-            mat_elm,
-            "diffuse",
-            mat[:diffuse]
-        )
-
-        addelement!(
-            mat_elm,
-            "specular",
-            mat[:specular]
-        )
-
-        addelement!(
-            mat_elm,
-            "shininess",
-            mat[:shininess]
-        )
+        addelement!(mat_elm, "emission", mat[:emission])
+        addelement!(mat_elm, "ambient", mat[:ambient])
+        addelement!(mat_elm, "diffuse", mat[:diffuse])
+        addelement!(mat_elm, "specular", mat[:specular])
+        addelement!(mat_elm, "shininess", mat[:shininess])
     end
 
-    # Parsing the shapeBDD section.
     shapeBDD = addelement!(opf_elm, "shapeBDD")
     for (key, mesh_) in enumerate(mtg[:ref_meshes])
         shape_elm = addelement!(shapeBDD, "shape")
-        shape_elm["Id"] = key - 1 # opf uses 0-based indexing
+        shape_elm["Id"] = key - 1
 
-        addelement!(
-            shape_elm,
-            "name",
-            mesh_.name
-        )
-
-        addelement!(
-            shape_elm,
-            "meshIndex",
-            string(key - 1)
-        )
-
-        addelement!(
-            shape_elm,
-            "materialIndex",
-            string(key - 1)
-        )
+        addelement!(shape_elm, "name", mesh_.name)
+        addelement!(shape_elm, "meshIndex", string(key - 1))
+        addelement!(shape_elm, "materialIndex", string(key - 1))
     end
 
-    # Parsing the attributeBDD section:
     attrBDD = addelement!(opf_elm, "attributeBDD")
     attrs = unique(MultiScaleTreeGraph.get_features(mtg))
     for row in eachrow(attrs)
@@ -161,8 +83,8 @@ function write_opf(file, mtg)
         shape_elm["name"] = string(row.NAME)
         attr_type = row.TYPE
 
-        if attr_type == "STRING" # Type in the MTG
-            attr_type_opf = "String" # Type in the OPF
+        if attr_type == "STRING"
+            attr_type_opf = "String"
         elseif attr_type == "REAL"
             attr_type_opf = "Double"
         elseif attr_type == "INT"
@@ -176,10 +98,8 @@ function write_opf(file, mtg)
         shape_elm["class"] = attr_type_opf
     end
 
-    # Parsing the topology section:
     mtg_topology_to_xml!(mtg, opf_elm)
 
-    # prettyprint(doc)
     write(file, doc)
 
     return nothing
@@ -187,9 +107,6 @@ end
 
 """
     mtg_to_opf_link(link)
-
-Takes an MTG link as input ("/", "<" or "+") and outputs its corresponding link as declared
-in the OPF format ("decomp", "follow" or "branch")
 """
 function mtg_to_opf_link(link)
     if link == "/"
@@ -201,15 +118,12 @@ function mtg_to_opf_link(link)
     end
 end
 
-
 """
     mtg_topology_to_xml!(node, xml_parent)
 
-Write the MTG topology, attributes and geometry into XML format. This function is used to
-write the "topology" section of the OPF.
+Write the MTG topology, attributes and geometry into XML format.
 """
 function mtg_topology_to_xml!(node, xml_parent, xml_gtparent=nothing, ref_meshes=get_ref_meshes(node))
-
     if isroot(node)
         xml_parent = attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
     end
@@ -243,9 +157,7 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
 
             ref_mesh_index = findfirst(x -> x === node[key].ref_mesh, ref_meshes)
             addelement!(geom, "shapeIndex", string(ref_mesh_index - 1))
-            # NB: opf uses 0-based indexing, that's why we use ref_mesh_index - 1
 
-            # Make the homogeneous matrix from the transformations:
             mat4x4 = get_transformation_matrix(node[key].transformation)
 
             addelement!(
@@ -261,11 +173,9 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
                     "\n"
                 )
             )
-            #? NB: Only the three first rows are written as the fourth is always the same
             addelement!(geom, "dUp", string(node[key].dUp))
             addelement!(geom, "dDwn", string(node[key].dDwn))
         elseif key == :ref_meshes
-            # We don't write the reference meshes here but before in the opf
             continue
         else
             addelement!(xml_node, string(key), string(node[key]))
@@ -275,56 +185,13 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
     return xml_node
 end
 
-function get_transformation_matrix(trans)
-    error("Transformation type not supported: $(typeof(trans)). Please implement a new method to get the matrix out of this type of transformation.")
+function get_transformation_matrix(trans::Transformation)
+    mat = transformation_matrix4(trans)
+    mat_cm = copy(mat)
+    mat_cm[1:3, 4] .*= 100
+    mat_cm
 end
 
 function get_transformation_matrix(::T) where {T<:UniformScaling}
     Matrix{Float64}(I, 4, 4)
-end
-
-function get_transformation_matrix(::Identity)
-    Matrix{Float64}(I, 4, 4)
-end
-
-#! This was used to write CoordinateTransformations transformation matrices that had linear+translation 
-# function get_transformation_matrix(trans)
-#     hcat(trans.linear, trans.translation)
-# end
-
-function get_transformation_matrix(trans::Affine)
-    A, b = parameters(trans)
-    b = Unitful.ustrip.(u"cm", b)
-    vcat(hcat(A, b), [0 0 0 1])
-end
-
-function get_transformation_matrix(trans::Translate{3,T}) where {T}
-    x, y, z = Unitful.ustrip.(u"cm", trans.offsets)
-    [1.0 0.0 0.0 x; 0.0 1.0 0.0 y; 0.0 0.0 1.0 z; 0.0 0.0 0.0 1.0]
-end
-
-function get_transformation_matrix(trans::Translate{2,T}) where {T}
-    x, y = Unitful.ustrip.(u"cm", trans.offsets)
-    [1.0 0.0 0.0 x; 0.0 1.0 0.0 y; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
-end
-
-function get_transformation_matrix(trans::Translate{1,T}) where {T}
-    x = Unitful.ustrip.(u"cm", trans.offsets[1])
-    [1.0 0.0 0.0 x; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
-end
-
-function get_transformation_matrix(trans::Rotate{T}) where {T<:Rotation}
-    vcat(hcat(trans.rot, [0, 0, 0]), [0 0 0 1])
-end
-
-function get_transformation_matrix(trans::Scale{D,T}) where {D,T}
-    Diagonal([trans.factors..., 1.0])
-end
-
-function get_transformation_matrix(trans::ComposedFunction)
-    get_transformation_matrix(trans.outer) * get_transformation_matrix(trans.inner)
-end
-
-function get_transformation_matrix(trans::SequentialTransform)
-    reduce(*, [get_transformation_matrix(transform) for transform in Iterators.reverse(children(trans))])
 end
