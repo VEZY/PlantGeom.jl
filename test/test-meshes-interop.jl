@@ -43,3 +43,20 @@ verts_from_units = GeometryBasics.decompose(PlantGeom.Point3, mesh_gb_from_units
 @test verts_from_units[1][1] isa Float64
 @test verts_from_units[2][1] ≈ 1.0
 @test verts_from_units[3][2] ≈ 1.0
+
+# Meshes-first workflow: build in Meshes, convert to GeometryBasics, wrap in RefMesh, convert back.
+mesh_cyl_meshes = Meshes.CylinderSurface(
+    Meshes.Point(0.0, 0.0, 0.0),
+    Meshes.Point(0.0, 0.0, 1.0),
+    0.2,
+) |> Meshes.discretize |> Meshes.simplexify
+
+mesh_cyl_gb = to_geometrybasics(mesh_cyl_meshes)
+ref_from_meshes = RefMesh("from_meshes", mesh_cyl_gb, RGB(0.5, 0.5, 0.6))
+@test PlantGeom.nvertices(ref_from_meshes) > 0
+@test PlantGeom.nelements(ref_from_meshes) > 0
+
+mesh_roundtrip = to_meshes(ref_from_meshes)
+@test mesh_roundtrip isa Meshes.SimpleMesh
+@test length(collect(Meshes.vertices(mesh_roundtrip))) == PlantGeom.nvertices(ref_from_meshes)
+@test length(collect(Meshes.elements(Meshes.topology(mesh_roundtrip)))) == PlantGeom.nelements(ref_from_meshes)

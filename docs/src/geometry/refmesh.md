@@ -99,3 +99,39 @@ plantviz(cylinder_refmesh)
  nvertices=nvertices(cylinder_refmesh),
  nelements=nelements(cylinder_refmesh))
 ```
+
+## Meshes.jl Interop
+
+PlantGeom's core backend is `GeometryBasics`, but you can build meshes in `Meshes.jl` and convert
+them using the optional extension API:
+
+- `to_geometrybasics(mesh::Meshes.SimpleMesh)`
+- `to_meshes(mesh::GeometryBasics.Mesh)`
+- `to_meshes(ref_mesh::RefMesh)`
+
+### Build a RefMesh from Meshes.jl
+
+```@example refmesh
+using Meshes
+
+mesh_meshes = Meshes.CylinderSurface(
+    Meshes.Point(0.0, 0.0, 0.0),
+    Meshes.Point(0.0, 0.0, 1.0),
+    0.2,
+) |> Meshes.discretize |> Meshes.simplexify
+
+mesh_gb = to_geometrybasics(mesh_meshes)
+ref_from_meshes = RefMesh("cylinder_from_meshes", mesh_gb, RGB(0.3, 0.5, 0.8))
+
+plantviz(ref_from_meshes)
+```
+
+### Convert Back to Meshes.jl
+
+```@example refmesh
+mesh_back = to_meshes(ref_from_meshes)
+(
+    nverts_meshes = length(collect(Meshes.vertices(mesh_back))),
+    nfaces_meshes = length(collect(Meshes.elements(Meshes.topology(mesh_back)))),
+)
+```
