@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opf version="2.0" editable="true">
+    <meshBDD>
+        <mesh name="Quad" shape="" Id="0" enableScale="false">
+            <points>
+                0 0 0 100 0 0 100 100 0 0 100 0
+            </points>
+            <normals>
+                0 0 1 0 0 1 0 0 1 0 0 1
+            </normals>
+            <faces>
+                <face Id="0">
+                    0 1 2 3
+                </face>
+            </faces>
+        </mesh>
+    </meshBDD>
+    <materialBDD>
+    </materialBDD>
+    <shapeBDD>
+        <shape Id="0">
+            <name>Quad</name>
+            <meshIndex>0</meshIndex>
+            <materialIndex>0</materialIndex>
+        </shape>
+    </shapeBDD>
+    <attributeBDD>
+        <attribute name="Name" class="String"/>
+    </attributeBDD>
+    <topology class="Plant" scale="1" id="1">
+        <Name>Quad</Name>
+        <geometry class="Mesh">
+            <shapeIndex>0</shapeIndex>
+            <mat>
+                1 0 0 0
+                0 1 0 0
+                0 0 1 0
+            </mat>
+            <dUp>1.0</dUp>
+            <dDwn>1.0</dDwn>
+        </geometry>
+    </topology>
+</opf>

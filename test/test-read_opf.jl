@@ -50,3 +50,11 @@ end
 
     @test Float64(sum(descendants(mtg, :Area, ignore_nothing=true))) ≈ 77961.421 atol = 1e-3
 end
+
+@testset "read_opf: triangulate polygon faces and fallback material" begin
+    quad_file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "quad_empty_material.opf")
+    mtg_quad = @test_nowarn read_opf(quad_file, attr_type=Dict)
+    @test length(mtg_quad[:ref_meshes]) == 1
+    @test PlantGeom.nelements(mtg_quad[:ref_meshes][1]) == 2
+    @test isa(mtg_quad[:ref_meshes][1].material, Phong)
+end

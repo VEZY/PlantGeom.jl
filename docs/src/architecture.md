@@ -21,7 +21,7 @@ OPF/OPS files ──► read_opf/read_ops ──► MTG (MultiScaleTreeGraph)
 ```
 
 - Core types: `RefMesh` stores template geometry; `Geometry` attaches a `ref_mesh` and a `CoordinateTransformations.Transformation` (`Translation`, `LinearMap`, `AffineMap`, composed with `∘`) to an MTG node attribute `:geometry`.
-- IO: `read_opf`/`read_ops` populate MTG nodes and scene transforms; `write_opf`/`write_ops` serialize meshes and transforms back to disk.
+- IO: `read_opf`/`read_ops` populate MTG nodes and scene transforms; `write_opf`/`write_ops` serialize meshes and transforms back to disk. `read_opf` supports `<faces><face>...</face></faces>` meshes (including polygon triangulation), and `read_ops` can read legacy OPS rows via `read_ops(...; relaxed=true, assume_scale_column=false, ...)`. `#[Archimed] ...` section headers are optional; missing `functional_group` values default to `""` unless strict mode is requested.
 - Computation: meshes are computed lazily; call `refmesh_to_mesh` to materialize. Matrix generation uses `get_transformation_matrix`. At render time, node meshes are merged to a single `GeometryBasics.Mesh`.
 - Visualization: `plantviz` builds on Makie’s ComputeGraph. It maps colors from attributes or user dictionaries via `get_mtg_color`/`get_color`/`get_colormap`, wires them as compute nodes with `map!`, and renders the merged mesh once.
 

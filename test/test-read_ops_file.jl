@@ -21,3 +21,22 @@ file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene
         PlantGeom.Point3(2.0, 1.0, 0.0)
     ]
 end
+
+legacy_file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene_legacy.ops")
+@testset "read_ops_file relaxed legacy layout" begin
+    ops = @test_nowarn read_ops_file(legacy_file; relaxed=true, assume_scale_column=false, opf_scale=1.0, gwa_scale=0.01)
+    @test ops.scene_dimensions == (PlantGeom.Point3(0.0, 0.0, 0.0), PlantGeom.Point3(2.0, 1.0, 0.0))
+    @test length(ops.object_table) == 2
+    table = Tables.columntable(ops.object_table)
+    @test table.scale == [1.0, 0.01]
+    @test table.rotation == [0.0, 0.0]
+    @test table.functional_group == ["coffee", "pavement"]
+end
+
+nogroup_file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene_no_archimed.ops")
+@testset "read_ops_file without Archimed header" begin
+    ops = @test_nowarn read_ops_file(nogroup_file)
+    @test length(ops.object_table) == 1
+    @test only(Tables.columntable(ops.object_table).functional_group) == ""
+    @test_throws ErrorException read_ops_file(nogroup_file; require_functional_group=true)
+end

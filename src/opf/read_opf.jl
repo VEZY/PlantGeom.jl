@@ -71,13 +71,13 @@ function read_opf(
     # node = elements(xroot)[end]
     for node in eachelement(xroot)
         if node.name == "meshBDD"
-            push!(opf_attr, :meshBDD => parse_meshBDD!(node))
+            push!(opf_attr, :meshBDD => parse_meshBDD!(node; file=file))
         end
 
         if node.name == "materialBDD"
             push!(
                 opf_attr,
-                :materialBDD => parse_materialBDD!(node)
+                :materialBDD => parse_materialBDD!(node; file=file)
             )
         end
 
@@ -143,6 +143,51 @@ function parse_opf_array(elem, type=Float64)
     end
 end
 
+@inline function _opf_triangulate_face_indices(ids::AbstractVector{Int})
+    out = Face3[]
+    length(ids) < 3 && return out
+    if length(ids) == 3
+        push!(out, face3(ids[1], ids[2], ids[3]))
+        return out
+    end
+    for i in 2:(length(ids) - 1)
+        push!(out, face3(ids[1], ids[i], ids[i + 1]))
+    end
+    out
+end
+
+function _opf_parse_faces(elem, file::AbstractString, mesh_name::AbstractString)
+    faces3d = Face3[]
+    face_nodes = [face_node for face_node in eachelement(elem) if face_node.name == "face"]
+
+    if isempty(face_nodes)
+        content = parse_opf_array(elem.content, Int)
+        flat_ids = content isa Integer ? Int[content] : Int[content...]
+        length(flat_ids) % 3 == 0 || error("Invalid flat face list in OPF mesh '$mesh_name' from file $file")
+        for p in 1:3:length(flat_ids)
+            push!(faces3d, face3(flat_ids[p] + 1, flat_ids[p + 1] + 1, flat_ids[p + 2] + 1))
+        end
+        return faces3d
+    end
+
+    for face_node in face_nodes
+        ids = Int[parse(Int, m.match) + 1 for m in eachmatch(r"-?\d+", face_node.content)]
+        length(ids) >= 3 || error("Invalid face in OPF mesh '$mesh_name' from file $file")
+        append!(faces3d, _opf_triangulate_face_indices(ids))
+    end
+    return faces3d
+end
+
+function _default_phong_material()
+    Phong(
+        RGBA(0.0, 0.0, 0.0, 1.0),
+        RGBA(0.2, 0.2, 0.2, 1.0),
+        RGBA(0.8, 0.8, 0.8, 1.0),
+        RGBA(0.0, 0.0, 0.0, 1.0),
+        0.0
+    )
+end
+
 
 
 # struct TestMesh{N<:AbstractVector,T<:AbstractVector}
@@ -159,9 +204,14 @@ struct OPFmesh{M<:GeometryBasics.AbstractMesh{3},N<:AbstractVector,T<:Union{Abst
 end
 
 """
-Parse the meshBDD using [`parse_opf_array`](@ref)
+    parse_meshBDD!(node; file=\"\")
+
+Parse the meshBDD using [`parse_opf_array`](@ref).
+
+Supports both flat `<faces>` arrays and nested `<face>` elements. Polygon faces with
+more than three vertices are triangulated with a fan strategy.
 """
-function parse_meshBDD!(node)
+function parse_meshBDD!(node; file="")
     # MeshBDD:
     meshes = Dict{Int,OPFmesh}()
     # m = elements(node)[1]
@@ -175,11 +225,7 @@ function parse_meshBDD!(node)
 
         for i in eachelement(m)
             if i.name == "faces"
-                content = parse_opf_array(i.content, Int) .+ 1
-                # NB: adding 1 to the faces because the opf is 0-based but Julia is 1-based
-
-                faces3d = [face3(content[p], content[p + 1], content[p + 2]) for p = 1:3:length(content)]
-
+                faces3d = _opf_parse_faces(i, file, mesh["name"])
                 push!(mesh, "faces" => faces3d)
             elseif i.name == "textureCoords"
                 content = parse_opf_array(i.content) ./ 100
@@ -221,13 +267,22 @@ function parse_meshBDD!(node)
 end
 
 """
-Parse the materialBDD using [`parse_opf_elements!`](@ref)
+    parse_materialBDD!(node; file=nothing)
+
+Parse the materialBDD using [`parse_opf_elements!`](@ref).
+
+When the section is present but empty, a neutral default material is inserted so OPF
+files without explicit materials remain readable.
 """
-function parse_materialBDD!(node)
+function parse_materialBDD!(node; file=nothing)
     metBDDraw = parse_opf_elements!(
         node,
         [Float64, Float64, Float64, Float64, Float64]
     )
+    if isempty(metBDDraw)
+        return Dict(1 => _default_phong_material())
+    end
+
     metBDD = Dict{Int,Phong}()
     for (key, value) in metBDDraw
         # key = 1

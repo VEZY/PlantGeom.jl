@@ -1,0 +1,9 @@
+# T xOrigin yOrigin zOrigin xSize ySize flat
+T 0 0 0 2 1 flat
+
+#[Archimed] coffee
+#sceneId plantId plantFileName x y z inclinationAzimut inclinationAngle stemTwist ignored
+1	1	coffee.opf	0		0		0	0	0	0	0
+
+#[Archimed] pavement
+1	2	pave1x1.gwa	1		0		0	0	0	0	0
