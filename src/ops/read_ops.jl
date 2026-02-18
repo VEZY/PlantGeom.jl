@@ -1,10 +1,14 @@
 """
-    read_ops(file; attr_type=Dict{String,Any}, mtg_type=MutableNodeMTG)
+    read_ops(file; attr_type=Dict{String,Any}, mtg_type=MutableNodeMTG, kwargs...)
 
 Reads an OPS file and returns the content as a `MultiScaleTreeGraph`.
+
+Additional keyword arguments are forwarded to [`read_ops_file`](@ref), e.g.
+`relaxed=true` and `assume_scale_column=false` for legacy OPS rows where the
+scale column is missing.
 """
-function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG)
-    scene_dimensions, object_table = read_ops_file(file)
+function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, kwargs...)
+    scene_dimensions, object_table = read_ops_file(file; kwargs...)
 
     scene = Node(mtg_type("/", "Scene", 1, 0), MultiScaleTreeGraph.init_empty_attr(attr_type))
     scene.scene_dimensions = scene_dimensions

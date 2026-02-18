@@ -37,8 +37,16 @@ Parse the reference meshes of an OPF into RefMeshes.
 function parse_ref_meshes(x)
     meshes = Dict{Int,RefMesh}()
     meshBDD = x[:meshBDD]
+    materialBDD = x[:materialBDD]
+    fallback_material = if isempty(materialBDD)
+        _default_phong_material()
+    else
+        materialBDD[first(sort(collect(keys(materialBDD))))]
+    end
 
     for (id, value) in x[:shapeBDD]
+        material_index = value["materialIndex"]
+        material = get(materialBDD, material_index, fallback_material)
         push!(
             meshes,
             id => RefMesh(
@@ -46,7 +54,7 @@ function parse_ref_meshes(x)
                 meshBDD[value["meshIndex"]].mesh,
                 meshBDD[value["meshIndex"]].normals,
                 meshBDD[value["meshIndex"]].textureCoords,
-                x[:materialBDD][value["materialIndex"]],
+                material,
                 meshBDD[value["meshIndex"]].enableScale
             )
         )

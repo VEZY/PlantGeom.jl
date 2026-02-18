@@ -22,3 +22,22 @@ file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene
     @test ops[1].functional_group == "coffee"
     [@test(p.functional_group == "plant") for p in opfs[2:end]]
 end
+
+legacy_file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene_legacy.ops")
+@testset "read_ops relaxed legacy layout" begin
+    ops = @test_nowarn read_ops(legacy_file; relaxed=true, assume_scale_column=false, opf_scale=1.0, gwa_scale=0.01)
+    @test length(children(ops)) == 2
+    opfs = children(ops)
+    @test opfs[1].scale == 1.0
+    @test opfs[2].scale == 0.01
+    @test opfs[1].functional_group == "coffee"
+    @test opfs[2].functional_group == "pavement"
+end
+
+nogroup_file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene_no_archimed.ops")
+@testset "read_ops without Archimed header" begin
+    ops = @test_nowarn read_ops(nogroup_file)
+    @test length(children(ops)) == 1
+    @test children(ops)[1].functional_group == ""
+    @test_throws ErrorException read_ops(nogroup_file; require_functional_group=true)
+end
