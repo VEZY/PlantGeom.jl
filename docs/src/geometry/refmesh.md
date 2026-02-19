@@ -12,9 +12,9 @@ const Tri = GeometryBasics.TriangleFace{Int}
 
 function cylinder_mesh(radius=0.5f0, height=1.0f0)
     c = GeometryBasics.Cylinder(
-        GeometryBasics.Point3f(0.0, 0.0, 0.0),
-        GeometryBasics.Point3f(0.0, 0.0, height),
-        Float32(radius),
+        Point(0.0, 0.0, 0.0),
+        Point(0.0, 0.0, height),
+        radius,
     )
     GeometryBasics.mesh(c)
 end
@@ -48,10 +48,10 @@ A `RefMesh` contains:
 
 ```@example refmesh
 mesh_vertices = [
-    PlantGeom.Point3(0.0, 0.0, -0.5),
-    PlantGeom.Point3(1.0, 0.0, -0.5),
-    PlantGeom.Point3(1.0, 0.0, 0.5),
-    PlantGeom.Point3(0.0, 0.0, 0.5),
+    Point(0.0, 0.0, -0.5),
+    Point(1.0, 0.0, -0.5),
+    Point(1.0, 0.0, 0.5),
+    Point(0.0, 0.0, 0.5),
 ]
 
 mesh_faces = [
@@ -67,20 +67,7 @@ plantviz(ref_mesh)
 ### From a Generated Mesh
 
 ```@example refmesh
-sphere_like = GeometryBasics.Mesh(
-    [
-        PlantGeom.Point3(0.0, 0.0, 1.0),
-        PlantGeom.Point3(1.0, 0.0, 0.0),
-        PlantGeom.Point3(0.0, 1.0, 0.0),
-        PlantGeom.Point3(-1.0, 0.0, 0.0),
-        PlantGeom.Point3(0.0, -1.0, 0.0),
-        PlantGeom.Point3(0.0, 0.0, -1.0),
-    ],
-    Tri[
-        Tri(1, 2, 3), Tri(1, 3, 4), Tri(1, 4, 5), Tri(1, 5, 2),
-        Tri(6, 3, 2), Tri(6, 4, 3), Tri(6, 5, 4), Tri(6, 2, 5),
-    ],
-)
+sphere_like = GeometryBasics.mesh(GeometryBasics.Sphere(Point(0.0, 0.0, 0.0), 1.0))
 
 sphere_refmesh = RefMesh("sphere_like", sphere_like, RGB(0.7, 0.4, 0.3))
 plantviz(sphere_refmesh)

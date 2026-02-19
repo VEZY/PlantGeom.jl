@@ -8,7 +8,7 @@ The transformation is composed with the previous transformation if any.
 """
 function transform_mesh!(node::MultiScaleTreeGraph.Node, transformation::Transformation)
     if node[:geometry] !== nothing
-        node[:geometry].transformation = compose_lr(node[:geometry].transformation, transformation)
+        node[:geometry].transformation = transformation ∘ node[:geometry].transformation
     end
 end
 

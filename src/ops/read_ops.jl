@@ -65,20 +65,20 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, kwargs...)
         scene_transformation = IdentityTransformation()
 
         if row.rotation != 0.0
-            scene_transformation = compose_lr(scene_transformation, LinearMap(RotZ(row.rotation)))
+            scene_transformation = LinearMap(RotZ(row.rotation)) ∘ scene_transformation
         end
 
         if row.scale != 1.0
-            scene_transformation = compose_lr(scene_transformation, LinearMap(Diagonal(SVector(row.scale, row.scale, row.scale))))
+            scene_transformation = LinearMap(Diagonal(SVector(row.scale, row.scale, row.scale))) ∘ scene_transformation
         end
 
         inclination_map = _ops_inclination_linear_map(row.inclinationAzimut, row.inclinationAngle)
         if !isnothing(inclination_map)
-            scene_transformation = compose_lr(scene_transformation, inclination_map)
+            scene_transformation = inclination_map ∘ scene_transformation
         end
 
         if row.pos != point3(0.0, 0.0, 0.0)
-            scene_transformation = compose_lr(scene_transformation, Translation(row.pos[1], row.pos[2], row.pos[3]))
+            scene_transformation = Translation(row.pos[1], row.pos[2], row.pos[3]) ∘ scene_transformation
         end
 
         traverse!(opf, filter_fun=node -> !isnothing(node.geometry)) do node

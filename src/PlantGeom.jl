@@ -35,6 +35,7 @@ import UUIDs
 
 include("geometry_backend.jl")
 include("structs.jl")
+include("reconstruction/conventions.jl")
 include("equality.jl")
 include("helpers.jl")
 include("opf/read_opf.jl")
@@ -79,8 +80,12 @@ export Material, Phong
 export RefMesh
 export (==), names
 export get_color
-export Point3, Vec3, compose_lr
 export nvertices, nelements
+export GeometryConvention
+export default_geometry_convention
+export transformation_from_attributes
+export geometry_from_attributes
+export set_geometry_from_attributes!
 
 function colorbar end # Extended in PlantGeomMakie extension
 export colorbar

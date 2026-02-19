@@ -1,5 +1,5 @@
 panel_dimensions = [100.0, 1000.0]
-panel_points = PlantGeom.Point3.([(0.0, 0.0, 0.0), (0.0, panel_dimensions[2], 0.0), (panel_dimensions..., 0.0), (panel_dimensions[1], 0.0, 0.0)])
+panel_points = GeometryBasics.Point{3,Float64}.([(0.0, 0.0, 0.0), (0.0, panel_dimensions[2], 0.0), (panel_dimensions..., 0.0), (panel_dimensions[1], 0.0, 0.0)])
 panel_faces = GeometryBasics.TriangleFace{Int}.([(1, 2, 3), (3, 4, 1)])
 panel_mesh = GeometryBasics.Mesh(panel_points, panel_faces)
 

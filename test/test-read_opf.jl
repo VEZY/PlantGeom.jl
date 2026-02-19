@@ -18,7 +18,7 @@ end
     @test PlantGeom.nvertices(first_mesh) == 50
     @test isa(first_mesh.material, Phong)
     @test first_mesh.name == "Mesh0"
-    @test eltype(first_mesh.normals) <: PlantGeom.Vec3
+    @test eltype(first_mesh.normals) <: GeometryBasics.Vec{3,Float64}
     @test length(first_mesh.normals) == 50
     @test first_mesh.taper == true
     @test eltype(first_mesh.texture_coords) <: GeometryBasics.Point{2,Float64}
