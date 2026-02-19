@@ -290,6 +290,25 @@ PlantGeom searches for the following column names.
 | Euler angle Y | `YEuler`, `y_euler`, `yeuler` | Local | Degrees | `0` |
 | Euler angle Z | `ZEuler`, `z_euler`, `zeuler` | Local | Degrees | `0` |
 
+#### Insertion angles vs Euler angles
+
+Both are rotations, but they do not play the same role:
+
+- `X/Y/ZInsertionAngle`: orientation at **attachment/insertion** on the bearer
+  (how the organ comes out from its parent axis).
+- `X/Y/ZEuler`: **local pose refinement** of the organ after insertion
+  (fine twist/tilt/roll in the organ frame).
+
+With `default_amap_geometry_convention()`, the order is:
+
+1. insertion angles
+2. euler angles
+
+So in practice:
+
+- Use insertion angles for main phyllotactic/branching orientation.
+- Use Euler angles for secondary shape/pose adjustment.
+
 #### Translation columns
 
 | Semantic meaning | Accepted column names (in lookup order) | Default if missing |
