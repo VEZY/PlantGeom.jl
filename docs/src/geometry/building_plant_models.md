@@ -256,24 +256,107 @@ plantviz(mtg_simple, color=Dict("Stem" => :tan4, "Leaf" => :forestgreen))
 
 ## Conventions and Composition Rules
 
-`set_geometry_from_attributes!` with an MTG uses both attribute mapping and topology.
+`set_geometry_from_attributes!` with an MTG uses both:
 
-| Concept | Behavior |
-| --- | --- |
-| Alias resolution | First matching alias is used (`Length`, `length`, `L`, ...). |
-| Local angle (`frame=:local`) | Composed in local coordinates: `T = T ∘ R`. |
-| Global angle (`frame=:global`) | Applied in world frame around a pivot: `T = recenter(R, pivot) ∘ T`. |
-| Pivot | `:origin`, attribute tuple like `(:pivot_x,:pivot_y,:pivot_z)`, or numeric tuple. |
-| Translation attributes | If `XX/YY/ZZ` are present, they are used directly. |
-| Missing translation | Topological reconstruction is used (`<`, `+`, `/` rules below). |
+1. **Column names** (attributes like `Length`, `XEuler`, `XX`, ...)
+2. **Topology** (`<`, `+`, `/`) when absolute translations are not provided
+
+### 1) Column Naming Convention (AMAP default used in this page)
+
+When you call:
+
+```julia
+set_geometry_from_attributes!(mtg, ref_meshes; convention=default_amap_geometry_convention())
+```
+
+PlantGeom searches for the following column names.
+
+#### Scale columns
+
+| Semantic meaning | Accepted column names (in lookup order) | Default if missing |
+| --- | --- | --- |
+| Length (main axis) | `Length`, `length`, `L`, `l` | `1.0` |
+| Width | `Width`, `width`, `W`, `w` | `1.0` |
+| Thickness | `Thickness`, `thickness`, `Depth`, `depth` | `Width` value |
+
+#### Angle columns
+
+| Semantic meaning | Accepted column names (in lookup order) | Frame | Unit default | Default if missing |
+| --- | --- | --- | --- | --- |
+| Insertion angle X | `XInsertionAngle`, `x_insertion_angle`, `xinsertionangle` | Local | Degrees | `0` |
+| Insertion angle Y | `YInsertionAngle`, `y_insertion_angle`, `yinsertionangle` | Local | Degrees | `0` |
+| Insertion angle Z | `ZInsertionAngle`, `z_insertion_angle`, `zinsertionangle` | Local | Degrees | `0` |
+| Euler angle X | `XEuler`, `x_euler`, `xeuler` | Local | Degrees | `0` |
+| Euler angle Y | `YEuler`, `y_euler`, `yeuler` | Local | Degrees | `0` |
+| Euler angle Z | `ZEuler`, `z_euler`, `zeuler` | Local | Degrees | `0` |
+
+#### Translation columns
+
+| Semantic meaning | Accepted column names (in lookup order) | Default if missing |
+| --- | --- | --- |
+| X translation | `XX`, `xx` | `0.0` |
+| Y translation | `YY`, `yy` | `0.0` |
+| Z translation | `ZZ`, `zz` | `0.0` |
+
+Important rule: **first matching alias wins**.  
+Example: if both `Length` and `L` exist, PlantGeom uses `Length`.
+
+### 2) Additional topology-related columns (for `+` links)
+
+These columns are used during topological reconstruction (when `XX/YY/ZZ` are missing):
+
+| Column | Meaning | Default if missing |
+| --- | --- | --- |
+| `Offset` (or `offset`) | Position along bearer axis where branch starts | Bearer `Length` |
+| `BorderInsertionOffset` (or `border_insertion_offset`, `BorderOffset`, `border_offset`) | Lateral shift in BORDER insertion mode | Bearer top width / 2 |
+| `InsertionMode` (or `insertion_mode`) | `BORDER`, `CENTER`, `WIDTH`, `HEIGHT` | `BORDER` |
+
+### 3) Local vs Global angles (how to define them)
+
+By default (AMAP convention), angles are **local**.
+
+| Angle scope | Composition rule | Practical effect |
+| --- | --- | --- |
+| Local (`frame=:local`) | `T = T ∘ R` | Rotation follows current organ frame |
+| Global (`frame=:global`) | `T = recenter(R, pivot) ∘ T` | Rotation is applied in world frame around a pivot |
+
+Pivot options for global angles:
+
+- `:origin`
+- Attribute tuple, e.g. `(:pivot_x, :pivot_y, :pivot_z)`
+- Numeric tuple, e.g. `(0.0, 0.0, 0.0)`
+
+Minimal example of a global heading column:
+
+```julia
+leaf_conv = GeometryConvention(
+    scale_map=amap_convention.scale_map,
+    angle_map=[
+        (names=[:XInsertionAngle], axis=:x, frame=:local, unit=:deg, pivot=:origin),
+        (names=[:YInsertionAngle], axis=:y, frame=:local, unit=:deg, pivot=:origin),
+        (names=[:Heading], axis=:z, frame=:global, unit=:deg, pivot=(:pivot_x, :pivot_y, :pivot_z)),
+    ],
+    translation_map=amap_convention.translation_map,
+    length_axis=:x,
+)
+```
+
+### 4) Topology defaults when absolute translation is absent
 
 Topological placement defaults (AMAP-style):
 
 | Link | Placement rule when `XX/YY/ZZ` are missing |
 | --- | --- |
-| `<` | Successor starts at predecessor top. |
-| `+` | Ramification starts at bearer `Offset` (or bearer `Length`) and uses `BORDER` mode by default (`BorderInsertionOffset`, else bearer top width / 2). Use `InsertionMode="CENTER"` to disable border offset. |
-| `/` | Component starts at parent base. |
+| `<` | Successor starts at predecessor top |
+| `+` | Ramification starts at bearer `Offset` (or bearer `Length`) then applies insertion mode (`BORDER` by default) |
+| `/` | Component starts at parent base |
+
+### 5) Units and parsing
+
+- Angles are interpreted in **degrees** by default (`angle_unit=:deg`).
+- You can switch to radians with `default_amap_geometry_convention(angle_unit=:rad)`.
+- Numeric strings are accepted when parsable (`"0.25"`, `"45"`).
+- Missing/non-numeric values are treated as no-op defaults.
 
 ## 2. Advanced Tutorial: Build Topology and Attributes from Scratch
 
