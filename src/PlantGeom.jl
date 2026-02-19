@@ -7,7 +7,7 @@ import CoordinateTransformations
 import CoordinateTransformations: Transformation, IdentityTransformation, Translation, LinearMap, AffineMap, ComposedTransformation
 import CoordinateTransformations: compose, ∘, recenter
 import GeometryBasics
-import Rotations: Rotation, RotZ
+import Rotations: Rotation, RotZ, AngleAxis, RotMatrix
 import Unitful
 import Unitful: @u_str
 import Tables
