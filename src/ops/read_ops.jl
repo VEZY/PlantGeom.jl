@@ -1,7 +1,24 @@
+function _ops_inclination_linear_map(inclination_azimut::Real, inclination_angle::Real)
+    abs(Float64(inclination_angle)) <= eps(Float64) && return nothing
+
+    axis = SVector(
+        -sin(Float64(inclination_azimut)),
+        cos(Float64(inclination_azimut)),
+        0.0,
+    )
+    axis_norm = norm(axis)
+    axis_norm > eps(Float64) || return nothing
+    axis_u = axis / axis_norm
+
+    LinearMap(RotMatrix(AngleAxis(Float64(inclination_angle), axis_u[1], axis_u[2], axis_u[3])))
+end
+
 """
     read_ops(file; attr_type=Dict{String,Any}, mtg_type=MutableNodeMTG, kwargs...)
 
 Reads an OPS file and returns the content as a `MultiScaleTreeGraph`.
+Per-object OPS transforms (`rotation`, `scale`, `inclinationAzimut`/`inclinationAngle`,
+and `pos`) are applied to geometry during loading.
 
 Additional keyword arguments are forwarded to [`read_ops_file`](@ref), e.g.
 `relaxed=true` and `assume_scale_column=false` for legacy OPS rows where the
@@ -55,12 +72,9 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, kwargs...)
             scene_transformation = compose_lr(scene_transformation, LinearMap(Diagonal(SVector(row.scale, row.scale, row.scale))))
         end
 
-        if row.inclinationAzimut != 0.0
-            @warn "InclinationAzimut is not yet implemented."
-        end
-
-        if row.inclinationAngle != 0.0
-            @warn "InclinationAngle is not yet implemented."
+        inclination_map = _ops_inclination_linear_map(row.inclinationAzimut, row.inclinationAngle)
+        if !isnothing(inclination_map)
+            scene_transformation = compose_lr(scene_transformation, inclination_map)
         end
 
         if row.pos != point3(0.0, 0.0, 0.0)
