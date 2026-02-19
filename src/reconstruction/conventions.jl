@@ -112,6 +112,42 @@ function default_geometry_convention(; angle_unit::Symbol=:deg, length_axis::Sym
     )
 end
 
+"""
+    default_amap_geometry_convention(; angle_unit=:deg)
+
+Return a `GeometryConvention` close to AMAP/OpenAlea defaults:
+
+- organ length aligned on the local `+X` axis
+- insertion angles (`XInsertionAngle`, `YInsertionAngle`, `ZInsertionAngle`)
+- local Euler angles (`XEuler`, `YEuler`, `ZEuler`)
+- OPF-style translations (`XX`, `YY`, `ZZ`) still supported
+"""
+function default_amap_geometry_convention(; angle_unit::Symbol=:deg)
+    angle_unit in (:deg, :rad) || error("Invalid angle unit '$angle_unit'. Expected :deg or :rad.")
+
+    GeometryConvention(
+        scale_map=Dict(
+            :length => [:Length, :length, :L, :l],
+            :width => [:Width, :width, :W, :w],
+            :thickness => [:Thickness, :thickness, :Depth, :depth],
+        ),
+        angle_map=[
+            (names=[:XInsertionAngle, :x_insertion_angle, :xinsertionangle], axis=:x, frame=:local, unit=angle_unit, pivot=:origin),
+            (names=[:YInsertionAngle, :y_insertion_angle, :yinsertionangle], axis=:y, frame=:local, unit=angle_unit, pivot=:origin),
+            (names=[:ZInsertionAngle, :z_insertion_angle, :zinsertionangle], axis=:z, frame=:local, unit=angle_unit, pivot=:origin),
+            (names=[:XEuler, :x_euler, :xeuler], axis=:x, frame=:local, unit=angle_unit, pivot=:origin),
+            (names=[:YEuler, :y_euler, :yeuler], axis=:y, frame=:local, unit=angle_unit, pivot=:origin),
+            (names=[:ZEuler, :z_euler, :zeuler], axis=:z, frame=:local, unit=angle_unit, pivot=:origin),
+        ],
+        translation_map=Dict(
+            :x => [:XX, :xx],
+            :y => [:YY, :yy],
+            :z => [:ZZ, :zz],
+        ),
+        length_axis=:x,
+    )
+end
+
 function _try_attr(node, name::Symbol)
     try
         if haskey(node, name)
@@ -306,4 +342,374 @@ function set_geometry_from_attributes!(node, ref_mesh;
         warn_missing=warn_missing,
     )
     node
+end
+
+const _ZERO3 = SVector{3,Float64}(0.0, 0.0, 0.0)
+const _I3 = SMatrix{3,3,Float64,9}(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
+
+@inline _to_svec3(v) = SVector{3,Float64}(Float64(v[1]), Float64(v[2]), Float64(v[3]))
+
+function _empty_scale_map()
+    Dict(:length => Symbol[], :width => Symbol[], :thickness => Symbol[])
+end
+
+function _empty_translation_map()
+    Dict(:x => Symbol[], :y => Symbol[], :z => Symbol[])
+end
+
+function _convention_without_translation(convention::GeometryConvention)
+    GeometryConvention(
+        scale_map=convention.scale_map,
+        angle_map=convention.angle_map,
+        translation_map=_empty_translation_map(),
+        length_axis=convention.length_axis,
+    )
+end
+
+function _convention_angles_only(convention::GeometryConvention)
+    GeometryConvention(
+        scale_map=_empty_scale_map(),
+        angle_map=convention.angle_map,
+        translation_map=_empty_translation_map(),
+        length_axis=convention.length_axis,
+    )
+end
+
+@inline function _unit_axis(axis::Symbol)
+    axis == :x && return SVector{3,Float64}(1.0, 0.0, 0.0)
+    axis == :y && return SVector{3,Float64}(0.0, 1.0, 0.0)
+    return SVector{3,Float64}(0.0, 0.0, 1.0)
+end
+
+@inline _frame_transform(rot::SMatrix{3,3,Float64,9}, pos::SVector{3,Float64}) = AffineMap(Matrix(rot), pos)
+
+function _rotation_part(t)
+    m = transformation_matrix4(t)
+    SMatrix{3,3,Float64}(m[1:3, 1:3])
+end
+
+@inline function _normalize_direction(v::SVector{3,Float64}, rot::SMatrix{3,3,Float64,9}, axis::Symbol)
+    n = norm(v)
+    if n > 0
+        return v / n
+    end
+    d = rot * _unit_axis(axis)
+    nd = norm(d)
+    nd > 0 ? d / nd : _unit_axis(axis)
+end
+
+function _has_numeric_alias(node, aliases::Vector{Symbol})
+    value, found = _resolve_alias(node, aliases)
+    return found !== nothing && value !== nothing
+end
+
+function _has_explicit_translation(node, convention::GeometryConvention)
+    _has_numeric_alias(node, convention.translation_map[:x]) ||
+    _has_numeric_alias(node, convention.translation_map[:y]) ||
+    _has_numeric_alias(node, convention.translation_map[:z])
+end
+
+function _resolve_ref_mesh(node, ref_meshes::AbstractDict)
+    name = symbol(node)
+    haskey(ref_meshes, name) && return ref_meshes[name]
+    name_sym = Symbol(name)
+    haskey(ref_meshes, name_sym) && return ref_meshes[name_sym]
+    return nothing
+end
+
+function _resolve_node_convention(node, default_convention::GeometryConvention, conventions::AbstractDict)
+    isempty(conventions) && return default_convention
+    name = symbol(node)
+    haskey(conventions, name) && return conventions[name]
+    name_sym = Symbol(name)
+    haskey(conventions, name_sym) && return conventions[name_sym]
+    return default_convention
+end
+
+function _offset_value(node, aliases::Vector{Symbol}, default::Float64)
+    value, found = _resolve_alias(node, aliases)
+    if found === nothing || value === nothing
+        return default
+    end
+    return value
+end
+
+function _resolve_text_alias(node, aliases::Vector{Symbol})
+    for name in aliases
+        raw, present = _try_attr(node, name)
+        present || continue
+        if raw isa Symbol
+            return String(raw), name
+        elseif raw isa AbstractString
+            return String(raw), name
+        end
+    end
+    return nothing, nothing
+end
+
+function _insertion_mode(node, aliases::Vector{Symbol})
+    raw, _ = _resolve_text_alias(node, aliases)
+    raw === nothing && return :BORDER
+
+    mode = uppercase(strip(raw))
+    mode == "CENTER" && return :CENTER
+    mode == "BORDER" && return :BORDER
+    mode == "WIDTH" && return :WIDTH
+    mode == "HEIGHT" && return :HEIGHT
+    return :BORDER
+end
+
+@inline function _secondary_axis(axis::Symbol)
+    axis == :x && return :y
+    axis == :y && return :z
+    return :x
+end
+
+@inline function _normal_axis(axis::Symbol)
+    axis == :x && return :z
+    axis == :y && return :x
+    return :y
+end
+
+@inline function _safe_normalize(v::SVector{3,Float64}, fallback::SVector{3,Float64})
+    n = norm(v)
+    n > 0 ? (v / n) : fallback
+end
+
+function _project_on_plane(plane_normal::SVector{3,Float64}, vector_to_project::SVector{3,Float64})
+    n_norm = norm(plane_normal)
+    n_norm > 0 || return nothing
+    n = plane_normal / n_norm
+    scalar = dot(vector_to_project, n)
+
+    if abs(scalar) < 1e-4
+        return vector_to_project
+    elseif abs(scalar) > 0.9999
+        return nothing
+    end
+
+    vector_to_project - scalar * n
+end
+
+function _is_insertion_angle(angle::AngleConvention)
+    any(name -> occursin("insertion", lowercase(String(name))), angle.names)
+end
+
+function _convention_insertion_angles_only(convention::GeometryConvention)
+    insertion_angles = [a for a in convention.angle_map if _is_insertion_angle(a)]
+    if isempty(insertion_angles)
+        insertion_angles = convention.angle_map
+    end
+
+    GeometryConvention(
+        scale_map=_empty_scale_map(),
+        angle_map=insertion_angles,
+        translation_map=_empty_translation_map(),
+        length_axis=convention.length_axis,
+    )
+end
+
+function _top_width(node, convention::GeometryConvention)
+    top_width_aliases = [:TopWidth, :top_width, :topwidth]
+    value, found = _resolve_alias(node, top_width_aliases)
+    if found !== nothing && value !== nothing
+        return value
+    end
+    return _resolve_value(node, convention.scale_map[:width], :width; default=0.0, warn_missing=false)
+end
+
+"""
+    reconstruct_geometry_from_attributes!(mtg, ref_meshes;
+        convention=default_amap_geometry_convention(),
+        conventions=Dict(),
+        offset_aliases=[:Offset, :offset],
+        border_offset_aliases=[:BorderInsertionOffset, :border_insertion_offset, :BorderOffset, :border_offset],
+        insertion_mode_aliases=[:InsertionMode, :insertion_mode],
+        dUp=1.0,
+        dDwn=1.0,
+        warn_missing=false,
+        root_align=true,
+    )
+
+Reconstruct node geometries from attribute conventions and MTG topology.
+
+When no explicit translation attributes are found (`XX/YY/ZZ` by default), placement follows a
+topological convention close to AMAP:
+
+- `"<"`: attach to predecessor top
+- `"+"`: attach to bearer at `Offset` (or bearer length if missing)
+- `"+"`: default insertion mode is `BORDER`, adding a lateral offset of
+  `BorderInsertionOffset` (or bearer top width / 2)
+- `"/"`: attach to parent base
+"""
+function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
+    convention=default_amap_geometry_convention(),
+    conventions=Dict(),
+    offset_aliases=[:Offset, :offset],
+    border_offset_aliases=[:BorderInsertionOffset, :border_insertion_offset, :BorderOffset, :border_offset],
+    insertion_mode_aliases=[:InsertionMode, :insertion_mode],
+    dUp=1.0,
+    dDwn=1.0,
+    warn_missing=false,
+    root_align=true,
+)
+    offset_aliases_norm = _normalize_aliases(offset_aliases)
+    border_offset_aliases_norm = _normalize_aliases(border_offset_aliases)
+    insertion_mode_aliases_norm = _normalize_aliases(insertion_mode_aliases)
+
+    root_rotation = if root_align && convention.length_axis == :x
+        SMatrix{3,3,Float64}(RotMatrix(AngleAxis(-pi / 2, 0.0, 1.0, 0.0)))
+    else
+        _I3
+    end
+
+    base_pos = IdDict{Any,SVector{3,Float64}}()
+    top_pos = IdDict{Any,SVector{3,Float64}}()
+    direction = IdDict{Any,SVector{3,Float64}}()
+    base_rot = IdDict{Any,SMatrix{3,3,Float64,9}}()
+
+    traverse!(mtg) do node
+        node_convention = _resolve_node_convention(node, convention, conventions)
+        conv_no_translation = _convention_without_translation(node_convention)
+        conv_angles_only = _convention_angles_only(node_convention)
+        conv_insertion_only = _convention_insertion_angles_only(node_convention)
+
+        explicit_translation = _has_explicit_translation(node, node_convention)
+
+        parent_node = isroot(node) ? nothing : parent(node)
+        link_type = isroot(node) ? nothing : link(node)
+
+        current_base_rot = root_rotation
+        current_base_pos = _ZERO3
+
+        if !explicit_translation && parent_node !== nothing
+            if link_type == "<"
+                if haskey(base_rot, parent_node)
+                    current_base_rot = base_rot[parent_node]
+                    current_base_pos = get(top_pos, parent_node, _ZERO3)
+                end
+            elseif link_type == "+"
+                if haskey(base_rot, parent_node)
+                    parent_conv = _resolve_node_convention(parent_node, convention, conventions)
+                    parent_length = _resolve_value(
+                        parent_node,
+                        parent_conv.scale_map[:length],
+                        :length;
+                        default=1.0,
+                        warn_missing=false,
+                    )
+                    offset_val = _offset_value(node, offset_aliases_norm, parent_length)
+                    current_base_rot = base_rot[parent_node]
+                    current_base_pos = get(base_pos, parent_node, _ZERO3) +
+                                       get(direction, parent_node, _unit_axis(parent_conv.length_axis)) * offset_val
+                end
+            elseif link_type == "/"
+                if haskey(base_rot, parent_node)
+                    current_base_rot = base_rot[parent_node]
+                    current_base_pos = get(base_pos, parent_node, _ZERO3)
+                end
+            else
+                if haskey(base_rot, parent_node)
+                    current_base_rot = base_rot[parent_node]
+                    current_base_pos = get(base_pos, parent_node, _ZERO3)
+                end
+            end
+        end
+
+        world_t = nothing
+        world_angles_t = nothing
+
+        if explicit_translation
+            world_t = transformation_from_attributes(node; convention=node_convention, warn_missing=warn_missing)
+            world_angles_t = transformation_from_attributes(node; convention=conv_angles_only, warn_missing=warn_missing)
+        else
+            base_t = _frame_transform(current_base_rot, current_base_pos)
+            local_t = transformation_from_attributes(node; convention=conv_no_translation, warn_missing=warn_missing)
+            local_angles_t = transformation_from_attributes(node; convention=conv_angles_only, warn_missing=warn_missing)
+            local_insertion_t = transformation_from_attributes(node; convention=conv_insertion_only, warn_missing=warn_missing)
+
+            if link_type == "+" && parent_node !== nothing && haskey(base_rot, parent_node)
+                mode = _insertion_mode(node, insertion_mode_aliases_norm)
+                if mode != :CENTER
+                    parent_conv = _resolve_node_convention(parent_node, convention, conventions)
+                    parent_dir = _safe_normalize(
+                        get(direction, parent_node, _unit_axis(parent_conv.length_axis)),
+                        _unit_axis(parent_conv.length_axis),
+                    )
+
+                    insertion_rot = _rotation_part(base_t ∘ local_insertion_t)
+                    main_dir = _safe_normalize(
+                        insertion_rot * _unit_axis(node_convention.length_axis),
+                        _unit_axis(node_convention.length_axis),
+                    )
+                    fallback_dir = _safe_normalize(
+                        insertion_rot * _unit_axis(_normal_axis(node_convention.length_axis)),
+                        _unit_axis(_secondary_axis(node_convention.length_axis)),
+                    )
+
+                    border_dir = _project_on_plane(parent_dir, main_dir)
+                    if border_dir === nothing || dot(border_dir, border_dir) <= 0.01
+                        border_dir = _project_on_plane(parent_dir, fallback_dir)
+                        border_dir === nothing || (border_dir = -border_dir)
+                    end
+
+                    if border_dir !== nothing
+                        border_dir = _safe_normalize(border_dir, _unit_axis(_secondary_axis(node_convention.length_axis)))
+                        parent_top_width = _top_width(parent_node, parent_conv)
+                        border_offset = _offset_value(node, border_offset_aliases_norm, parent_top_width / 2)
+                        if border_offset != 0.0
+                            current_base_pos = current_base_pos + border_dir * border_offset
+                            base_t = _frame_transform(current_base_rot, current_base_pos)
+                        end
+                    end
+                end
+            end
+
+            world_t = base_t ∘ local_t
+            world_angles_t = base_t ∘ local_angles_t
+        end
+
+        p0 = _to_svec3(world_t(_ZERO3))
+        p1 = _to_svec3(world_t(_unit_axis(node_convention.length_axis)))
+        rot = _rotation_part(world_angles_t)
+        dir = _normalize_direction(p1 - p0, rot, node_convention.length_axis)
+
+        base_pos[node] = p0
+        top_pos[node] = p1
+        direction[node] = dir
+        base_rot[node] = rot
+
+        ref_mesh = _resolve_ref_mesh(node, ref_meshes)
+        if ref_mesh !== nothing
+            node[:geometry] = Geometry(ref_mesh=ref_mesh, transformation=world_t, dUp=dUp, dDwn=dDwn)
+        end
+    end
+
+    mtg
+end
+
+function set_geometry_from_attributes!(mtg::MultiScaleTreeGraph.Node, ref_meshes::AbstractDict;
+    convention=default_amap_geometry_convention(),
+    conventions=Dict(),
+    offset_aliases=[:Offset, :offset],
+    border_offset_aliases=[:BorderInsertionOffset, :border_insertion_offset, :BorderOffset, :border_offset],
+    insertion_mode_aliases=[:InsertionMode, :insertion_mode],
+    dUp=1.0,
+    dDwn=1.0,
+    warn_missing=false,
+    root_align=true,
+)
+    reconstruct_geometry_from_attributes!(
+        mtg,
+        ref_meshes;
+        convention=convention,
+        conventions=conventions,
+        offset_aliases=offset_aliases,
+        border_offset_aliases=border_offset_aliases,
+        insertion_mode_aliases=insertion_mode_aliases,
+        dUp=dUp,
+        dDwn=dDwn,
+        warn_missing=warn_missing,
+        root_align=root_align,
+    )
 end

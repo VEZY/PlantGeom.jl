@@ -67,9 +67,9 @@ plantviz(ref_mesh)
 ### From a Generated Mesh
 
 ```@example refmesh
-sphere_like = GeometryBasics.mesh(GeometryBasics.Sphere(Point(0.0, 0.0, 0.0), 1.0))
+sphere_mesh = GeometryBasics.mesh(GeometryBasics.Sphere(Point(0.0, 0.0, 0.0), 1.0))
 
-sphere_refmesh = RefMesh("sphere_like", sphere_like, RGB(0.7, 0.4, 0.3))
+sphere_refmesh = RefMesh("sphere", sphere_mesh, RGB(0.7, 0.4, 0.3))
 plantviz(sphere_refmesh)
 ```
 

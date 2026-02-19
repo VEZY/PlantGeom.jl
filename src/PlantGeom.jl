@@ -25,7 +25,7 @@ import EzXML: XMLDocument, ElementNode, setroot!, addelement!, hasnodename
 import EzXML: prettyprint # to remove
 import StaticArrays: SMatrix, SVector
 import StaticArrays
-import LinearAlgebra: I, UniformScaling, Diagonal, norm, cross # Used for geometry parsing in OPF
+import LinearAlgebra: I, UniformScaling, Diagonal, norm, cross, dot # Used for geometry parsing in OPF
 import RecipesBase
 import Base
 import OrderedCollections
@@ -83,8 +83,10 @@ export get_color
 export nvertices, nelements
 export GeometryConvention
 export default_geometry_convention
+export default_amap_geometry_convention
 export transformation_from_attributes
 export geometry_from_attributes
+export reconstruct_geometry_from_attributes!
 export set_geometry_from_attributes!
 
 function colorbar end # Extended in PlantGeomMakie extension

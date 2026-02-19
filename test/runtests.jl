@@ -39,6 +39,7 @@ end
 
 include("test-simplify_geometry.jl")
 include("test-geometry-convention.jl")
+include("test-topology-reconstruction.jl")
 
 @testset "Meshes interop" begin
     include("test-meshes-interop.jl")
