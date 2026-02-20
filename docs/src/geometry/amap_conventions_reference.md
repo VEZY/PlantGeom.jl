@@ -61,6 +61,9 @@ The same MTG can be reconstructed very differently depending on orientation and 
 | Deviation aliases | `DeviationAngle`, `deviation_angle` |
 | Orthotropy aliases | `Orthotropy`, `orthotropy` |
 | Stiffness angle aliases | `StiffnessAngle`, `stiffness_angle` |
+| Stiffness source aliases | `Stifness`, `stifness`, `Stiffness`, `stiffness` |
+| Stiffness tapering aliases | `StifnessTapering`, `stifness_tapering`, `StiffnessTapering`, `stiffness_tapering` |
+| Stiffness apply aliases | `StiffnessApply`, `stiffness_apply` |
 | Plagiotropy aliases | `Plagiotropy`, `plagiotropy` |
 | NormalUp aliases | `NormalUp`, `normal_up` |
 | Orientation reset aliases | `OrientationReset`, `orientation_reset`, `Global`, `global` |
@@ -162,7 +165,41 @@ Use it when switching from inherited frame behavior to absolute local interpreta
 
 `NormalUp` and `Plagiotropy`: projection stages applied in this order.
 
-Use `NormalUp=true` for upward normal correction (e.g., leaves). Add `Plagiotropy` only if you need additional directional projection control.
+`NormalUp` is mainly a robustness option for dorsiventral organs (typical leaves): it keeps the organ normal oriented toward world `+Z` after insertion/euler/bending stages, so leaves are less likely to end up upside-down due to noisy angles.
+
+Practical effect:
+
+- It does not move the insertion point.
+- It does not redefine topology.
+- It adjusts orientation to keep the organ "up-facing" in world space.
+
+Use `NormalUp=true` for leaf datasets where adaxial/abaxial flips appear. Add `Plagiotropy` only if you also need directional projection control in the insertion plane.
+
+### 2.5 Why `node_convention.length_axis` is critical
+
+`node_convention.length_axis` defines which local reference-mesh axis is considered the organ main axis.
+
+This affects multiple stages, not just scaling:
+
+- allometry: which axis receives `Length`
+- insertion frame: which direction is considered the organ direction
+- bending (`Orthotropy`/`StiffnessAngle`): bending axis is derived from this main direction
+- projection (`NormalUp`/`Plagiotropy`): which columns are treated as direction/secondary/normal
+- topology placement defaults: how "along the bearer axis" is interpreted
+
+So if the reference mesh was authored with length on local `+Z` but the convention says `length_axis=:x`, orientation and projection can look "wrong" even with correct angle values.
+
+Rule of thumb:
+
+- Use `default_amap_geometry_convention()` (`length_axis=:x`) for AMAP-style meshes.
+- Use a custom `GeometryConvention(..., length_axis=:z)` when meshes are authored with length on local `+Z`.
+
+`Stifness` / `StifnessTapering` propagation:
+
+- If a node has a stiffness value and `/`-linked component children, PlantGeom propagates computed `StiffnessAngle` values to those components.
+- `StiffnessApply=false` disables this propagation for that node.
+- Positive `Stifness` propagates downward-sign bending angles; negative values propagate upward-sign bending angles.
+- `StifnessTapering` controls the curvature profile (`0.5` default when missing).
 
 ## 3. Stage Order and Semantics
 
@@ -175,12 +212,14 @@ Reconstruction applies stages in this order:
 5. DeviationAngle world rotation.
 6. Euler stage.
 7. Projection stage (`NormalUp`, then `Plagiotropy`).
+8. Stiffness propagation stage (`Stifness` / `StifnessTapering`) writing `StiffnessAngle` on `/` components.
 
 Key rules:
 
 - `StiffnessAngle` takes precedence over `Orthotropy`.
 - `OrientationReset=true` resets orientation basis to the AMAP base orientation for that node before insertion/euler stages.
 - If both projection flags are enabled, `NormalUp` is applied before `Plagiotropy`.
+- Propagated stiffness angles are written to component children before those children are reconstructed.
 - Explicit translation attributes keep the node position explicit; topology-based placement is used only when `XX/YY/ZZ` are absent.
 
 ## 4. Local vs Global Angles in `GeometryConvention`
@@ -399,6 +438,58 @@ function order_override_example(mode::Symbol)
     mtg
 end
 
+function stiffness_propagation_example(mode::Symbol)
+    mtg = Node(NodeMTG("/", "Plant", 1, 1))
+    axis = Node(mtg, NodeMTG("/", "AxisNode", 1, 2))
+
+    # AMAP-style setup:
+    # each controller node carries stiffness and writes StiffnessAngle to
+    # its linked components; successor "<" nodes then continue from the last
+    # component top.
+    n_segments = 4
+    for i in 1:n_segments
+        axis[:Length] = 20.0
+        axis[:Width] = 0.1
+        axis[:Thickness] = 0.1
+        axis[:Stifness] = 800.0
+        axis[:StifnessTapering] = 0.5
+        axis[:StiffnessApply] = mode == :propagate
+
+        # Two components are used so propagated angle is non-zero on the
+        # second (visible) segment.
+        anchor = Node(axis, NodeMTG("/", "AxisDummy", 2 * i - 1, 3))
+        anchor[:Length] = 1.0
+        anchor[:Width] = 0.05
+        anchor[:Thickness] = 0.05
+
+        seg = Node(axis, NodeMTG("/", "AxisSegment", 2 * i, 3))
+        seg[:Length] = 1.0
+        seg[:Width] = max(0.35 - 0.03 * (i - 1), 0.12)
+        seg[:Thickness] = seg[:Width]
+
+        if i < n_segments
+            nxt = Node(axis, NodeMTG("<", "AxisNode", i + 1, 2))
+            nxt[:Length] = 20.0
+            nxt[:Width] = 0.1
+            nxt[:Thickness] = 0.1
+            axis = nxt
+        end
+    end
+
+    local_ref_meshes = Dict(
+        "AxisSegment" => RefMesh(
+            "Stem",
+            GeometryBasics.mesh(
+                GeometryBasics.Cylinder(Point(0.0, 0.0, 0.0), Point(1.0, 0.0, 0.0), 0.5),
+            ),
+            RGB(0.58, 0.44, 0.30),
+        ),
+    )
+
+    reconstruct_geometry_from_attributes!(mtg, local_ref_meshes; convention=CONV, root_align=false)
+    mtg
+end
+
 function _scene_bounds(scene)
     xmin_all = Inf
     xmax_all = -Inf
@@ -581,5 +672,39 @@ _plot_modes(
     azimuth=1.02pi,
     elevation=0.44,
     zoom_padding=0.045,
+)
+```
+
+### 6.4 Stiffness propagation (`StiffnessApply=false` vs `true`)
+
+This option controls whether node-level `Stifness`/`StifnessTapering` are converted into propagated `StiffnessAngle` values for `/`-linked component children.
+
+Important: this is a **component-based bending** mechanism. A single undecomposed reference mesh will not be smoothly bent by this stage; you need a segmented organ representation (explicit per-segment nodes).
+
+What this figure is doing:
+
+- Each controller node has stiffness (`Stifness`, `StifnessTapering`) and two `/` components:
+  an invisible anchor + a visible cylindrical segment.
+- `StiffnessApply=true` propagates a non-zero `StiffnessAngle` to the visible component.
+- Successor `"<"` nodes continue from the last component top (AMAPStudio-like behavior), so propagated component bending changes downstream position.
+- Only `StiffnessApply` changes between panels.
+
+So the visible difference should be:
+
+- `StiffnessApply=false`: segments stay aligned.
+- `StiffnessApply=true`: segments bend and the chain goes downward.
+
+Important: like AMAPStudio, bending changes orientation, and topology controls where the next element starts.
+If you set explicit `XX/YY/ZZ`, you override this topological positioning.
+
+```@example amapref
+_plot_modes(
+    (:disabled, :propagate),
+    stiffness_propagation_example;
+    titles=("StiffnessApply=false", "StiffnessApply=true"),
+    size=(980, 320),
+    azimuth=1.5pi,
+    elevation=0.20,
+    zoom_padding=0.05,
 )
 ```
