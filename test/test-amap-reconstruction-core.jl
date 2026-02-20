@@ -202,6 +202,87 @@
         @test comps_off[2][:StiffnessAngle] == 0.0
     end
 
+    @testset "stiffness straightening dampens distal bending" begin
+        function _build_straightening_case()
+            mtg = Node(NodeMTG("/", "Plant", 1, 1))
+            stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+            stem[:Length] = 30.0
+            stem[:Width] = 0.12
+            stem[:Thickness] = 0.12
+            stem[:Stifness] = 120.0
+            stem[:StifnessTapering] = 0.5
+
+            comps = Any[]
+            for i in 1:8
+                c = Node(stem, NodeMTG("/", "Leaf", i, 3))
+                c[:Length] = 0.2
+                c[:Width] = 0.05
+                c[:Thickness] = 0.01
+                push!(comps, c)
+            end
+            return mtg, stem, comps
+        end
+
+        mtg_none, stem_none, comps_none = _build_straightening_case()
+        mtg_str, stem_str, comps_str = _build_straightening_case()
+
+        stem_none[:StiffnessApply] = true
+        stem_str[:StiffnessApply] = true
+        stem_str[:StiffnessStraightening] = 0.35
+
+        reconstruct_geometry_from_attributes!(
+            mtg_none,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+        reconstruct_geometry_from_attributes!(
+            mtg_str,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        distal_none = abs(comps_none[end][:StiffnessAngle])
+        distal_str = abs(comps_str[end][:StiffnessAngle])
+        @test distal_str < distal_none
+    end
+
+    @testset "broken attribute applies AMAP broken-segment rule" begin
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        stem[:Length] = 20.0
+        stem[:Width] = 0.12
+        stem[:Thickness] = 0.12
+        stem[:StiffnessApply] = false
+        stem[:Broken] = 50.0
+
+        comps = Any[]
+        for i in 1:5
+            c = Node(stem, NodeMTG("/", "Leaf", i, 3))
+            c[:Length] = 0.2
+            c[:Width] = 0.05
+            c[:Thickness] = 0.01
+            push!(comps, c)
+        end
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        @test comps[1][:StiffnessAngle] != -180.0
+        @test comps[2][:StiffnessAngle] != -180.0
+        @test comps[3][:StiffnessAngle] == -180.0
+        @test comps[4][:StiffnessAngle] == -180.0
+        @test comps[5][:StiffnessAngle] == -180.0
+    end
+
     @testset "successor anchors on last component top (AMAP parity)" begin
         mtg = Node(NodeMTG("/", "Plant", 1, 1))
         stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
@@ -267,6 +348,43 @@
                         SVector{3,Float64}(stem[:geometry].transformation(p0))
         @test normal_vec[3] >= -1e-8
         @test secondary_vec[3] >= -1e-8
+    end
+
+    @testset "projection remains stable when direction is near world up" begin
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        stem[:Length] = 1.0
+        stem[:Width] = 0.1
+        stem[:Thickness] = 0.1
+        stem[:Elevation] = 90.0
+        stem[:NormalUp] = true
+        stem[:Plagiotropy] = true
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        dir_vec = LinearAlgebra.normalize(
+            SVector{3,Float64}(stem[:geometry].transformation(px)) -
+            SVector{3,Float64}(stem[:geometry].transformation(p0)),
+        )
+        secondary_vec = LinearAlgebra.normalize(
+            SVector{3,Float64}(stem[:geometry].transformation(py)) -
+            SVector{3,Float64}(stem[:geometry].transformation(p0)),
+        )
+        normal_vec = LinearAlgebra.normalize(
+            SVector{3,Float64}(stem[:geometry].transformation(pz)) -
+            SVector{3,Float64}(stem[:geometry].transformation(p0)),
+        )
+
+        @test all(isfinite, dir_vec)
+        @test all(isfinite, secondary_vec)
+        @test all(isfinite, normal_vec)
+        @test dir_vec[3] > 0.99
     end
 
     @testset "projection edge case remains stable for non-x length axis" begin

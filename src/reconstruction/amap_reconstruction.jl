@@ -10,6 +10,8 @@ struct AmapReconstructionOptions
     stiffness_aliases::Vector{Symbol}
     stiffness_tapering_aliases::Vector{Symbol}
     stiffness_apply_aliases::Vector{Symbol}
+    stiffness_straightening_aliases::Vector{Symbol}
+    broken_aliases::Vector{Symbol}
     plagiotropy_aliases::Vector{Symbol}
     normal_up_aliases::Vector{Symbol}
     orientation_reset_aliases::Vector{Symbol}
@@ -48,6 +50,8 @@ function AmapReconstructionOptions(;
     stiffness_aliases=[:Stifness, :stifness, :Stiffness, :stiffness],
     stiffness_tapering_aliases=[:StifnessTapering, :stifness_tapering, :StiffnessTapering, :stiffness_tapering],
     stiffness_apply_aliases=[:StiffnessApply, :stiffness_apply],
+    stiffness_straightening_aliases=[:StiffnessStraightening, :stiffness_straightening],
+    broken_aliases=[:Broken, :broken],
     plagiotropy_aliases=[:Plagiotropy, :plagiotropy],
     normal_up_aliases=[:NormalUp, :normal_up],
     orientation_reset_aliases=[:OrientationReset, :orientation_reset, :Global, :global],
@@ -75,6 +79,8 @@ function AmapReconstructionOptions(;
         _amap_normalize_aliases(stiffness_aliases),
         _amap_normalize_aliases(stiffness_tapering_aliases),
         _amap_normalize_aliases(stiffness_apply_aliases),
+        _amap_normalize_aliases(stiffness_straightening_aliases),
+        _amap_normalize_aliases(broken_aliases),
         _amap_normalize_aliases(plagiotropy_aliases),
         _amap_normalize_aliases(normal_up_aliases),
         _amap_normalize_aliases(orientation_reset_aliases),

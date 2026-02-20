@@ -987,6 +987,35 @@ function _component_children(node)
     out
 end
 
+function _resolve_stiffness_straightening(node, options::AmapReconstructionOptions)
+    value, found = _resolve_alias(node, options.stiffness_straightening_aliases)
+    if found === nothing || value === nothing
+        return nothing
+    end
+    # Accept both [0, 1] and [0, 100] conventions.
+    straightening = value > 1.0 ? (value / 100.0) : value
+    return clamp(straightening, 0.0, 1.0)
+end
+
+function _apply_broken_to_components!(node, components_nodes, target_name::Symbol, options::AmapReconstructionOptions)
+    broken_pos, broken_found = _resolve_alias(node, options.broken_aliases)
+    if broken_found === nothing || broken_pos === nothing || isempty(components_nodes)
+        return false
+    end
+
+    nb = length(components_nodes)
+    step = 100.0 / nb
+    applied = false
+    for (idx, component_node) in enumerate(components_nodes)
+        pos_pct = ((idx - 1) / nb) * 100.0
+        if pos_pct + step > broken_pos
+            component_node[target_name] = -180.0
+            applied = true
+        end
+    end
+    return applied
+end
+
 function _successor_anchor_node(parent_node, top_pos)
     anchor = parent_node
     for child in children(parent_node)
@@ -1004,25 +1033,33 @@ function _propagate_stiffness_to_components!(
     node_length::Float64,
     options::AmapReconstructionOptions,
 )
+    components_nodes = _component_children(node)
+    isempty(components_nodes) && return
+
+    target_name = isempty(options.stiffness_angle_aliases) ? :StiffnessAngle : first(options.stiffness_angle_aliases)
+    broken_applied = false
+
     if !_resolve_bool_alias(node, options.stiffness_apply_aliases; default=true)
+        _apply_broken_to_components!(node, components_nodes, target_name, options)
         return
     end
 
     stiff_value, stiff_found = _resolve_alias(node, options.stiffness_aliases)
-    if stiff_found === nothing || stiff_value === nothing || stiff_value == 0.0
+    if stiff_found === nothing || stiff_value === nothing || stiff_value == 0.0 || node_length <= 0.0
+        _apply_broken_to_components!(node, components_nodes, target_name, options)
         return
     end
 
-    components_nodes = _component_children(node)
-    isempty(components_nodes) && return
-    node_length <= 0.0 && return
-
     tapering_value, tapering_found = _resolve_alias(node, options.stiffness_tapering_aliases)
     tapering = (tapering_found !== nothing && tapering_value !== nothing) ? tapering_value : 0.5
+    straightening = _resolve_stiffness_straightening(node, options)
 
     is_down = stiff_value > 0.0
     young_modulus = abs(stiff_value)
-    young_modulus <= 0.0 && return
+    if young_modulus <= 0.0
+        _apply_broken_to_components!(node, components_nodes, target_name, options)
+        return
+    end
 
     direction = _safe_normalize(rot * _unit_axis(length_axis), _unit_axis(length_axis))
     z_angle = acos(clamp(direction[3], -1.0, 1.0))
@@ -1033,19 +1070,25 @@ function _propagate_stiffness_to_components!(
     current_distance_from_insertion = 0.0
     prev_position_in_portee = 0
     n_components = length(components_nodes)
-    target_name = isempty(options.stiffness_angle_aliases) ? :StiffnessAngle : first(options.stiffness_angle_aliases)
 
     for component_node in components_nodes
         relative_position_in_portee = floor(Int, (node_length * current_distance_from_insertion) / n_components)
 
         for i in prev_position_in_portee:(relative_position_in_portee - 1)
+            relative_position = i / node_length
             local_angle = _young_local_flexion(
                 current_angle,
                 final_angle,
                 young_modulus,
                 tapering,
-                i / node_length,
+                relative_position,
             )
+
+            if straightening !== nothing && straightening < 1.0 && relative_position > straightening
+                t = (relative_position - straightening) / max(1.0 - straightening, 1e-12)
+                local_angle *= max(0.0, 1.0 - t)
+            end
+
             current_angle += local_angle
         end
 
@@ -1056,6 +1099,9 @@ function _propagate_stiffness_to_components!(
         previous_angle = current_angle
         current_distance_from_insertion += 1.0
     end
+
+    broken_applied = _apply_broken_to_components!(node, components_nodes, target_name, options)
+    broken_applied
 end
 
 function _effective_override_value(

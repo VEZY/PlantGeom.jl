@@ -64,6 +64,8 @@ The same MTG can be reconstructed very differently depending on orientation and 
 | Stiffness source aliases | `Stifness`, `stifness`, `Stiffness`, `stiffness` |
 | Stiffness tapering aliases | `StifnessTapering`, `stifness_tapering`, `StiffnessTapering`, `stiffness_tapering` |
 | Stiffness apply aliases | `StiffnessApply`, `stiffness_apply` |
+| Stiffness straightening aliases | `StiffnessStraightening`, `stiffness_straightening` |
+| Broken-segment aliases | `Broken`, `broken` |
 | Plagiotropy aliases | `Plagiotropy`, `plagiotropy` |
 | NormalUp aliases | `NormalUp`, `normal_up` |
 | Orientation reset aliases | `OrientationReset`, `orientation_reset`, `Global`, `global` |
@@ -200,6 +202,8 @@ Rule of thumb:
 - `StiffnessApply=false` disables this propagation for that node.
 - Positive `Stifness` propagates downward-sign bending angles; negative values propagate upward-sign bending angles.
 - `StifnessTapering` controls the curvature profile (`0.5` default when missing).
+- `StiffnessStraightening` (0..1 or 0..100) progressively damps propagated bending after that relative position.
+- `Broken` (0..100) forces downstream component angles to `-180` after the break threshold.
 
 ## 3. Stage Order and Semantics
 
@@ -688,6 +692,15 @@ What this figure is doing:
 - `StiffnessApply=true` propagates a non-zero `StiffnessAngle` to the visible component.
 - Successor `"<"` nodes continue from the last component top (AMAPStudio-like behavior), so propagated component bending changes downstream position.
 - Only `StiffnessApply` changes between panels.
+
+Topology sketch:
+
+```text
+AxisNode(i)
+├─ / AxisDummy   (anchor, hidden)
+└─ / AxisSegment (visible)
+< AxisNode(i+1) starts at top(AxisSegment)
+```
 
 So the visible difference should be:
 

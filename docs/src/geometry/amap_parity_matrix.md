@@ -12,6 +12,8 @@ This matrix summarizes current PlantGeom parity for AMAPStudio core reconstructi
 | DeviationAngle stage | Implemented | World-space pre-rotation around global `+Z`. |
 | Projection stage | Implemented | `NormalUp` and `Plagiotropy` with deterministic order (`NormalUp` first) and robust degenerate-frame handling. |
 | Stiffness propagation (`Stifness`, `StifnessTapering`) | Implemented | AMAP-style propagation writes `StiffnessAngle` to `/`-linked component children (toggle with `StiffnessApply`). |
+| Stiffness straightening | Implemented | `StiffnessStraightening` dampens propagated bending after a configurable relative position (`0..1` or `0..100`). |
+| Broken segment handling | Implemented | `Broken` forces downstream component `StiffnessAngle=-180` (AMAP `StiffnessBrokenDelegate` behavior). |
 | Orientation reset aliases | Implemented | `OrientationReset` / `Global` reset local basis before insertion/euler stages. |
 | Insertion alias compatibility | Implemented | `Insertion` accepted in insertion mode alias set. |
 | Branching-order auto-compute | Implemented | `branching_order!` run once when needed and enabled. |
