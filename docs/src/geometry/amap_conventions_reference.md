@@ -56,6 +56,7 @@ The same MTG can be reconstructed very differently depending on orientation and 
 | Insertion mode aliases | `InsertionMode`, `insertion_mode`, `Insertion`, `insertion` |
 | Phyllotaxy aliases | `Phyllotaxy`, `phyllotaxy`, `PHYLLOTAXY` |
 | Verticil mode | `:rotation360` |
+| Geometrical constraint aliases | `GeometricalConstraint`, `geometrical_constraint`, `GeometryConstraint`, `geometry_constraint` |
 | Azimuth aliases | `Azimuth`, `azimuth` |
 | Elevation aliases | `Elevation`, `elevation` |
 | Deviation aliases | `DeviationAngle`, `deviation_angle` |
@@ -146,7 +147,7 @@ Practical precedence:
 
 1. Base position is resolved first (explicit `XX/YY/ZZ` if present, otherwise topology).
 2. If `EndX`/`EndY`/`EndZ` are all numeric, orientation and length are computed from base-to-end.
-3. Angle stages (`Insertion`, azimuth/elevation, orthotropy/stiffness angle, deviation, Euler, projection) are skipped for that node.
+3. Angle stages (`Insertion`, azimuth/elevation, orthotropy/stiffness angle, deviation, Euler, projection, geometrical constraint) are skipped for that node.
 4. Width/thickness scaling still uses `Width`/`Thickness`.
 
 Notes:
@@ -251,6 +252,22 @@ Rule of thumb:
 - `StiffnessStraightening` (0..1 or 0..100) progressively damps propagated bending after that relative position.
 - `Broken` (0..100) forces downstream component angles to `-180` after the break threshold.
 
+### 2.8 What `GeometricalConstraint` is for
+
+`GeometricalConstraint` is an envelope rule applied after angle/projection stages to keep an organ direction inside a geometric domain (cone/cylinder/plane families).
+
+Typical use cases:
+
+- constrain synthetic roots to stay inside a soil exploration envelope
+- keep generated axes inside a training shape when angle data are sparse/noisy
+- enforce directional limits without manually tuning every node angle
+
+Important:
+
+- it is an orientation clamp, not a full collision solver
+- it does not move the already computed base insertion point
+- for chained `"<"` axes, changing orientation still changes downstream positions through topology
+
 ## 3. Stage Order and Semantics
 
 Reconstruction applies stages in this order:
@@ -264,17 +281,25 @@ Reconstruction applies stages in this order:
 7. DeviationAngle world rotation.
 8. Euler stage.
 9. Projection stage (`NormalUp`, then `Plagiotropy`).
-10. Stiffness propagation stage (`Stifness` / `StifnessTapering`) writing `StiffnessAngle` on `/` components.
+10. Geometrical constraint stage (`GeometricalConstraint`) for cone/cylinder/plane families.
+11. Stiffness propagation stage (`Stifness` / `StifnessTapering`) writing `StiffnessAngle` on `/` components.
 
 Key rules:
 
 - `StiffnessAngle` takes precedence over `Orthotropy`.
 - `OrientationReset=true` resets orientation basis to the AMAP base orientation for that node before insertion/euler stages.
 - If both projection flags are enabled, `NormalUp` is applied before `Plagiotropy`.
+- Geometrical constraint stage only re-orients the local basis; node base position remains topology/translation driven.
 - Propagated stiffness angles are written to component children before those children are reconstructed.
 - Explicit translation attributes keep the node position explicit; topology-based placement is used only when `XX/YY/ZZ` are absent.
 - When endpoint override is active, angle stages are skipped and node `Length` is inferred from endpoint distance.
 - Allometry preprocessing can write inferred values back to nodes (`Length`, `Width`, `Thickness`, `TopWidth`, `TopHeight`) when these are missing.
+
+`GeometricalConstraint` accepted forms:
+
+- String/Symbol kind: `"cone"`, `"elliptic_cone"`, `"cylinder"`, `"elliptic_cylinder"`, `"cone_cylinder"`, `"elliptic_cone_cylinder"`, `"plane"`.
+- Dict/NamedTuple with `type` (or `kind`) and optional parameters (`primary_angle`, `secondary_angle`, `radius`, `secondary_radius`, `cone_length`, `normal`, `d`, `origin`, `axis`).
+- Parameters can also be provided as node columns using aliases such as `ConstraintAngle`, `ConstraintRadius`, `ConstraintLength`, `ConstraintNormalX/Y/Z`, `ConstraintPlaneD`, `ConstraintOriginX/Y/Z`, `ConstraintAxisX/Y/Z`.
 
 ## 4. Local vs Global Angles in `GeometryConvention`
 
@@ -544,6 +569,41 @@ function stiffness_propagation_example(mode::Symbol)
     mtg
 end
 
+function geometrical_constraint_example(mode::Symbol)
+    mtg = Node(NodeMTG("/", "Plant", 1, 1))
+    internode = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+
+    # Reuse the same constraint object on all nodes (AMAP-style shared frame init).
+    shared_constraint = Dict{Symbol,Any}(
+        :type => :cone_cylinder,
+        :primary_angle => 14.0,
+        :secondary_angle => 14.0,
+        :cone_length => 0.35,
+        :origin => (0.0, 0.0, 0.0),
+        :axis => (1.0, 0.0, 0.0),
+    )
+
+    n_segments = 9
+    for i in 1:n_segments
+        internode[:Length] = 0.15
+        internode[:Width] = max(0.08 - 0.004 * (i - 1), 0.04)
+        internode[:Thickness] = internode[:Width]
+        internode[:YInsertionAngle] = 19.0
+        internode[:DeviationAngle] = 8.0
+        if mode == :constrained
+            internode[:GeometricalConstraint] = shared_constraint
+        end
+
+        if i < n_segments
+            nxt = Node(internode, NodeMTG("<", "Internode", i + 1, 2))
+            internode = nxt
+        end
+    end
+
+    set_geometry_from_attributes!(mtg, REF_MESHES; convention=CONV, root_align=false)
+    mtg
+end
+
 function _scene_bounds(scene)
     xmin_all = Inf
     xmax_all = -Inf
@@ -769,5 +829,26 @@ _plot_modes(
     azimuth=1.5pi,
     elevation=0.20,
     zoom_padding=0.05,
+)
+```
+
+### 6.5 `GeometricalConstraint`: unconstrained vs constrained axis
+
+This shows the practical role of `GeometricalConstraint`.
+
+- Left: same insertion/deviation angles, no constraint; the axis drifts away.
+- Right: same MTG and angles, with a shared `cone_cylinder` constraint; directions are clamped and the axis stays inside the envelope.
+
+Use this when you want global shape control (for example root exploration domain) without hand-tuning every segment angle.
+
+```@example amapref
+_plot_modes(
+    (:free, :constrained),
+    geometrical_constraint_example;
+    titles=("No constraint", "Cone-cylinder constraint"),
+    size=(920, 340),
+    azimuth=1.35pi,
+    elevation=0.26,
+    zoom_padding=0.06,
 )
 ```

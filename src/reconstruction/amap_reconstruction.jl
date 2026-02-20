@@ -2,6 +2,7 @@ struct AmapReconstructionOptions
     insertion_mode_aliases::Vector{Symbol}
     phyllotaxy_aliases::Vector{Symbol}
     verticil_mode::Symbol
+    geometry_constraint_aliases::Vector{Symbol}
     azimuth_aliases::Vector{Symbol}
     elevation_aliases::Vector{Symbol}
     deviation_aliases::Vector{Symbol}
@@ -50,6 +51,7 @@ function AmapReconstructionOptions(;
     insertion_mode_aliases=[:InsertionMode, :insertion_mode, :Insertion, :insertion],
     phyllotaxy_aliases=[:Phyllotaxy, :phyllotaxy, :PHYLLOTAXY],
     verticil_mode::Symbol=:rotation360,
+    geometry_constraint_aliases=[:GeometricalConstraint, :geometrical_constraint, :GeometryConstraint, :geometry_constraint],
     azimuth_aliases=[:Azimuth, :azimuth],
     elevation_aliases=[:Elevation, :elevation],
     deviation_aliases=[:DeviationAngle, :deviation_angle],
@@ -87,6 +89,7 @@ function AmapReconstructionOptions(;
         _amap_normalize_aliases(insertion_mode_aliases),
         _amap_normalize_aliases(phyllotaxy_aliases),
         verticil_mode,
+        _amap_normalize_aliases(geometry_constraint_aliases),
         _amap_normalize_aliases(azimuth_aliases),
         _amap_normalize_aliases(elevation_aliases),
         _amap_normalize_aliases(deviation_aliases),

@@ -763,6 +763,149 @@
         @test isapprox(i1[:TopHeight], 0.25; atol=1e-8)
     end
 
+    @testset "geometrical cone constraint clamps successor direction" begin
+        mtg_free = Node(NodeMTG("/", "Plant", 1, 1))
+        f1 = Node(mtg_free, NodeMTG("/", "Internode", 1, 2))
+        f2 = Node(f1, NodeMTG("<", "Internode", 2, 2))
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
+
+        for n in (f1, f2, i1, i2)
+            n[:Length] = 1.0
+            n[:Width] = 0.1
+            n[:Thickness] = 0.1
+        end
+        f2[:YInsertionAngle] = -70.0
+        i2[:YInsertionAngle] = -70.0
+
+        constraint = Dict{Symbol,Any}(:type => :cone, :primary_angle => 20.0)
+        i1[:GeometricalConstraint] = constraint
+        i2[:GeometricalConstraint] = constraint
+
+        reconstruct_geometry_from_attributes!(
+            mtg_free,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        d_axis_free = LinearAlgebra.normalize(
+            SVector{3,Float64}(f1[:geometry].transformation(px)) -
+            SVector{3,Float64}(f1[:geometry].transformation(p0)),
+        )
+        d2_free = LinearAlgebra.normalize(
+            SVector{3,Float64}(f2[:geometry].transformation(px)) -
+            SVector{3,Float64}(f2[:geometry].transformation(p0)),
+        )
+        angle_free = rad2deg(acos(clamp(dot(d_axis_free, d2_free), -1.0, 1.0)))
+
+        d_axis = LinearAlgebra.normalize(
+            SVector{3,Float64}(i1[:geometry].transformation(px)) -
+            SVector{3,Float64}(i1[:geometry].transformation(p0)),
+        )
+        d2 = LinearAlgebra.normalize(
+            SVector{3,Float64}(i2[:geometry].transformation(px)) -
+            SVector{3,Float64}(i2[:geometry].transformation(p0)),
+        )
+        angle = rad2deg(acos(clamp(dot(d_axis, d2), -1.0, 1.0)))
+        @test angle < angle_free - 1.0
+    end
+
+    @testset "geometrical cylinder constraint clamps successor tip radius" begin
+        mtg_free = Node(NodeMTG("/", "Plant", 1, 1))
+        f1 = Node(mtg_free, NodeMTG("/", "Internode", 1, 2))
+        f2 = Node(f1, NodeMTG("<", "Internode", 2, 2))
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
+
+        for n in (f1, f2, i1, i2)
+            n[:Length] = 1.0
+            n[:Width] = 0.1
+            n[:Thickness] = 0.1
+        end
+        f2[:YInsertionAngle] = -80.0
+        i2[:YInsertionAngle] = -80.0
+
+        constraint = Dict{Symbol,Any}(:type => :cylinder, :radius => 0.2)
+        i1[:GeometricalConstraint] = constraint
+        i2[:GeometricalConstraint] = constraint
+
+        reconstruct_geometry_from_attributes!(
+            mtg_free,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        p_base_free = SVector{3,Float64}(f1[:geometry].transformation(p0))
+        p_axis_free = SVector{3,Float64}(f1[:geometry].transformation(px))
+        axis_free = LinearAlgebra.normalize(p_axis_free - p_base_free)
+        p_tip2_free = SVector{3,Float64}(f2[:geometry].transformation(px))
+        q_free = p_tip2_free - p_base_free
+        radial_free = q_free - dot(q_free, axis_free) * axis_free
+
+        p_base = SVector{3,Float64}(i1[:geometry].transformation(p0))
+        p_axis = SVector{3,Float64}(i1[:geometry].transformation(px))
+        axis = LinearAlgebra.normalize(p_axis - p_base)
+
+        p_tip2 = SVector{3,Float64}(i2[:geometry].transformation(px))
+        q = p_tip2 - p_base
+        radial = q - dot(q, axis) * axis
+        @test norm(radial) < norm(radial_free) - 1e-3
+    end
+
+    @testset "plane constraint projects direction into plane when base is out" begin
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+
+        stem[:Length] = 1.0
+        stem[:Width] = 0.1
+        stem[:Thickness] = 0.1
+        stem[:XX] = 0.0
+        stem[:YY] = 0.0
+        stem[:ZZ] = 0.5
+        stem[:YInsertionAngle] = -70.0
+        stem[:GeometricalConstraint] = Dict{Symbol,Any}(
+            :type => :plane,
+            :normal => (0.0, 0.0, 1.0),
+            :d => 0.0,
+        )
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        dir = LinearAlgebra.normalize(
+            SVector{3,Float64}(stem[:geometry].transformation(px)) -
+            SVector{3,Float64}(stem[:geometry].transformation(p0)),
+        )
+        @test abs(dir[3]) <= 1e-6
+    end
+
     @testset "default amap_options matches explicit default options" begin
         file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))), "test", "files", "simple_plant.mtg")
         mtg_a = read_mtg(file)

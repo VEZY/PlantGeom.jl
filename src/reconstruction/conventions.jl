@@ -202,6 +202,17 @@ function _resolve_alias(node, aliases::Vector{Symbol})
     return nothing, nothing
 end
 
+function _resolve_raw_alias(node, aliases::Vector{Symbol})
+    for name in aliases
+        raw, present = _try_attr(node, name)
+        present || continue
+        raw === nothing && continue
+        raw === missing && continue
+        return raw, name
+    end
+    return nothing, nothing
+end
+
 function _resolve_value(node, aliases::Vector{Symbol}, label::Symbol; default=0.0, warn_missing=false)
     value, found = _resolve_alias(node, aliases)
     if found === nothing
@@ -1270,6 +1281,315 @@ function _apply_projection_stage(
     return out
 end
 
+const _CONSTRAINT_TYPE_ALIASES = [:ConstraintType, :constraint_type, :GeometricalConstraintType, :geometrical_constraint_type]
+const _CONSTRAINT_PRIMARY_ANGLE_ALIASES = [:ConstraintAngle, :constraint_angle, :PrimaryAngle, :primary_angle, :ConeAngle, :cone_angle]
+const _CONSTRAINT_SECONDARY_ANGLE_ALIASES = [:ConstraintSecondaryAngle, :constraint_secondary_angle, :SecondaryAngle, :secondary_angle]
+const _CONSTRAINT_RADIUS_ALIASES = [:ConstraintRadius, :constraint_radius, :Radius, :radius, :ConstraintDiameter, :constraint_diameter, :Diameter, :diameter]
+const _CONSTRAINT_SECONDARY_RADIUS_ALIASES = [:ConstraintSecondaryRadius, :constraint_secondary_radius, :SecondaryRadius, :secondary_radius, :SecondaryDiameter, :secondary_diameter]
+const _CONSTRAINT_LENGTH_ALIASES = [:ConstraintLength, :constraint_length, :ConeLength, :cone_length]
+const _CONSTRAINT_PLANE_D_ALIASES = [:ConstraintPlaneD, :constraint_plane_d, :PlaneD, :plane_d, :ConstraintD, :constraint_d]
+const _CONSTRAINT_NORMAL_X_ALIASES = [:ConstraintNormalX, :constraint_normal_x, :PlaneNormalX, :plane_normal_x, :NormalX, :normal_x]
+const _CONSTRAINT_NORMAL_Y_ALIASES = [:ConstraintNormalY, :constraint_normal_y, :PlaneNormalY, :plane_normal_y, :NormalY, :normal_y]
+const _CONSTRAINT_NORMAL_Z_ALIASES = [:ConstraintNormalZ, :constraint_normal_z, :PlaneNormalZ, :plane_normal_z, :NormalZ, :normal_z]
+const _CONSTRAINT_ORIGIN_X_ALIASES = [:ConstraintOriginX, :constraint_origin_x, :ConstraintVertexX, :constraint_vertex_x, :OriginX, :origin_x, :VertexX, :vertex_x]
+const _CONSTRAINT_ORIGIN_Y_ALIASES = [:ConstraintOriginY, :constraint_origin_y, :ConstraintVertexY, :constraint_vertex_y, :OriginY, :origin_y, :VertexY, :vertex_y]
+const _CONSTRAINT_ORIGIN_Z_ALIASES = [:ConstraintOriginZ, :constraint_origin_z, :ConstraintVertexZ, :constraint_vertex_z, :OriginZ, :origin_z, :VertexZ, :vertex_z]
+const _CONSTRAINT_AXIS_X_ALIASES = [:ConstraintAxisX, :constraint_axis_x, :ConstraintDirectionX, :constraint_direction_x, :AxisX, :axis_x, :DirectionX, :direction_x]
+const _CONSTRAINT_AXIS_Y_ALIASES = [:ConstraintAxisY, :constraint_axis_y, :ConstraintDirectionY, :constraint_direction_y, :AxisY, :axis_y, :DirectionY, :direction_y]
+const _CONSTRAINT_AXIS_Z_ALIASES = [:ConstraintAxisZ, :constraint_axis_z, :ConstraintDirectionZ, :constraint_direction_z, :AxisZ, :axis_z, :DirectionZ, :direction_z]
+
+function _constraint_kind(value)
+    value === nothing && return nothing
+    s = lowercase(replace(string(value), r"[^a-z0-9]+" => ""))
+
+    s in ("cone",) && return :cone
+    s in ("ellipticcone", "ellipticalcone") && return :elliptic_cone
+    s in ("cylinder",) && return :cylinder
+    s in ("ellipticcylinder", "ellipticalcylinder") && return :elliptic_cylinder
+    s in ("conecylinder", "coneandcylinder", "cylcone") && return :cone_cylinder
+    s in ("ellipticconecylinder", "ellipticalconecylinder", "ellipticconeandcylinder") &&
+        return :elliptic_cone_cylinder
+    s in ("plane",) && return :plane
+    return nothing
+end
+
+@inline function _constraint_float_from_source(source, names::Vector{Symbol})
+    source === nothing && return nothing
+    for name in names
+        value = _field_or_key(source, name, nothing)
+        f = _as_float(value)
+        f !== nothing && return f
+    end
+    return nothing
+end
+
+@inline function _constraint_float_from_node(node, aliases::Vector{Symbol})
+    value, found = _resolve_alias(node, aliases)
+    return found === nothing ? nothing : value
+end
+
+function _as_vec3(value)
+    value === nothing && return nothing
+    value === missing && return nothing
+
+    if value isa Tuple && length(value) == 3
+        x = _as_float(value[1])
+        y = _as_float(value[2])
+        z = _as_float(value[3])
+        return (x === nothing || y === nothing || z === nothing) ? nothing : SVector{3,Float64}(x, y, z)
+    end
+
+    if value isa AbstractVector && length(value) == 3
+        x = _as_float(value[1])
+        y = _as_float(value[2])
+        z = _as_float(value[3])
+        return (x === nothing || y === nothing || z === nothing) ? nothing : SVector{3,Float64}(x, y, z)
+    end
+
+    if value isa AbstractDict || value isa NamedTuple
+        x = _as_float(_field_or_key(value, :x, nothing))
+        y = _as_float(_field_or_key(value, :y, nothing))
+        z = _as_float(_field_or_key(value, :z, nothing))
+        return (x === nothing || y === nothing || z === nothing) ? nothing : SVector{3,Float64}(x, y, z)
+    end
+
+    if hasproperty(value, :x) && hasproperty(value, :y) && hasproperty(value, :z)
+        x = _as_float(getproperty(value, :x))
+        y = _as_float(getproperty(value, :y))
+        z = _as_float(getproperty(value, :z))
+        return (x === nothing || y === nothing || z === nothing) ? nothing : SVector{3,Float64}(x, y, z)
+    end
+
+    return nothing
+end
+
+function _constraint_vec3_from_components(source, xnames::Vector{Symbol}, ynames::Vector{Symbol}, znames::Vector{Symbol})
+    source === nothing && return nothing
+    x = _constraint_float_from_source(source, xnames)
+    y = _constraint_float_from_source(source, ynames)
+    z = _constraint_float_from_source(source, znames)
+    return (x === nothing || y === nothing || z === nothing) ? nothing : SVector{3,Float64}(x, y, z)
+end
+
+function _constraint_vec3_from_node(node, xaliases::Vector{Symbol}, yaliases::Vector{Symbol}, zaliases::Vector{Symbol})
+    x = _constraint_float_from_node(node, xaliases)
+    y = _constraint_float_from_node(node, yaliases)
+    z = _constraint_float_from_node(node, zaliases)
+    return (x === nothing || y === nothing || z === nothing) ? nothing : SVector{3,Float64}(x, y, z)
+end
+
+function _resolve_geometry_constraint_spec(node, options::AmapReconstructionOptions)
+    raw_constraint, _ = _resolve_raw_alias(node, options.geometry_constraint_aliases)
+
+    raw_type = if raw_constraint !== nothing
+        _field_or_key(raw_constraint, :type, _field_or_key(raw_constraint, :kind, nothing))
+    else
+        nothing
+    end
+    if raw_type === nothing
+        raw_type, _ = _resolve_raw_alias(node, _CONSTRAINT_TYPE_ALIASES)
+    end
+    if raw_type === nothing && (raw_constraint isa Symbol || raw_constraint isa AbstractString)
+        raw_type = raw_constraint
+    end
+
+    kind = _constraint_kind(raw_type)
+    kind === nothing && return nothing
+
+    primary_angle = _constraint_float_from_source(raw_constraint, [:primary_angle, :primaryangle, :angle, :primaryAngle])
+    primary_angle === nothing && (primary_angle = _constraint_float_from_node(node, _CONSTRAINT_PRIMARY_ANGLE_ALIASES))
+    primary_angle === nothing && (primary_angle = 30.0)
+
+    secondary_angle = _constraint_float_from_source(raw_constraint, [:secondary_angle, :secondaryangle, :secondaryAngle])
+    secondary_angle === nothing && (secondary_angle = _constraint_float_from_node(node, _CONSTRAINT_SECONDARY_ANGLE_ALIASES))
+    secondary_angle === nothing && (secondary_angle = primary_angle)
+
+    radius = _constraint_float_from_source(raw_constraint, [:radius, :diameter, :primary_radius, :primary_diameter])
+    radius === nothing && (radius = _constraint_float_from_node(node, _CONSTRAINT_RADIUS_ALIASES))
+    radius === nothing && (radius = 1.0)
+
+    secondary_radius = _constraint_float_from_source(raw_constraint, [:secondary_radius, :secondary_diameter])
+    secondary_radius === nothing && (secondary_radius = _constraint_float_from_node(node, _CONSTRAINT_SECONDARY_RADIUS_ALIASES))
+    secondary_radius === nothing && (secondary_radius = radius)
+
+    cone_length = _constraint_float_from_source(raw_constraint, [:cone_length, :length, :transition_length])
+    cone_length === nothing && (cone_length = _constraint_float_from_node(node, _CONSTRAINT_LENGTH_ALIASES))
+    cone_length === nothing && (cone_length = 1.0)
+
+    plane_normal = _as_vec3(_field_or_key(raw_constraint, :normal, _field_or_key(raw_constraint, :plane_normal, nothing)))
+    if plane_normal === nothing
+        plane_normal = _constraint_vec3_from_components(
+            raw_constraint,
+            [:normal_x, :plane_normal_x, :nx],
+            [:normal_y, :plane_normal_y, :ny],
+            [:normal_z, :plane_normal_z, :nz],
+        )
+    end
+    plane_normal === nothing && (plane_normal = _constraint_vec3_from_node(node, _CONSTRAINT_NORMAL_X_ALIASES, _CONSTRAINT_NORMAL_Y_ALIASES, _CONSTRAINT_NORMAL_Z_ALIASES))
+    plane_normal === nothing && (plane_normal = _UP3)
+    plane_normal = _safe_normalize(plane_normal, _UP3)
+
+    plane_d = _constraint_float_from_source(raw_constraint, [:d, :plane_d])
+    plane_d === nothing && (plane_d = _constraint_float_from_node(node, _CONSTRAINT_PLANE_D_ALIASES))
+    plane_d === nothing && (plane_d = 0.0)
+
+    origin = _as_vec3(_field_or_key(raw_constraint, :origin, _field_or_key(raw_constraint, :vertex, nothing)))
+    if origin === nothing
+        origin = _constraint_vec3_from_components(
+            raw_constraint,
+            [:origin_x, :vertex_x],
+            [:origin_y, :vertex_y],
+            [:origin_z, :vertex_z],
+        )
+    end
+    origin === nothing && (origin = _constraint_vec3_from_node(node, _CONSTRAINT_ORIGIN_X_ALIASES, _CONSTRAINT_ORIGIN_Y_ALIASES, _CONSTRAINT_ORIGIN_Z_ALIASES))
+
+    axis = _as_vec3(_field_or_key(raw_constraint, :axis, _field_or_key(raw_constraint, :direction, nothing)))
+    if axis === nothing
+        axis = _constraint_vec3_from_components(
+            raw_constraint,
+            [:axis_x, :direction_x],
+            [:axis_y, :direction_y],
+            [:axis_z, :direction_z],
+        )
+    end
+    axis === nothing && (axis = _constraint_vec3_from_node(node, _CONSTRAINT_AXIS_X_ALIASES, _CONSTRAINT_AXIS_Y_ALIASES, _CONSTRAINT_AXIS_Z_ALIASES))
+
+    return (
+        raw=raw_constraint,
+        kind=kind,
+        primary_angle=primary_angle,
+        secondary_angle=secondary_angle,
+        radius=radius,
+        secondary_radius=secondary_radius,
+        cone_length=cone_length,
+        plane_normal=plane_normal,
+        plane_d=plane_d,
+        origin=origin,
+        axis=axis,
+    )
+end
+
+function _constraint_frame!(
+    cache::Dict{Any,Any},
+    key,
+    spec,
+    base_pos::SVector{3,Float64},
+    rot::SMatrix{3,3,Float64,9},
+    length_axis::Symbol,
+)
+    if haskey(cache, key)
+        return cache[key]
+    end
+
+    axis = spec.axis === nothing ? _axis_column(rot, length_axis) : _safe_normalize(spec.axis, _axis_column(rot, length_axis))
+    secondary = _normalize_perpendicular(
+        _axis_column(rot, _secondary_axis(length_axis)),
+        axis,
+        _any_perpendicular(axis, _unit_axis(_secondary_axis(length_axis))),
+    )
+    normal = _normalize_perpendicular(cross(axis, secondary), axis, _any_perpendicular(axis, _UP3))
+    origin = spec.origin === nothing ? base_pos : spec.origin
+
+    frame = (origin=origin, axis=axis, secondary=secondary, normal=normal)
+    cache[key] = frame
+    return frame
+end
+
+function _constraint_clamp_elliptic(x::Float64, y::Float64, a::Float64, b::Float64)
+    aa = max(abs(a), 1e-12)
+    bb = max(abs(b), 1e-12)
+    e = (x / aa)^2 + (y / bb)^2
+    if e <= 1.0
+        return x, y, false
+    end
+    scale = inv(sqrt(e))
+    return x * scale, y * scale, true
+end
+
+function _constraint_allowed_radii(spec, h::Float64)
+    if spec.kind in (:cylinder, :elliptic_cylinder)
+        return spec.radius, spec.secondary_radius
+    elseif spec.kind in (:cone, :elliptic_cone)
+        h <= 0.0 && return nothing
+        return h * tan(deg2rad(spec.primary_angle)), h * tan(deg2rad(spec.secondary_angle))
+    elseif spec.kind in (:cone_cylinder, :elliptic_cone_cylinder)
+        h <= 0.0 && return nothing
+        hh = min(h, max(spec.cone_length, 1e-12))
+        return hh * tan(deg2rad(spec.primary_angle)), hh * tan(deg2rad(spec.secondary_angle))
+    end
+    return nothing
+end
+
+function _constrain_tip_by_geometry(
+    base_pos::SVector{3,Float64},
+    tip::SVector{3,Float64},
+    frame,
+    spec,
+)
+    rel = tip - frame.origin
+    h = dot(rel, frame.axis)
+    h <= 0.0 && return base_pos + frame.axis
+
+    radial = rel - h * frame.axis
+    x = dot(radial, frame.secondary)
+    y = dot(radial, frame.normal)
+    radii = _constraint_allowed_radii(spec, h)
+    radii === nothing && return base_pos + frame.axis
+
+    x2, y2, clamped = _constraint_clamp_elliptic(x, y, radii[1], radii[2])
+    clamped || return nothing
+    return frame.origin + h * frame.axis + x2 * frame.secondary + y2 * frame.normal
+end
+
+function _constrain_direction_to_plane(
+    base_pos::SVector{3,Float64},
+    current_dir::SVector{3,Float64},
+    frame,
+    spec,
+)
+    signed_distance = dot(spec.plane_normal, base_pos) + spec.plane_d
+    signed_distance > 0.0 || return nothing
+
+    projected = current_dir - dot(current_dir, spec.plane_normal) * spec.plane_normal
+    fallback = _any_perpendicular(spec.plane_normal, frame.secondary)
+    return _safe_normalize(projected, fallback)
+end
+
+function _apply_geometry_constraint_stage(
+    node,
+    rot::SMatrix{3,3,Float64,9},
+    base_pos::SVector{3,Float64},
+    length_axis::Symbol,
+    length_val::Float64,
+    options::AmapReconstructionOptions,
+    constraint_cache::Dict{Any,Any},
+)
+    length_val <= 0.0 && return rot
+
+    spec = _resolve_geometry_constraint_spec(node, options)
+    spec === nothing && return rot
+
+    key = spec.raw === nothing ? (spec.kind, node) : spec.raw
+    frame = _constraint_frame!(constraint_cache, key, spec, base_pos, rot, length_axis)
+    current_dir = _safe_normalize(rot * _unit_axis(length_axis), frame.axis)
+
+    new_dir = if spec.kind == :plane
+        _constrain_direction_to_plane(base_pos, current_dir, frame, spec)
+    else
+        tip = base_pos + current_dir * length_val
+        target_tip = _constrain_tip_by_geometry(base_pos, tip, frame, spec)
+        target_tip === nothing ? nothing : _safe_normalize(target_tip - base_pos, current_dir)
+    end
+
+    new_dir === nothing && return rot
+    if dot(new_dir, current_dir) <= 0.0
+        new_dir = frame.axis
+    end
+
+    return _rotation_from_direction_with_hint(new_dir, length_axis, rot)
+end
+
 function _young_final_angle(
     young_modulus::Float64,
     z_angle::Float64,
@@ -1567,6 +1887,7 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
     top_pos = IdDict{Any,SVector{3,Float64}}()
     direction = IdDict{Any,SVector{3,Float64}}()
     base_rot = IdDict{Any,SMatrix{3,3,Float64,9}}()
+    constraint_cache = Dict{Any,Any}()
 
     traverse!(mtg) do node
         node_convention = _resolve_node_convention(node, convention, conventions)
@@ -1748,6 +2069,13 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
             end
         end
 
+        length_val, width_val, thickness_val = _resolve_scale_values(
+            node,
+            node_convention;
+            warn_missing=warn_missing,
+            length_override=endpoint_length,
+        )
+
         rot = if endpoint_override
             current_base_rot
         else
@@ -1756,15 +2084,18 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
             r = _apply_orthotropy_stiffness_stage(node, r, node_convention.length_axis, amap_cfg)
             r = _apply_deviation_stage(node, r, amap_cfg)
             r = r * _rotation_part(local_euler_t)
-            _apply_projection_stage(node, r, node_convention.length_axis, amap_cfg)
+            r = _apply_projection_stage(node, r, node_convention.length_axis, amap_cfg)
+            _apply_geometry_constraint_stage(
+                node,
+                r,
+                current_base_pos,
+                node_convention.length_axis,
+                length_val,
+                amap_cfg,
+                constraint_cache,
+            )
         end
 
-        length_val, width_val, thickness_val = _resolve_scale_values(
-            node,
-            node_convention;
-            warn_missing=warn_missing,
-            length_override=endpoint_length,
-        )
         lin = rot * _scale_linear(node_convention.length_axis, length_val, width_val, thickness_val)
         world_t = AffineMap(Matrix(lin), current_base_pos)
         world_angles_t = AffineMap(Matrix(rot), current_base_pos)
