@@ -469,6 +469,7 @@ function _insertion_mode(node, aliases::Vector{Symbol})
     mode = uppercase(strip(raw))
     mode == "CENTER" && return :CENTER
     mode == "BORDER" && return :BORDER
+    mode == "SURFACE" && return :BORDER
     mode == "WIDTH" && return :WIDTH
     mode == "HEIGHT" && return :HEIGHT
     return :BORDER
@@ -1031,7 +1032,9 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
                 amap_cfg.order_override_mode,
             )
             if extra_x_deg != 0.0
-                local_insertion_t = local_insertion_t ∘ _rotation_linear_map(:x, deg2rad(extra_x_deg))
+                # Keep fallback XInsertionAngle in the same stage/order as insertion angles.
+                # Appending on the right applies it first and can cancel azimuth spread.
+                local_insertion_t = _rotation_linear_map(:x, deg2rad(extra_x_deg)) ∘ local_insertion_t
             end
         end
 
