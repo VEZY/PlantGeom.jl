@@ -163,7 +163,16 @@
             SVector{3,Float64}(leaf_b[:geometry].transformation(SVector(0.0, 1.0, 0.0))) -
             SVector{3,Float64}(leaf_b[:geometry].transformation(p0)),
         )
+        d_none_a = LinearAlgebra.normalize(
+            SVector{3,Float64}(leaf_a[:geometry].transformation(p1)) -
+            SVector{3,Float64}(leaf_a[:geometry].transformation(p0)),
+        )
+        d_none_b = LinearAlgebra.normalize(
+            SVector{3,Float64}(leaf_b[:geometry].transformation(p1)) -
+            SVector{3,Float64}(leaf_b[:geometry].transformation(p0)),
+        )
         @test LinearAlgebra.dot(y_none_a, y_none_b) > 0.999
+        @test LinearAlgebra.dot(d_none_a, d_none_b) > 0.999
 
         reconstruct_geometry_from_attributes!(ramif, ref_meshes; convention=conv, verticil_mode=:rotation360)
 
@@ -175,7 +184,16 @@
             SVector{3,Float64}(leaf_b[:geometry].transformation(SVector(0.0, 1.0, 0.0))) -
             SVector{3,Float64}(leaf_b[:geometry].transformation(p0)),
         )
+        d_rot_a = LinearAlgebra.normalize(
+            SVector{3,Float64}(leaf_a[:geometry].transformation(p1)) -
+            SVector{3,Float64}(leaf_a[:geometry].transformation(p0)),
+        )
+        d_rot_b = LinearAlgebra.normalize(
+            SVector{3,Float64}(leaf_b[:geometry].transformation(p1)) -
+            SVector{3,Float64}(leaf_b[:geometry].transformation(p0)),
+        )
         @test LinearAlgebra.dot(y_rot_a, y_rot_b) < -0.9
+        @test LinearAlgebra.dot(d_rot_a, d_rot_b) < 0.5
     end
 
     # Reproducible docs fixture: check we reconstruct all organs and leaves are not parallel.
