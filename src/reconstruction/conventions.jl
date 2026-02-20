@@ -424,6 +424,67 @@ function _has_explicit_translation(node, convention::GeometryConvention)
     _has_numeric_alias(node, convention.translation_map[:z])
 end
 
+function _resolve_scale_values(
+    node,
+    convention::GeometryConvention;
+    warn_missing::Bool=false,
+    length_override::Union{Nothing,Float64}=nothing,
+)
+    length_val = _resolve_value(node, convention.scale_map[:length], :length; default=1.0, warn_missing=warn_missing)
+    width_val = _resolve_value(node, convention.scale_map[:width], :width; default=1.0, warn_missing=warn_missing)
+    thickness_val = _resolve_value(
+        node,
+        convention.scale_map[:thickness],
+        :thickness;
+        default=width_val,
+        warn_missing=warn_missing,
+    )
+
+    if length_override !== nothing
+        length_val = length_override
+    end
+
+    return length_val, width_val, thickness_val
+end
+
+@inline function _scale_linear(length_axis::Symbol, length_val::Float64, width_val::Float64, thickness_val::Float64)
+    sx, sy, sz = _scale_components(length_axis, length_val, width_val, thickness_val)
+    return SMatrix{3,3,Float64}(sx, 0.0, 0.0, 0.0, sy, 0.0, 0.0, 0.0, sz)
+end
+
+function _resolve_endpoint_position(node, options::AmapReconstructionOptions; warn_missing::Bool=false)
+    ex, fx = _resolve_alias(node, options.endpoint_x_aliases)
+    ey, fy = _resolve_alias(node, options.endpoint_y_aliases)
+    ez, fz = _resolve_alias(node, options.endpoint_z_aliases)
+
+    has_any = (fx !== nothing) || (fy !== nothing) || (fz !== nothing)
+    has_all = (fx !== nothing) && (fy !== nothing) && (fz !== nothing) &&
+              (ex !== nothing) && (ey !== nothing) && (ez !== nothing)
+
+    if has_any && !has_all
+        warn_missing && @warn "Incomplete EndX/EndY/EndZ endpoint ignored for node." found=(fx, fy, fz)
+        return nothing
+    end
+
+    return has_all ? SVector{3,Float64}(ex, ey, ez) : nothing
+end
+
+function _rotation_from_direction_with_hint(
+    direction::SVector{3,Float64},
+    length_axis::Symbol,
+    hint_rot::SMatrix{3,3,Float64,9},
+)
+    dir = _safe_normalize(direction, _unit_axis(length_axis))
+    secondary_axis = _secondary_axis(length_axis)
+    normal_axis = _normal_axis(length_axis)
+    hint_secondary = _axis_column(hint_rot, secondary_axis)
+    hint_normal = _axis_column(hint_rot, normal_axis)
+
+    secondary = _normalize_perpendicular(hint_secondary, dir, _any_perpendicular(dir, hint_normal))
+    normal = _normalize_perpendicular(cross(dir, secondary), dir, _any_perpendicular(dir, hint_normal))
+    return _build_rotation_from_local_axes(length_axis, dir, secondary, normal)
+end
+
 function _resolve_ref_mesh(node, ref_meshes::AbstractDict)
     name = symbol(node)
     haskey(ref_meshes, name) && return ref_meshes[name]
@@ -1167,6 +1228,10 @@ topological convention close to AMAP:
 - `"+"`: default insertion mode is `BORDER`, adding a lateral offset of
   `BorderInsertionOffset` (or bearer top width / 2)
 - `"/"`: attach to parent base
+
+If endpoint attributes (`EndX`/`EndY`/`EndZ` aliases) are present, they override angle-derived
+orientation and `Length` for that node: base position comes from translation/topology, and
+orientation+length are inferred from `(base -> end)`.
 """
 function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
     convention=default_amap_geometry_convention(),
@@ -1192,8 +1257,7 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
         error("Invalid `amap_options` value. Expected `AmapReconstructionOptions`.")
 
     amap_insertion_mode_aliases = _compose_aliases(amap_cfg.insertion_mode_aliases, amap_cfg.insertion_aliases)
-    effective_phyllotaxy_aliases = phyllotaxy_aliases_norm == [:Phyllotaxy, :phyllotaxy, :PHYLLOTAXY] ?
-                                   amap_cfg.phyllotaxy_aliases : phyllotaxy_aliases_norm
+    effective_phyllotaxy_aliases = _compose_aliases(amap_cfg.phyllotaxy_aliases, phyllotaxy_aliases_norm)
     effective_verticil_mode = verticil_mode_norm == :rotation360 ? amap_cfg.verticil_mode : verticil_mode_norm
 
     if amap_cfg.auto_compute_branching_order &&
@@ -1265,7 +1329,6 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
         world_t = nothing
         world_angles_t = nothing
 
-        conv_scale_only = _convention_scale_only(node_convention)
         conv_euler_only = _convention_euler_angles_only(node_convention)
 
         if _resolve_bool_alias(node, amap_cfg.orientation_reset_aliases; default=false)
@@ -1282,6 +1345,25 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
             end
         end
 
+        endpoint_pos = _resolve_endpoint_position(node, amap_cfg; warn_missing=warn_missing)
+        endpoint_override = false
+        endpoint_length = nothing
+        if endpoint_pos !== nothing
+            endpoint_vec = endpoint_pos - current_base_pos
+            endpoint_length_val = norm(endpoint_vec)
+            if endpoint_length_val > 1e-12
+                current_base_rot = _rotation_from_direction_with_hint(
+                    endpoint_vec,
+                    node_convention.length_axis,
+                    current_base_rot,
+                )
+                endpoint_override = true
+                endpoint_length = endpoint_length_val
+            else
+                warn_missing && @warn "Degenerate endpoint (base == end) ignored for node."
+            end
+        end
+
         order_value = _resolve_order_value(node, amap_cfg.order_attribute)
         insertion_y_override = _effective_override_value(order_value, amap_cfg.insertion_y_by_order)
         phyllotaxy_override = _effective_override_value(order_value, amap_cfg.phyllotaxy_by_order)
@@ -1291,17 +1373,17 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
             override_by_axis[:y] = insertion_y_override
         end
 
-        local_scale_t = transformation_from_attributes(node; convention=conv_scale_only, warn_missing=warn_missing)
-        local_insertion_t = _angles_transform(
+        local_insertion_t = endpoint_override ? IdentityTransformation() : _angles_transform(
             node,
             conv_insertion_only.angle_map;
             warn_missing=warn_missing,
             override_axis_deg=override_by_axis,
             override_mode=amap_cfg.order_override_mode,
         )
-        local_euler_t = transformation_from_attributes(node; convention=conv_euler_only, warn_missing=warn_missing)
+        local_euler_t = endpoint_override ? IdentityTransformation() :
+                        transformation_from_attributes(node; convention=conv_euler_only, warn_missing=warn_missing)
 
-        if link_type == "+" && parent_node !== nothing
+        if !endpoint_override && link_type == "+" && parent_node !== nothing
             extra_x_deg = _fallback_insertion_x_angle_deg_amap(
                 node,
                 parent_node,
@@ -1320,7 +1402,8 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
 
         base_t = _frame_transform(current_base_rot, current_base_pos)
 
-        if !explicit_translation && link_type == "+" && parent_node !== nothing && haskey(base_rot, parent_node)
+        if !endpoint_override && !explicit_translation &&
+           link_type == "+" && parent_node !== nothing && haskey(base_rot, parent_node)
             mode_aliases = _compose_aliases(insertion_mode_aliases_norm, amap_insertion_mode_aliases)
             mode = _insertion_mode(node, mode_aliases)
             if mode != :CENTER
@@ -1373,19 +1456,33 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
             end
         end
 
-        rot = _rotation_part(base_t ∘ local_insertion_t)
-        rot = _apply_azimuth_elevation_stage(node, rot, amap_cfg)
-        rot = _apply_orthotropy_stiffness_stage(node, rot, node_convention.length_axis, amap_cfg)
-        rot = _apply_deviation_stage(node, rot, amap_cfg)
-        rot = rot * _rotation_part(local_euler_t)
-        rot = _apply_projection_stage(node, rot, node_convention.length_axis, amap_cfg)
+        rot = if endpoint_override
+            current_base_rot
+        else
+            r = _rotation_part(base_t ∘ local_insertion_t)
+            r = _apply_azimuth_elevation_stage(node, r, amap_cfg)
+            r = _apply_orthotropy_stiffness_stage(node, r, node_convention.length_axis, amap_cfg)
+            r = _apply_deviation_stage(node, r, amap_cfg)
+            r = r * _rotation_part(local_euler_t)
+            _apply_projection_stage(node, r, node_convention.length_axis, amap_cfg)
+        end
 
-        lin = rot * _linear_part(local_scale_t)
+        length_val, width_val, thickness_val = _resolve_scale_values(
+            node,
+            node_convention;
+            warn_missing=warn_missing,
+            length_override=endpoint_length,
+        )
+        lin = rot * _scale_linear(node_convention.length_axis, length_val, width_val, thickness_val)
         world_t = AffineMap(Matrix(lin), current_base_pos)
         world_angles_t = AffineMap(Matrix(rot), current_base_pos)
 
         p0 = _to_svec3(world_t(_ZERO3))
         p1 = _to_svec3(world_t(_unit_axis(node_convention.length_axis)))
+        if endpoint_override
+            p0 = current_base_pos
+            p1 = endpoint_pos
+        end
         rot = _rotation_part(world_angles_t)
         dir = _normalize_direction(p1 - p0, rot, node_convention.length_axis)
 

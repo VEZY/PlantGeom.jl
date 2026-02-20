@@ -69,6 +69,9 @@ The same MTG can be reconstructed very differently depending on orientation and 
 | Plagiotropy aliases | `Plagiotropy`, `plagiotropy` |
 | NormalUp aliases | `NormalUp`, `normal_up` |
 | Orientation reset aliases | `OrientationReset`, `orientation_reset`, `Global`, `global` |
+| Endpoint X aliases | `EndX`, `end_x`, `endx` |
+| Endpoint Y aliases | `EndY`, `end_y`, `endy` |
+| Endpoint Z aliases | `EndZ`, `end_z`, `endz` |
 | Order attribute | `:branching_order` |
 | Auto order compute | `true` |
 | Order override mode | `:override` |
@@ -116,12 +119,36 @@ When to use what:
 
 When `XX/YY/ZZ` are present, placement is explicit. When missing, PlantGeom reconstructs position from topology (`Offset`, insertion mode, bearer frame).
 
+With endpoint columns (`EndX`/`EndY`/`EndZ`), PlantGeom uses:
+
+- start = explicit translation if present, else topology-derived base
+- end = provided endpoint coordinates
+- orientation and effective `Length` = inferred from `(start -> end)`
+
 Example: setting `XX/YY/ZZ` for one leaf detaches it from topology and can produce a correct but non-botanical placement if coordinates are inconsistent with bearer geometry.
 
 When to use what:
 
 - Use topology-based placement for botanical reconstructions.
 - Use explicit `XX/YY/ZZ` when ingesting already solved 3D coordinates from another pipeline.
+- Use `EndX`/`EndY`/`EndZ` when start-end coordinates are known and must dominate angle-derived orientation.
+
+### 2.6 Endpoint coordinates (`EndX`/`EndY`/`EndZ`)
+
+`EndX`/`EndY`/`EndZ` activate endpoint-driven reconstruction for that node.
+
+Practical precedence:
+
+1. Base position is resolved first (explicit `XX/YY/ZZ` if present, otherwise topology).
+2. If `EndX`/`EndY`/`EndZ` are all numeric, orientation and length are computed from base-to-end.
+3. Angle stages (`Insertion`, azimuth/elevation, orthotropy/stiffness angle, deviation, Euler, projection) are skipped for that node.
+4. Width/thickness scaling still uses `Width`/`Thickness`.
+
+Notes:
+
+- If only some endpoint columns are present, endpoint override is ignored (lenient fallback).
+- If endpoint equals base (zero-length vector), endpoint override is ignored.
+- Successor `"<"` nodes continue from this computed endpoint through normal topology rules.
 
 ### 2.4 AMAP option parameters (practical decisions)
 
@@ -210,13 +237,14 @@ Rule of thumb:
 Reconstruction applies stages in this order:
 
 1. Translation / topology base frame.
-2. Insertion angles + insertion mode offset.
-3. Azimuth/Elevation world orientation override.
-4. Orthotropy/StiffnessAngle bending.
-5. DeviationAngle world rotation.
-6. Euler stage.
-7. Projection stage (`NormalUp`, then `Plagiotropy`).
-8. Stiffness propagation stage (`Stifness` / `StifnessTapering`) writing `StiffnessAngle` on `/` components.
+2. Endpoint override check (`EndX`/`EndY`/`EndZ`).
+3. Insertion angles + insertion mode offset.
+4. Azimuth/Elevation world orientation override.
+5. Orthotropy/StiffnessAngle bending.
+6. DeviationAngle world rotation.
+7. Euler stage.
+8. Projection stage (`NormalUp`, then `Plagiotropy`).
+9. Stiffness propagation stage (`Stifness` / `StifnessTapering`) writing `StiffnessAngle` on `/` components.
 
 Key rules:
 
@@ -225,6 +253,7 @@ Key rules:
 - If both projection flags are enabled, `NormalUp` is applied before `Plagiotropy`.
 - Propagated stiffness angles are written to component children before those children are reconstructed.
 - Explicit translation attributes keep the node position explicit; topology-based placement is used only when `XX/YY/ZZ` are absent.
+- When endpoint override is active, angle stages are skipped and node `Length` is inferred from endpoint distance.
 
 ## 4. Local vs Global Angles in `GeometryConvention`
 

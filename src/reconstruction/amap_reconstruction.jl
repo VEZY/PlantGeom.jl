@@ -16,6 +16,9 @@ struct AmapReconstructionOptions
     normal_up_aliases::Vector{Symbol}
     orientation_reset_aliases::Vector{Symbol}
     insertion_aliases::Vector{Symbol}
+    endpoint_x_aliases::Vector{Symbol}
+    endpoint_y_aliases::Vector{Symbol}
+    endpoint_z_aliases::Vector{Symbol}
     order_attribute::Symbol
     auto_compute_branching_order::Bool
     insertion_y_by_order::Dict{Int,Float64}
@@ -56,6 +59,9 @@ function AmapReconstructionOptions(;
     normal_up_aliases=[:NormalUp, :normal_up],
     orientation_reset_aliases=[:OrientationReset, :orientation_reset, :Global, :global],
     insertion_aliases=[:Insertion, :insertion],
+    endpoint_x_aliases=[:EndX, :end_x, :endx],
+    endpoint_y_aliases=[:EndY, :end_y, :endy],
+    endpoint_z_aliases=[:EndZ, :end_z, :endz],
     order_attribute=:branching_order,
     auto_compute_branching_order::Bool=true,
     insertion_y_by_order=Dict{Int,Float64}(),
@@ -85,6 +91,9 @@ function AmapReconstructionOptions(;
         _amap_normalize_aliases(normal_up_aliases),
         _amap_normalize_aliases(orientation_reset_aliases),
         _amap_normalize_aliases(insertion_aliases),
+        _amap_normalize_aliases(endpoint_x_aliases),
+        _amap_normalize_aliases(endpoint_y_aliases),
+        _amap_normalize_aliases(endpoint_z_aliases),
         _amap_as_symbol(order_attribute),
         auto_compute_branching_order,
         _amap_normalize_order_map(insertion_y_by_order),

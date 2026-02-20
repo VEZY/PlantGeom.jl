@@ -26,7 +26,7 @@ This matrix summarizes current PlantGeom parity for AMAPStudio core reconstructi
 | --- | --- | --- |
 | Full `AllometryDelegate` parity | Deferred | Set per-node geometry attributes directly before reconstruction. |
 | Geometrical constraints (`GeometricalConstraint` cones/cylinders/planes) | Deferred | Apply custom post-transforms or custom filtering externally. |
-| Coordinate delegate variants using absolute endpoints (`EndX/EndY/EndZ`) | Deferred | Use explicit `XX/YY/ZZ` or topology placement. |
+| Coordinate delegate variants using absolute endpoints (`EndX/EndY/EndZ`) | Implemented | Base position comes from translation/topology; endpoint drives node orientation and effective length. |
 | Topology editor specific behaviors | Deferred | Use explicit conventions and `conventions=Dict(...)` overrides. |
 
 ## Recommendation

@@ -546,6 +546,105 @@
         @test LinearAlgebra.dot(y_a, y_b) < -0.9
     end
 
+    @testset "endpoint coordinates override orientation and length" begin
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        stem[:Length] = 0.4
+        stem[:Width] = 0.15
+        stem[:Thickness] = 0.12
+        stem[:XX] = 1.0
+        stem[:YY] = 2.0
+        stem[:ZZ] = 3.0
+        stem[:EndX] = 1.0
+        stem[:EndY] = 4.0
+        stem[:EndZ] = 3.0
+        # Should be ignored when End* coordinates are valid.
+        stem[:Azimuth] = 180.0
+        stem[:YInsertionAngle] = 45.0
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        base = SVector{3,Float64}(stem[:geometry].transformation(p0))
+        top = SVector{3,Float64}(stem[:geometry].transformation(px))
+        dir = LinearAlgebra.normalize(top - base)
+
+        @test LinearAlgebra.norm(base - SVector{3,Float64}(1.0, 2.0, 3.0)) < 1e-10
+        @test LinearAlgebra.norm(top - SVector{3,Float64}(1.0, 4.0, 3.0)) < 1e-10
+        @test abs(LinearAlgebra.norm(top - base) - 2.0) < 1e-10
+        @test dir[2] > 0.999
+    end
+
+    @testset "endpoint coordinates work with topology start and successor chaining" begin
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
+        i3 = Node(i2, NodeMTG("<", "Internode", 3, 2))
+
+        i1[:Length] = 1.0
+        i1[:Width] = 0.1
+        i1[:Thickness] = 0.1
+
+        i2[:Length] = 0.2
+        i2[:Width] = 0.08
+        i2[:Thickness] = 0.08
+        i2[:EndX] = 2.0
+        i2[:EndY] = 1.0
+        i2[:EndZ] = 0.0
+
+        i3[:Length] = 0.5
+        i3[:Width] = 0.07
+        i3[:Thickness] = 0.07
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        i1_top = SVector{3,Float64}(i1[:geometry].transformation(px))
+        i2_base = SVector{3,Float64}(i2[:geometry].transformation(p0))
+        i2_top = SVector{3,Float64}(i2[:geometry].transformation(px))
+        i3_base = SVector{3,Float64}(i3[:geometry].transformation(p0))
+
+        @test LinearAlgebra.norm(i2_base - i1_top) < 1e-10
+        @test LinearAlgebra.norm(i2_top - SVector{3,Float64}(2.0, 1.0, 0.0)) < 1e-10
+        @test LinearAlgebra.norm(i3_base - i2_top) < 1e-10
+    end
+
+    @testset "incomplete endpoint coordinates are ignored" begin
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        stem[:Length] = 1.0
+        stem[:Width] = 0.1
+        stem[:Thickness] = 0.1
+        stem[:YInsertionAngle] = 90.0
+        stem[:EndX] = 2.0
+        # EndY/EndZ intentionally missing.
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        base = SVector{3,Float64}(stem[:geometry].transformation(p0))
+        top = SVector{3,Float64}(stem[:geometry].transformation(px))
+        dir = LinearAlgebra.normalize(top - base)
+
+        @test abs(dir[3]) > 0.99
+        @test abs(dir[1]) < 1e-6
+    end
+
     @testset "default amap_options matches explicit default options" begin
         file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))), "test", "files", "simple_plant.mtg")
         mtg_a = read_mtg(file)
