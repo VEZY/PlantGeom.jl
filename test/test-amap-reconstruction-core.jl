@@ -124,6 +124,125 @@
         @test dir_stiff[3] < 0.0
     end
 
+    @testset "stiffness propagation to component children" begin
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        c1 = Node(stem, NodeMTG("/", "Leaf", 1, 3))
+        c2 = Node(stem, NodeMTG("/", "Leaf", 2, 3))
+
+        stem[:Length] = 40.0
+        stem[:Width] = 0.15
+        stem[:Thickness] = 0.15
+        stem[:Stifness] = 5.0e4
+        stem[:StifnessTapering] = 0.6
+
+        for c in (c1, c2)
+            c[:Length] = 0.25
+            c[:Width] = 0.08
+            c[:Thickness] = 0.01
+        end
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        @test haskey(c1, :StiffnessAngle)
+        @test haskey(c2, :StiffnessAngle)
+        @test c2[:StiffnessAngle] < -1e-6
+
+        mtg_up = deepcopy(mtg)
+        comps_up = Any[]
+        stem_up = nothing
+        traverse!(mtg_up) do node
+            if symbol(node) == "Internode" && stem_up === nothing
+                stem_up = node
+            elseif symbol(node) == "Leaf"
+                push!(comps_up, node)
+            end
+        end
+        stem_up[:Stifness] = -5.0e4
+        stem_up[:StiffnessApply] = true
+
+        reconstruct_geometry_from_attributes!(
+            mtg_up,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+        @test comps_up[2][:StiffnessAngle] > 1e-6
+
+        mtg_off = deepcopy(mtg)
+        comps_off = Any[]
+        stem_off = nothing
+        traverse!(mtg_off) do node
+            if symbol(node) == "Internode" && stem_off === nothing
+                stem_off = node
+            elseif symbol(node) == "Leaf"
+                push!(comps_off, node)
+            end
+        end
+        stem_off[:StiffnessApply] = false
+        for c in comps_off
+            c[:StiffnessAngle] = 0.0
+        end
+
+        reconstruct_geometry_from_attributes!(
+            mtg_off,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+        @test comps_off[1][:StiffnessAngle] == 0.0
+        @test comps_off[2][:StiffnessAngle] == 0.0
+    end
+
+    @testset "successor anchors on last component top (AMAP parity)" begin
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        comp1 = Node(stem, NodeMTG("/", "Leaf", 1, 3))
+        comp2 = Node(stem, NodeMTG("/", "Leaf", 2, 3))
+        succ = Node(stem, NodeMTG("<", "Internode", 2, 2))
+
+        stem[:Length] = 0.8
+        stem[:Width] = 0.12
+        stem[:Thickness] = 0.12
+
+        comp1[:Length] = 0.25
+        comp1[:Width] = 0.08
+        comp1[:Thickness] = 0.01
+        comp1[:YInsertionAngle] = 15.0
+
+        comp2[:Length] = 0.35
+        comp2[:Width] = 0.08
+        comp2[:Thickness] = 0.01
+        comp2[:YInsertionAngle] = 55.0
+
+        succ[:Length] = 0.30
+        succ[:Width] = 0.10
+        succ[:Thickness] = 0.10
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        succ_base = SVector{3,Float64}(succ[:geometry].transformation(p0))
+        comp2_top = SVector{3,Float64}(comp2[:geometry].transformation(px))
+        stem_top = SVector{3,Float64}(stem[:geometry].transformation(px))
+
+        @test LinearAlgebra.norm(succ_base - comp2_top) < 1e-10
+        @test LinearAlgebra.norm(comp2_top - stem_top) > 1e-4
+    end
+
     @testset "projection flags normal up and plagiotropy" begin
         mtg = Node(NodeMTG("/", "Plant", 1, 1))
         stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
@@ -148,6 +267,45 @@
                         SVector{3,Float64}(stem[:geometry].transformation(p0))
         @test normal_vec[3] >= -1e-8
         @test secondary_vec[3] >= -1e-8
+    end
+
+    @testset "projection edge case remains stable for non-x length axis" begin
+        conv_z = default_geometry_convention(length_axis=:z)
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        stem[:Length] = 1.0
+        stem[:Width] = 0.2
+        stem[:Thickness] = 0.1
+        stem[:NormalUp] = true
+        stem[:Plagiotropy] = true
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv_z,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        dir_vec = LinearAlgebra.normalize(
+            SVector{3,Float64}(stem[:geometry].transformation(pz)) -
+            SVector{3,Float64}(stem[:geometry].transformation(p0)),
+        )
+        secondary_vec = LinearAlgebra.normalize(
+            SVector{3,Float64}(stem[:geometry].transformation(px)) -
+            SVector{3,Float64}(stem[:geometry].transformation(p0)),
+        )
+        normal_vec = LinearAlgebra.normalize(
+            SVector{3,Float64}(stem[:geometry].transformation(py)) -
+            SVector{3,Float64}(stem[:geometry].transformation(p0)),
+        )
+
+        @test all(isfinite, dir_vec)
+        @test all(isfinite, secondary_vec)
+        @test all(isfinite, normal_vec)
+        @test abs(LinearAlgebra.dot(dir_vec, secondary_vec)) < 1e-6
+        @test abs(LinearAlgebra.dot(dir_vec, normal_vec)) < 1e-6
+        @test abs(LinearAlgebra.dot(secondary_vec, normal_vec)) < 1e-6
     end
 
     @testset "orientation reset on successor axis" begin
