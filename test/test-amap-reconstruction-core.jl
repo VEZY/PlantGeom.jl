@@ -645,6 +645,124 @@
         @test abs(dir[1]) < 1e-6
     end
 
+    @testset "allometry interpolates missing width and height on axis" begin
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
+        i3 = Node(i2, NodeMTG("<", "Internode", 3, 2))
+
+        for n in (i1, i2, i3)
+            n[:Length] = 0.2
+        end
+        i1[:Width] = 0.2
+        i1[:Thickness] = 0.2
+        i3[:Width] = 0.6
+        i3[:Thickness] = 0.4
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        @test isapprox(i2[:Width], 0.4; atol=1e-8)
+        @test isapprox(i2[:Thickness], 0.3; atol=1e-8)
+    end
+
+    @testset "allometry propagation to components split vs copy semantics" begin
+        mtg_split = Node(NodeMTG("/", "Plant", 1, 1))
+        ctrl_split = Node(mtg_split, NodeMTG("/", "Internode", 1, 2))
+        c1 = Node(ctrl_split, NodeMTG("/", "Leaf", 1, 3))
+        c2 = Node(c1, NodeMTG("<", "Leaf", 2, 3))
+
+        ctrl_split[:Length] = 0.8
+        ctrl_split[:Width] = 0.2
+        ctrl_split[:Thickness] = 0.1
+
+        mtg_copy = Node(NodeMTG("/", "Plant", 1, 1))
+        ctrl_copy = Node(mtg_copy, NodeMTG("/", "Internode", 1, 2))
+        c3 = Node(ctrl_copy, NodeMTG("/", "Leaf", 1, 3))
+        c4 = Node(ctrl_copy, NodeMTG("/", "Leaf", 2, 3))
+
+        ctrl_copy[:Length] = 0.8
+        ctrl_copy[:Width] = 0.2
+        ctrl_copy[:Thickness] = 0.1
+
+        reconstruct_geometry_from_attributes!(
+            mtg_split,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+        reconstruct_geometry_from_attributes!(
+            mtg_copy,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        @test isapprox(c1[:Length], 0.4; atol=1e-8)
+        @test isapprox(c2[:Length], 0.4; atol=1e-8)
+        @test isapprox(c3[:Length], 0.8; atol=1e-8)
+        @test isapprox(c4[:Length], 0.8; atol=1e-8)
+        @test isapprox(c1[:Width], 0.2; atol=1e-8)
+        @test isapprox(c2[:Thickness], 0.1; atol=1e-8)
+    end
+
+    @testset "allometry accumulates terminal components to complex when missing" begin
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        complex = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        comp1 = Node(complex, NodeMTG("/", "Leaf", 1, 3))
+        comp2 = Node(comp1, NodeMTG("<", "Leaf", 2, 3))
+
+        comp1[:Length] = 0.3
+        comp1[:Width] = 0.1
+        comp1[:Thickness] = 0.08
+        comp2[:Length] = 0.5
+        comp2[:Width] = 0.25
+        comp2[:Thickness] = 0.12
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        @test isapprox(complex[:Length], 0.8; atol=1e-8)
+        @test isapprox(complex[:Width], 0.25; atol=1e-8)
+        @test isapprox(complex[:Thickness], 0.25; atol=1e-8)
+    end
+
+    @testset "allometry smooths predecessor top dimensions" begin
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
+
+        i1[:Length] = 0.2
+        i1[:Width] = 0.1
+        i1[:Thickness] = 0.1
+        i2[:Length] = 0.2
+        i2[:Width] = 0.3
+        i2[:Thickness] = 0.25
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=amap,
+            root_align=false,
+        )
+
+        @test isapprox(i1[:TopWidth], 0.3; atol=1e-8)
+        @test isapprox(i1[:TopHeight], 0.25; atol=1e-8)
+    end
+
     @testset "default amap_options matches explicit default options" begin
         file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))), "test", "files", "simple_plant.mtg")
         mtg_a = read_mtg(file)

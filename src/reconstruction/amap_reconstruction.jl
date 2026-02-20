@@ -19,6 +19,11 @@ struct AmapReconstructionOptions
     endpoint_x_aliases::Vector{Symbol}
     endpoint_y_aliases::Vector{Symbol}
     endpoint_z_aliases::Vector{Symbol}
+    allometry_enabled::Bool
+    allometry_interpolate_width_height::Bool
+    allometry_default_length::Float64
+    allometry_default_width::Float64
+    allometry_default_height::Float64
     order_attribute::Symbol
     auto_compute_branching_order::Bool
     insertion_y_by_order::Dict{Int,Float64}
@@ -62,6 +67,11 @@ function AmapReconstructionOptions(;
     endpoint_x_aliases=[:EndX, :end_x, :endx],
     endpoint_y_aliases=[:EndY, :end_y, :endy],
     endpoint_z_aliases=[:EndZ, :end_z, :endz],
+    allometry_enabled::Bool=true,
+    allometry_interpolate_width_height::Bool=true,
+    allometry_default_length::Real=1.0,
+    allometry_default_width::Real=1.0,
+    allometry_default_height::Real=1.0,
     order_attribute=:branching_order,
     auto_compute_branching_order::Bool=true,
     insertion_y_by_order=Dict{Int,Float64}(),
@@ -94,6 +104,11 @@ function AmapReconstructionOptions(;
         _amap_normalize_aliases(endpoint_x_aliases),
         _amap_normalize_aliases(endpoint_y_aliases),
         _amap_normalize_aliases(endpoint_z_aliases),
+        allometry_enabled,
+        allometry_interpolate_width_height,
+        Float64(allometry_default_length),
+        Float64(allometry_default_width),
+        Float64(allometry_default_height),
         _amap_as_symbol(order_attribute),
         auto_compute_branching_order,
         _amap_normalize_order_map(insertion_y_by_order),

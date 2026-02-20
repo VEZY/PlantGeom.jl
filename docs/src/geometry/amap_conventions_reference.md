@@ -72,6 +72,11 @@ The same MTG can be reconstructed very differently depending on orientation and 
 | Endpoint X aliases | `EndX`, `end_x`, `endx` |
 | Endpoint Y aliases | `EndY`, `end_y`, `endy` |
 | Endpoint Z aliases | `EndZ`, `end_z`, `endz` |
+| Allometry enabled | `true` |
+| Allometry width/height interpolation | `true` |
+| Allometry terminal default length | `1.0` |
+| Allometry terminal default width | `1.0` |
+| Allometry terminal default height | `1.0` |
 | Order attribute | `:branching_order` |
 | Auto order compute | `true` |
 | Order override mode | `:override` |
@@ -149,6 +154,20 @@ Notes:
 - If only some endpoint columns are present, endpoint override is ignored (lenient fallback).
 - If endpoint equals base (zero-length vector), endpoint override is ignored.
 - Successor `"<"` nodes continue from this computed endpoint through normal topology rules.
+
+### 2.7 Allometry delegate semantics (AMAP core)
+
+PlantGeom now applies AMAP-style allometry preprocessing before geometric stages:
+
+- Missing `Width`/`Height` can be interpolated along `"<"` axis neighborhoods.
+- If only one of width/height is provided, the other is mirrored.
+- If a node has components (`"/"`), measured allometry is propagated to missing component values.
+- Component length propagation uses AMAP split-vs-copy behavior:
+  successor-chain components split parent `Length`; direct (no-succession) components copy parent `Length`.
+- For non-terminal nodes with no measured allometry, size collapses to zero (controller behavior).
+- Terminal nodes with missing allometry receive configurable defaults.
+- Missing predecessor `TopWidth`/`TopHeight` are smoothed from next same-type successor bottom sizes.
+- Missing complex-node allometry is accumulated from terminal components (length sum, width max).
 
 ### 2.4 AMAP option parameters (practical decisions)
 
@@ -236,15 +255,16 @@ Rule of thumb:
 
 Reconstruction applies stages in this order:
 
-1. Translation / topology base frame.
-2. Endpoint override check (`EndX`/`EndY`/`EndZ`).
-3. Insertion angles + insertion mode offset.
-4. Azimuth/Elevation world orientation override.
-5. Orthotropy/StiffnessAngle bending.
-6. DeviationAngle world rotation.
-7. Euler stage.
-8. Projection stage (`NormalUp`, then `Plagiotropy`).
-9. Stiffness propagation stage (`Stifness` / `StifnessTapering`) writing `StiffnessAngle` on `/` components.
+1. Allometry preprocessing (interpolation, propagation, smoothing, complex accumulation).
+2. Translation / topology base frame.
+3. Endpoint override check (`EndX`/`EndY`/`EndZ`).
+4. Insertion angles + insertion mode offset.
+5. Azimuth/Elevation world orientation override.
+6. Orthotropy/StiffnessAngle bending.
+7. DeviationAngle world rotation.
+8. Euler stage.
+9. Projection stage (`NormalUp`, then `Plagiotropy`).
+10. Stiffness propagation stage (`Stifness` / `StifnessTapering`) writing `StiffnessAngle` on `/` components.
 
 Key rules:
 
@@ -254,6 +274,7 @@ Key rules:
 - Propagated stiffness angles are written to component children before those children are reconstructed.
 - Explicit translation attributes keep the node position explicit; topology-based placement is used only when `XX/YY/ZZ` are absent.
 - When endpoint override is active, angle stages are skipped and node `Length` is inferred from endpoint distance.
+- Allometry preprocessing can write inferred values back to nodes (`Length`, `Width`, `Thickness`, `TopWidth`, `TopHeight`) when these are missing.
 
 ## 4. Local vs Global Angles in `GeometryConvention`
 

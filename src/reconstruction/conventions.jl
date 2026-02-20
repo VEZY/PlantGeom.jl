@@ -96,7 +96,7 @@ function default_geometry_convention(; angle_unit::Symbol=:deg, length_axis::Sym
         scale_map=Dict(
             :length => [:Length, :length, :L, :l],
             :width => [:Width, :width, :W, :w],
-            :thickness => [:Thickness, :thickness, :Depth, :depth],
+            :thickness => [:Thickness, :thickness, :Depth, :depth, :Height, :height, :H, :h],
         ),
         angle_map=[
             (names=[:XEuler, :x_euler, :xeuler], axis=:x, frame=:local, unit=angle_unit, pivot=:origin),
@@ -129,7 +129,7 @@ function default_amap_geometry_convention(; angle_unit::Symbol=:deg)
         scale_map=Dict(
             :length => [:Length, :length, :L, :l],
             :width => [:Width, :width, :W, :w],
-            :thickness => [:Thickness, :thickness, :Depth, :depth],
+            :thickness => [:Thickness, :thickness, :Depth, :depth, :Height, :height, :H, :h],
         ),
         angle_map=[
             (names=[:XInsertionAngle, :x_insertion_angle, :xinsertionangle], axis=:x, frame=:local, unit=angle_unit, pivot=:origin),
@@ -347,6 +347,8 @@ end
 const _ZERO3 = SVector{3,Float64}(0.0, 0.0, 0.0)
 const _I3 = SMatrix{3,3,Float64,9}(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
 const _UP3 = SVector{3,Float64}(0.0, 0.0, 1.0)
+const _TOP_WIDTH_ALIASES = [:TopWidth, :top_width, :topwidth]
+const _TOP_HEIGHT_ALIASES = [:TopHeight, :top_height, :topheight]
 
 @inline _to_svec3(v) = SVector{3,Float64}(Float64(v[1]), Float64(v[2]), Float64(v[3]))
 
@@ -422,6 +424,304 @@ function _has_explicit_translation(node, convention::GeometryConvention)
     _has_numeric_alias(node, convention.translation_map[:x]) ||
     _has_numeric_alias(node, convention.translation_map[:y]) ||
     _has_numeric_alias(node, convention.translation_map[:z])
+end
+
+@inline function _predecessor_in_axis(node)
+    isroot(node) && return nothing
+    return link(node) == "<" ? parent(node) : nothing
+end
+
+function _first_successor_in_axis(node)
+    for child in children(node)
+        link(child) == "<" && return child
+    end
+    return nothing
+end
+
+function _position_in_axis(node)
+    pos = 1
+    cur = node
+    while true
+        pred = _predecessor_in_axis(cur)
+        pred === nothing && return pos
+        pos += 1
+        cur = pred
+    end
+end
+
+function _has_original_numeric(original_values::IdDict{Any,Union{Nothing,Float64}}, node)
+    haskey(original_values, node) && original_values[node] !== nothing
+end
+
+function _interpolate_measure(
+    node,
+    original_values::IdDict{Any,Union{Nothing,Float64}},
+)
+    prev_value = nothing
+    pos_a = 0
+    n = node
+    while true
+        n = _predecessor_in_axis(n)
+        n === nothing && break
+        if _has_original_numeric(original_values, n)
+            prev_value = original_values[n]
+            pos_a = _position_in_axis(n) + 1
+            break
+        end
+    end
+
+    next_value = nothing
+    pos_b = 0
+    n = node
+    while true
+        n = _first_successor_in_axis(n)
+        n === nothing && break
+        if _has_original_numeric(original_values, n)
+            next_value = original_values[n]
+            pos_b = _position_in_axis(n) + 1
+            break
+        end
+    end
+
+    if prev_value !== nothing && next_value !== nothing && pos_b != pos_a
+        return (_position_in_axis(node) + 1 - pos_a) * (next_value - prev_value) / (pos_b - pos_a) + prev_value
+    elseif prev_value !== nothing
+        return prev_value
+    elseif next_value !== nothing
+        return next_value
+    end
+    return nothing
+end
+
+function _set_alias_value!(node, aliases::Vector{Symbol}, value::Float64)
+    isempty(aliases) && return
+    node[first(aliases)] = value
+end
+
+function _component_children(node)
+    out = Any[]
+    for child in children(node)
+        link(child) == "/" || continue
+        cur = child
+        while cur !== nothing
+            push!(out, cur)
+            cur = _first_successor_in_axis(cur)
+        end
+    end
+    return out
+end
+
+function _components_are_successive(components_nodes)
+    isempty(components_nodes) && return false
+    component_set = Set(components_nodes)
+    for n in components_nodes
+        pred = _predecessor_in_axis(n)
+        if pred !== nothing && (pred in component_set)
+            return true
+        end
+    end
+    return false
+end
+
+@inline function _complex_node(node)
+    isroot(node) && return nothing
+
+    lnk = link(node)
+    if lnk == "/"
+        return parent(node)
+    elseif lnk == "<"
+        cur = node
+        while true
+            pred = _predecessor_in_axis(cur)
+            pred === nothing && return nothing
+            if link(pred) == "/"
+                return parent(pred)
+            end
+            cur = pred
+        end
+    end
+
+    return nothing
+end
+
+function _prepare_amap_allometry!(
+    mtg,
+    default_convention::GeometryConvention,
+    conventions::AbstractDict,
+    options::AmapReconstructionOptions,
+)
+    options.allometry_enabled || return
+
+    nodes = Any[]
+    traverse!(mtg) do node
+        push!(nodes, node)
+    end
+
+    orig_length = IdDict{Any,Union{Nothing,Float64}}()
+    orig_width = IdDict{Any,Union{Nothing,Float64}}()
+    orig_height = IdDict{Any,Union{Nothing,Float64}}()
+    orig_top_width = IdDict{Any,Union{Nothing,Float64}}()
+    orig_top_height = IdDict{Any,Union{Nothing,Float64}}()
+
+    for node in nodes
+        conv = _resolve_node_convention(node, default_convention, conventions)
+        len, _ = _resolve_alias(node, conv.scale_map[:length])
+        wid, _ = _resolve_alias(node, conv.scale_map[:width])
+        hei, _ = _resolve_alias(node, conv.scale_map[:thickness])
+        tw, _ = _resolve_alias(node, _TOP_WIDTH_ALIASES)
+        th, _ = _resolve_alias(node, _TOP_HEIGHT_ALIASES)
+        orig_length[node] = len
+        orig_width[node] = wid
+        orig_height[node] = hei
+        orig_top_width[node] = tw
+        orig_top_height[node] = th
+    end
+
+    for node in nodes
+        conv = _resolve_node_convention(node, default_convention, conventions)
+        components = _component_children(node)
+        is_terminal = isempty(components)
+
+        measured_length = orig_length[node]
+        measured_width = orig_width[node]
+        measured_height = orig_height[node]
+
+        if options.allometry_interpolate_width_height
+            measured_width === nothing && (measured_width = _interpolate_measure(node, orig_width))
+            measured_height === nothing && (measured_height = _interpolate_measure(node, orig_height))
+        end
+
+        if measured_width !== nothing && measured_height === nothing
+            measured_height = measured_width
+        elseif measured_height !== nothing && measured_width === nothing
+            measured_width = measured_height
+        end
+
+        top_width = orig_top_width[node]
+        top_height = orig_top_height[node]
+        if top_width !== nothing && top_height === nothing
+            top_height = top_width
+        elseif top_height !== nothing && top_width === nothing
+            top_width = top_height
+        end
+
+        if measured_length !== nothing
+            _set_alias_value!(node, conv.scale_map[:length], measured_length)
+        end
+        if measured_width !== nothing
+            _set_alias_value!(node, conv.scale_map[:width], measured_width)
+        end
+        if measured_height !== nothing
+            _set_alias_value!(node, conv.scale_map[:thickness], measured_height)
+        end
+        if top_width !== nothing
+            _set_alias_value!(node, _TOP_WIDTH_ALIASES, top_width)
+        end
+        if top_height !== nothing
+            _set_alias_value!(node, _TOP_HEIGHT_ALIASES, top_height)
+        end
+
+        if !is_terminal
+            if measured_length !== nothing || measured_width !== nothing || measured_height !== nothing
+                split_length = _components_are_successive(components)
+                n_comp = max(length(components), 1)
+                for component_node in components
+                    component_conv = _resolve_node_convention(component_node, default_convention, conventions)
+                    comp_len_orig = get(orig_length, component_node, nothing)
+                    comp_wid_orig = get(orig_width, component_node, nothing)
+                    comp_hei_orig = get(orig_height, component_node, nothing)
+
+                    if measured_length !== nothing && comp_len_orig === nothing
+                        len_value = split_length ? (measured_length / n_comp) : measured_length
+                        _set_alias_value!(component_node, component_conv.scale_map[:length], len_value)
+                    end
+                    if measured_width !== nothing && comp_wid_orig === nothing
+                        _set_alias_value!(component_node, component_conv.scale_map[:width], measured_width)
+                    end
+                    if measured_height !== nothing && comp_hei_orig === nothing
+                        _set_alias_value!(component_node, component_conv.scale_map[:thickness], measured_height)
+                    end
+                end
+            else
+                # AMAP allometry: non-terminal node without measured allometry collapses to zero size.
+                _set_alias_value!(node, conv.scale_map[:length], 0.0)
+                _set_alias_value!(node, conv.scale_map[:width], 0.0)
+                _set_alias_value!(node, conv.scale_map[:thickness], 0.0)
+            end
+        else
+            # AMAP allometry defaults for terminal nodes only when still missing
+            # after interpolation/propagation.
+            cur_len, _ = _resolve_alias(node, conv.scale_map[:length])
+            cur_wid, _ = _resolve_alias(node, conv.scale_map[:width])
+            cur_hei, _ = _resolve_alias(node, conv.scale_map[:thickness])
+
+            cur_len === nothing &&
+                _set_alias_value!(node, conv.scale_map[:length], options.allometry_default_length)
+            cur_wid === nothing &&
+                _set_alias_value!(node, conv.scale_map[:width], options.allometry_default_width)
+            cur_hei === nothing &&
+                _set_alias_value!(node, conv.scale_map[:thickness], options.allometry_default_height)
+        end
+    end
+
+    # Smooth predecessor top diameters/widths when missing.
+    for node in nodes
+        pred = _predecessor_in_axis(node)
+        pred === nothing && continue
+        symbol(pred) == symbol(node) || continue
+
+        node_conv = _resolve_node_convention(node, default_convention, conventions)
+        pred_conv = _resolve_node_convention(pred, default_convention, conventions)
+        node_w = _resolve_value(node, node_conv.scale_map[:width], :width; default=options.allometry_default_width, warn_missing=false)
+        node_h = _resolve_value(node, node_conv.scale_map[:thickness], :thickness; default=options.allometry_default_height, warn_missing=false)
+
+        pred_top_w, _ = _resolve_alias(pred, _TOP_WIDTH_ALIASES)
+        pred_top_h, _ = _resolve_alias(pred, _TOP_HEIGHT_ALIASES)
+        if pred_top_w === nothing
+            _set_alias_value!(pred, _TOP_WIDTH_ALIASES, node_w)
+        end
+        if pred_top_h === nothing
+            _set_alias_value!(pred, _TOP_HEIGHT_ALIASES, node_h)
+        end
+
+        # Keep width/height coherent on predecessor if only one was originally measured.
+        pred_w, _ = _resolve_alias(pred, pred_conv.scale_map[:width])
+        pred_h, _ = _resolve_alias(pred, pred_conv.scale_map[:thickness])
+        if pred_w !== nothing && pred_h === nothing
+            _set_alias_value!(pred, pred_conv.scale_map[:thickness], pred_w)
+        elseif pred_h !== nothing && pred_w === nothing
+            _set_alias_value!(pred, pred_conv.scale_map[:width], pred_h)
+        end
+    end
+
+    # Complex accumulation from terminal nodes only.
+    for node in nodes
+        isempty(_component_children(node)) || continue
+        node_conv = _resolve_node_convention(node, default_convention, conventions)
+        node_length = _resolve_value(node, node_conv.scale_map[:length], :length; default=options.allometry_default_length, warn_missing=false)
+        node_width = _resolve_value(node, node_conv.scale_map[:width], :width; default=options.allometry_default_width, warn_missing=false)
+
+        complex = _complex_node(node)
+        while complex !== nothing
+            complex_conv = _resolve_node_convention(complex, default_convention, conventions)
+
+            if get(orig_length, complex, nothing) === nothing
+                cur_len, _ = _resolve_alias(complex, complex_conv.scale_map[:length])
+                _set_alias_value!(complex, complex_conv.scale_map[:length], (cur_len === nothing ? 0.0 : cur_len) + node_length)
+            end
+
+            if get(orig_width, complex, nothing) === nothing
+                cur_w, _ = _resolve_alias(complex, complex_conv.scale_map[:width])
+                new_w = max(cur_w === nothing ? 0.0 : cur_w, node_width)
+                _set_alias_value!(complex, complex_conv.scale_map[:width], new_w)
+                if get(orig_height, complex, nothing) === nothing
+                    _set_alias_value!(complex, complex_conv.scale_map[:thickness], new_w)
+                end
+            end
+
+            complex = _complex_node(complex)
+        end
+    end
 end
 
 function _resolve_scale_values(
@@ -660,8 +960,7 @@ function _convention_euler_angles_only(convention::GeometryConvention)
 end
 
 function _top_width(node, convention::GeometryConvention)
-    top_width_aliases = [:TopWidth, :top_width, :topwidth]
-    value, found = _resolve_alias(node, top_width_aliases)
+    value, found = _resolve_alias(node, _TOP_WIDTH_ALIASES)
     if found !== nothing && value !== nothing
         return value
     end
@@ -669,8 +968,7 @@ function _top_width(node, convention::GeometryConvention)
 end
 
 function _top_height(node, convention::GeometryConvention)
-    top_height_aliases = [:TopHeight, :top_height, :topheight]
-    value, found = _resolve_alias(node, top_height_aliases)
+    value, found = _resolve_alias(node, _TOP_HEIGHT_ALIASES)
     if found !== nothing && value !== nothing
         return value
     end
@@ -1040,14 +1338,6 @@ function _young_local_flexion(
     flre * sqrt(angle)
 end
 
-function _component_children(node)
-    out = Any[]
-    for child in children(node)
-        link(child) == "/" && push!(out, child)
-    end
-    out
-end
-
 function _resolve_stiffness_straightening(node, options::AmapReconstructionOptions)
     value, found = _resolve_alias(node, options.stiffness_straightening_aliases)
     if found === nothing || value === nothing
@@ -1264,6 +1554,8 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
        !_mtg_has_numeric_attribute(mtg, amap_cfg.order_attribute)
         MultiScaleTreeGraph.branching_order!(mtg; ascend=true)
     end
+
+    _prepare_amap_allometry!(mtg, convention, conventions, amap_cfg)
 
     root_rotation = if root_align && convention.length_axis == :x
         SMatrix{3,3,Float64}(RotMatrix(AngleAxis(-pi / 2, 0.0, 1.0, 0.0)))
