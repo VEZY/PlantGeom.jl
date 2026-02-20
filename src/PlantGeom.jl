@@ -35,6 +35,7 @@ import UUIDs
 
 include("geometry_backend.jl")
 include("structs.jl")
+include("reconstruction/amap_reconstruction.jl")
 include("reconstruction/conventions.jl")
 include("equality.jl")
 include("helpers.jl")
@@ -84,6 +85,8 @@ export nvertices, nelements
 export GeometryConvention
 export default_geometry_convention
 export default_amap_geometry_convention
+export AmapReconstructionOptions
+export default_amap_reconstruction_options
 export transformation_from_attributes
 export geometry_from_attributes
 export reconstruct_geometry_from_attributes!

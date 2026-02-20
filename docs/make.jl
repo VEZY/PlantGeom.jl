@@ -31,6 +31,9 @@ makedocs(;
             "Concepts" => "geometry/geometry.md",
             "Reference Meshes" => "geometry/refmesh.md",
             "Building Plant Models" => "geometry/building_plant_models.md",
+            "AMAP Quickstart" => "geometry/amap_quickstart.md",
+            "AMAP Conventions Reference" => "geometry/amap_conventions_reference.md",
+            "AMAP Parity Matrix" => "geometry/amap_parity_matrix.md",
             "Merging Meshes" => "geometry/merging_geometry.md",
         ],
         "API" => "API.md"

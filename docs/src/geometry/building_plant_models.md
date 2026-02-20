@@ -1,11 +1,17 @@
 # Building Plant Models
 
-This page has two workflows:
+This page is tutorial-first:
 
-1. **Simple tutorial**: read a small `.mtg` file and reconstruct geometry directly from attributes.
-2. **Advanced tutorial**: build topology and attributes from scratch, including local/global angle control.
+1. Read a simple MTG file and reconstruct geometry from attributes.
+2. Build a plant from scratch with custom conventions (including local/global angles).
 
-All reference meshes below follow the AMAP standard direction: organ length is along local `+X`.
+For detailed AMAP conventions, alias tables, precedence rules, and parity status, see:
+
+- [`AMAP Quickstart`](amap_quickstart.md)
+- [`AMAP Conventions Reference`](amap_conventions_reference.md)
+- [`AMAP Parity Matrix`](amap_parity_matrix.md)
+
+All reference meshes below follow the AMAP standard direction: organ length along local `+X`.
 
 ```@setup buildgeom
 using PlantGeom
@@ -121,7 +127,6 @@ function assign_advanced_attributes!(mtg)
             node[:YInsertionAngle] = 48.0
             node[:XEuler] = -25.0
 
-            # Global heading around origin for demonstration.
             node[:Heading] = 10.0 * sin(leaf_rank / 2)
             node[:pivot_x] = 0.0
             node[:pivot_y] = 0.0
@@ -140,9 +145,9 @@ function assign_advanced_attributes!(mtg)
 end
 ```
 
-## 1. Simple Tutorial: Read an MTG File and Reconstruct Geometry
+## 1. Simple Tutorial: Read an MTG and Reconstruct from Attributes
 
-This example uses `/Users/rvezy/Documents/dev/PlantGeom/test/files/reconstruction_standard.mtg`.
+This example uses `test/files/reconstruction_standard.mtg` from PlantGeom.
 
 ```@example buildgeom
 simple_mtg_file = joinpath(pkgdir(PlantGeom), "test", "files", "reconstruction_standard.mtg")
@@ -160,39 +165,6 @@ length(descendants(mtg_simple, :geometry; ignore_nothing=true, self=true))
 ```@example buildgeom
 plantviz(mtg_simple, color=Dict("Stem" => :tan4, "Leaf" => :forestgreen))
 ```
-
-!!! details "Code to generate the MTG file used above"
-    ```julia
-    using MultiScaleTreeGraph
-
-    function write_reconstruction_demo_mtg(path)
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-
-        stem = mtg
-        for i in 1:4
-            stem = Node(stem, NodeMTG(i == 1 ? "/" : "<", "Internode", i, 2))
-            stem[:Length] = 0.28 * 0.94^(i - 1)
-            stem[:Width] = 0.035 * 0.95^(i - 1)
-            stem[:Thickness] = stem[:Width]
-            stem[:YEuler] = 3.0 * sin(i / 2)
-
-            leaf = Node(stem, NodeMTG("+", "Leaf", i, 2))
-            leaf[:Length] = 0.22 + 0.015 * i
-            leaf[:Width] = 0.11 + 0.006 * i
-            leaf[:Thickness] = 0.002
-            leaf[:XInsertionAngle] = 45.0 + 90.0 * (i - 1)
-            leaf[:YInsertionAngle] = 52.0 + 2.0 * sin(i)
-            leaf[:XEuler] = -18.0
-            leaf[:Offset] = 0.82 * stem[:Length]
-            leaf[:BorderInsertionOffset] = 0.5 * stem[:Width]
-        end
-
-        write_mtg(path, mtg)
-        return path
-    end
-
-    write_reconstruction_demo_mtg("reconstruction_standard.mtg")
-    ```
 
 !!! details "Code to reproduce this image"
     ```julia
@@ -254,130 +226,9 @@ plantviz(mtg_simple, color=Dict("Stem" => :tan4, "Leaf" => :forestgreen))
     plantviz(mtg, color=Dict("Stem" => :tan4, "Leaf" => :forestgreen))
     ```
 
-## Conventions and Composition Rules
+## 2. Advanced Tutorial: Build Plant Topology and Attributes from Scratch
 
-`set_geometry_from_attributes!` with an MTG uses both:
-
-1. **Column names** (attributes like `Length`, `XEuler`, `XX`, ...)
-2. **Topology** (`<`, `+`, `/`) when absolute translations are not provided
-
-### 1) Column Naming Convention (AMAP default used in this page)
-
-When you call:
-
-```julia
-set_geometry_from_attributes!(mtg, ref_meshes; convention=default_amap_geometry_convention())
-```
-
-PlantGeom searches for the following column names.
-
-#### Scale columns
-
-| Semantic meaning | Accepted column names (in lookup order) | Default if missing |
-| --- | --- | --- |
-| Length (main axis) | `Length`, `length`, `L`, `l` | `1.0` |
-| Width | `Width`, `width`, `W`, `w` | `1.0` |
-| Thickness | `Thickness`, `thickness`, `Depth`, `depth` | `Width` value |
-
-#### Angle columns
-
-| Semantic meaning | Accepted column names (in lookup order) | Frame | Unit default | Default if missing |
-| --- | --- | --- | --- | --- |
-| Insertion angle X | `XInsertionAngle`, `x_insertion_angle`, `xinsertionangle` | Local | Degrees | `0` |
-| Insertion angle Y | `YInsertionAngle`, `y_insertion_angle`, `yinsertionangle` | Local | Degrees | `0` |
-| Insertion angle Z | `ZInsertionAngle`, `z_insertion_angle`, `zinsertionangle` | Local | Degrees | `0` |
-| Euler angle X | `XEuler`, `x_euler`, `xeuler` | Local | Degrees | `0` |
-| Euler angle Y | `YEuler`, `y_euler`, `yeuler` | Local | Degrees | `0` |
-| Euler angle Z | `ZEuler`, `z_euler`, `zeuler` | Local | Degrees | `0` |
-
-#### Insertion angles vs Euler angles
-
-Both are rotations, but they do not play the same role:
-
-- `X/Y/ZInsertionAngle`: orientation at **attachment/insertion** on the bearer
-  (how the organ comes out from its parent axis).
-- `X/Y/ZEuler`: **local pose refinement** of the organ after insertion
-  (fine twist/tilt/roll in the organ frame).
-
-With `default_amap_geometry_convention()`, the order is:
-
-1. insertion angles
-2. euler angles
-
-So in practice:
-
-- Use insertion angles for main phyllotactic/branching orientation.
-- Use Euler angles for secondary shape/pose adjustment.
-
-#### Translation columns
-
-| Semantic meaning | Accepted column names (in lookup order) | Default if missing |
-| --- | --- | --- |
-| X translation | `XX`, `xx` | `0.0` |
-| Y translation | `YY`, `yy` | `0.0` |
-| Z translation | `ZZ`, `zz` | `0.0` |
-
-Important rule: **first matching alias wins**.  
-Example: if both `Length` and `L` exist, PlantGeom uses `Length`.
-
-### 2) Additional topology-related columns (for `+` links)
-
-These columns are used during topological reconstruction (when `XX/YY/ZZ` are missing):
-
-| Column | Meaning | Default if missing |
-| --- | --- | --- |
-| `Offset` (or `offset`) | Position along bearer axis where branch starts | Bearer `Length` |
-| `BorderInsertionOffset` (or `border_insertion_offset`, `BorderOffset`, `border_offset`) | Lateral shift in BORDER insertion mode | Bearer top width / 2 |
-| `InsertionMode` (or `insertion_mode`) | `BORDER`, `CENTER`, `WIDTH`, `HEIGHT` | `BORDER` |
-
-### 3) Local vs Global angles (how to define them)
-
-By default (AMAP convention), angles are **local**.
-
-| Angle scope | Composition rule | Practical effect |
-| --- | --- | --- |
-| Local (`frame=:local`) | `T = T ∘ R` | Rotation follows current organ frame |
-| Global (`frame=:global`) | `T = recenter(R, pivot) ∘ T` | Rotation is applied in world frame around a pivot |
-
-Pivot options for global angles:
-
-- `:origin`
-- Attribute tuple, e.g. `(:pivot_x, :pivot_y, :pivot_z)`
-- Numeric tuple, e.g. `(0.0, 0.0, 0.0)`
-
-Minimal example of a global heading column:
-
-```julia
-leaf_conv = GeometryConvention(
-    scale_map=amap_convention.scale_map,
-    angle_map=[
-        (names=[:XInsertionAngle], axis=:x, frame=:local, unit=:deg, pivot=:origin),
-        (names=[:YInsertionAngle], axis=:y, frame=:local, unit=:deg, pivot=:origin),
-        (names=[:Heading], axis=:z, frame=:global, unit=:deg, pivot=(:pivot_x, :pivot_y, :pivot_z)),
-    ],
-    translation_map=amap_convention.translation_map,
-    length_axis=:x,
-)
-```
-
-### 4) Topology defaults when absolute translation is absent
-
-Topological placement defaults (AMAP-style):
-
-| Link | Placement rule when `XX/YY/ZZ` are missing |
-| --- | --- |
-| `<` | Successor starts at predecessor top |
-| `+` | Ramification starts at bearer `Offset` (or bearer `Length`) then applies insertion mode (`BORDER` by default) |
-| `/` | Component starts at parent base |
-
-### 5) Units and parsing
-
-- Angles are interpreted in **degrees** by default (`angle_unit=:deg`).
-- You can switch to radians with `default_amap_geometry_convention(angle_unit=:rad)`.
-- Numeric strings are accepted when parsable (`"0.25"`, `"45"`).
-- Missing/non-numeric values are treated as no-op defaults.
-
-## 2. Advanced Tutorial: Build Topology and Attributes from Scratch
+Use a base AMAP convention for most organs, and a leaf-specific convention to add a global heading angle around a configurable pivot.
 
 ```@example buildgeom
 mtg_advanced = build_mtg_from_scratch(8, 4)
@@ -533,9 +384,9 @@ plantviz(
     plantviz(mtg, color=Dict("Stem" => :tan3, "Leaf" => :green4, "Root" => :sienna4))
     ```
 
-## Manual Transform Composition (When Needed)
+## 3. Manual Transform Composition (Advanced)
 
-If you need full control, compose transforms directly with `CoordinateTransformations`:
+When you need full control, compose transforms directly with `CoordinateTransformations`:
 
 ```julia
 manual_t = IdentityTransformation()

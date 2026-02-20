@@ -89,6 +89,95 @@
     first_internode_top = SVector{3,Float64}(first_internode[:geometry].transformation(p1))
     @test LinearAlgebra.norm(center_leaf_base - first_internode_top) < 1e-10
 
+    @testset "insertion mode WIDTH and HEIGHT" begin
+        mode_file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))), "test", "files", "simple_plant.mtg")
+        mode_mtg = read_mtg(mode_file)
+
+        mode_internode = nothing
+        mode_leaf = nothing
+        traverse!(mode_mtg) do node
+            if symbol(node) == "Internode" && mode_internode === nothing
+                mode_internode = node
+            elseif symbol(node) == "Leaf" && mode_leaf === nothing
+                mode_leaf = node
+            end
+        end
+
+        mode_internode[:TopWidth] = 0.12
+        mode_internode[:TopHeight] = 0.04
+        mode_leaf[:InsertionMode] = "WIDTH"
+
+        reconstruct_geometry_from_attributes!(mode_mtg, ref_meshes; convention=conv)
+
+        internode_top = SVector{3,Float64}(mode_internode[:geometry].transformation(p1))
+        internode_base = SVector{3,Float64}(mode_internode[:geometry].transformation(p0))
+        internode_y = SVector{3,Float64}(mode_internode[:geometry].transformation(SVector(0.0, 1.0, 0.0)))
+        internode_z = SVector{3,Float64}(mode_internode[:geometry].transformation(SVector(0.0, 0.0, 1.0)))
+        width_base = SVector{3,Float64}(mode_leaf[:geometry].transformation(p0))
+        width_delta = width_base - internode_top
+
+        width_axis = LinearAlgebra.normalize(internode_y - internode_base)
+        height_axis = LinearAlgebra.normalize(internode_z - internode_base)
+
+        @test LinearAlgebra.norm(width_delta) ≈ 0.06 atol = 1e-8
+        @test abs(LinearAlgebra.dot(LinearAlgebra.normalize(width_delta), width_axis)) > 0.95
+        @test abs(LinearAlgebra.dot(LinearAlgebra.normalize(width_delta), height_axis)) < 0.2
+
+        mode_leaf[:InsertionMode] = "HEIGHT"
+        reconstruct_geometry_from_attributes!(mode_mtg, ref_meshes; convention=conv)
+
+        height_base = SVector{3,Float64}(mode_leaf[:geometry].transformation(p0))
+        height_delta = height_base - internode_top
+
+        @test LinearAlgebra.norm(height_delta) ≈ 0.02 atol = 1e-8
+        @test abs(LinearAlgebra.dot(LinearAlgebra.normalize(height_delta), height_axis)) > 0.95
+        @test abs(LinearAlgebra.dot(LinearAlgebra.normalize(height_delta), width_axis)) < 0.2
+    end
+
+    @testset "phyllotaxy fallback and verticil mode" begin
+        ramif = Node(NodeMTG("/", "Plant", 1, 1))
+        bearer = Node(ramif, NodeMTG("/", "Internode", 1, 2))
+        leaf_a = Node(bearer, NodeMTG("+", "Leaf", 1, 2))
+        leaf_b = Node(bearer, NodeMTG("+", "Leaf", 2, 2))
+
+        bearer[:Length] = 0.3
+        bearer[:Width] = 0.06
+        bearer[:Thickness] = 0.04
+
+        for leaf in (leaf_a, leaf_b)
+            leaf[:Length] = 0.2
+            leaf[:Width] = 0.1
+            leaf[:Thickness] = 0.002
+            leaf[:YInsertionAngle] = 55.0
+            leaf[:Phyllotaxy] = 30.0
+            leaf[:InsertionMode] = "CENTER"
+        end
+
+        reconstruct_geometry_from_attributes!(ramif, ref_meshes; convention=conv, verticil_mode=:none)
+
+        y_none_a = LinearAlgebra.normalize(
+            SVector{3,Float64}(leaf_a[:geometry].transformation(SVector(0.0, 1.0, 0.0))) -
+            SVector{3,Float64}(leaf_a[:geometry].transformation(p0)),
+        )
+        y_none_b = LinearAlgebra.normalize(
+            SVector{3,Float64}(leaf_b[:geometry].transformation(SVector(0.0, 1.0, 0.0))) -
+            SVector{3,Float64}(leaf_b[:geometry].transformation(p0)),
+        )
+        @test LinearAlgebra.dot(y_none_a, y_none_b) > 0.999
+
+        reconstruct_geometry_from_attributes!(ramif, ref_meshes; convention=conv, verticil_mode=:rotation360)
+
+        y_rot_a = LinearAlgebra.normalize(
+            SVector{3,Float64}(leaf_a[:geometry].transformation(SVector(0.0, 1.0, 0.0))) -
+            SVector{3,Float64}(leaf_a[:geometry].transformation(p0)),
+        )
+        y_rot_b = LinearAlgebra.normalize(
+            SVector{3,Float64}(leaf_b[:geometry].transformation(SVector(0.0, 1.0, 0.0))) -
+            SVector{3,Float64}(leaf_b[:geometry].transformation(p0)),
+        )
+        @test LinearAlgebra.dot(y_rot_a, y_rot_b) < -0.9
+    end
+
     # Reproducible docs fixture: check we reconstruct all organs and leaves are not parallel.
     demo_file = joinpath(@__DIR__, "files", "reconstruction_standard.mtg")
     demo = read_mtg(demo_file)
