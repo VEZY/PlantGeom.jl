@@ -715,6 +715,77 @@ function _build_rotation_with_columns(dir::SVector{3,Float64}, c2::SVector{3,Flo
     SMatrix{3,3,Float64}(hcat(dir, c2, c3))
 end
 
+@inline function _axis_column(rot::SMatrix{3,3,Float64,9}, axis::Symbol)
+    _safe_normalize(rot * _unit_axis(axis), _unit_axis(axis))
+end
+
+function _build_rotation_from_local_axes(
+    length_axis::Symbol,
+    dir::SVector{3,Float64},
+    secondary::SVector{3,Float64},
+    normal::SVector{3,Float64},
+)
+    secondary_axis = _secondary_axis(length_axis)
+    normal_axis = _normal_axis(length_axis)
+
+    x_axis = if length_axis == :x
+        dir
+    elseif secondary_axis == :x
+        secondary
+    else
+        normal
+    end
+    y_axis = if length_axis == :y
+        dir
+    elseif secondary_axis == :y
+        secondary
+    else
+        normal
+    end
+    z_axis = if length_axis == :z
+        dir
+    elseif secondary_axis == :z
+        secondary
+    else
+        normal
+    end
+
+    SMatrix{3,3,Float64}(hcat(x_axis, y_axis, z_axis))
+end
+
+function _normalize_perpendicular(
+    vec::SVector{3,Float64},
+    direction::SVector{3,Float64},
+    fallback::SVector{3,Float64},
+)
+    perp = vec - dot(vec, direction) * direction
+    n = norm(perp)
+    if n <= 1e-12
+        fb = fallback - dot(fallback, direction) * direction
+        nf = norm(fb)
+        return nf <= 1e-12 ? _unit_axis(:y) : (fb / nf)
+    end
+    perp / n
+end
+
+function _any_perpendicular(direction::SVector{3,Float64}, preferred::SVector{3,Float64})
+    candidate = preferred - dot(preferred, direction) * direction
+    n = norm(candidate)
+    if n > 1e-12
+        return candidate / n
+    end
+
+    for axis in (_unit_axis(:x), _unit_axis(:y), _unit_axis(:z))
+        candidate = axis - dot(axis, direction) * direction
+        n = norm(candidate)
+        if n > 1e-12
+            return candidate / n
+        end
+    end
+
+    return _unit_axis(:y)
+end
+
 function _axis_angle_world_rotation(axis::SVector{3,Float64}, angle_rad::Float64)
     naxis = _safe_normalize(axis, _unit_axis(:z))
     SMatrix{3,3,Float64}(RotMatrix(AngleAxis(angle_rad, naxis[1], naxis[2], naxis[3])))
@@ -782,9 +853,13 @@ function _apply_deviation_stage(node, rot::SMatrix{3,3,Float64,9}, options::Amap
     return rdev * rot
 end
 
-function _apply_normal_up_projection(rot::SMatrix{3,3,Float64,9})
-    dir = _safe_normalize(rot * _unit_axis(:x), _unit_axis(:x))
-    normal = _safe_normalize(rot * _unit_axis(:z), _unit_axis(:z))
+function _apply_normal_up_projection(rot::SMatrix{3,3,Float64,9}, length_axis::Symbol)
+    secondary_axis = _secondary_axis(length_axis)
+    normal_axis = _normal_axis(length_axis)
+
+    dir = _axis_column(rot, length_axis)
+    secondary = _axis_column(rot, secondary_axis)
+    normal = _axis_column(rot, normal_axis)
     plane_normal = cross(dir, _UP3)
     projection = _project_on_plane(plane_normal, normal)
     projection === nothing && return rot
@@ -792,15 +867,18 @@ function _apply_normal_up_projection(rot::SMatrix{3,3,Float64,9})
     if dot(projection, _UP3) < 0.0
         projection = -projection
     end
-    projection = _safe_normalize(projection, _unit_axis(:z))
-    secondary = _safe_normalize(cross(dir, projection), _unit_axis(:y))
-    return _build_rotation_with_columns(dir, secondary, projection)
+    projection = _normalize_perpendicular(projection, dir, _any_perpendicular(dir, normal))
+    secondary_new = _normalize_perpendicular(cross(dir, projection), dir, _any_perpendicular(dir, secondary))
+    return _build_rotation_from_local_axes(length_axis, dir, secondary_new, projection)
 end
 
-function _apply_plagiotropy_projection(rot::SMatrix{3,3,Float64,9})
-    dir = _safe_normalize(rot * _unit_axis(:x), _unit_axis(:x))
-    secondary = _safe_normalize(rot * _unit_axis(:y), _unit_axis(:y))
-    normal = _safe_normalize(rot * _unit_axis(:z), _unit_axis(:z))
+function _apply_plagiotropy_projection(rot::SMatrix{3,3,Float64,9}, length_axis::Symbol)
+    secondary_axis = _secondary_axis(length_axis)
+    normal_axis = _normal_axis(length_axis)
+
+    dir = _axis_column(rot, length_axis)
+    secondary = _axis_column(rot, secondary_axis)
+    normal = _axis_column(rot, normal_axis)
     plane_normal = cross(dir, _UP3)
 
     projection = _project_on_plane(plane_normal, secondary)
@@ -810,22 +888,174 @@ function _apply_plagiotropy_projection(rot::SMatrix{3,3,Float64,9})
     if dot(projection, _UP3) < 0.0
         projection = -projection
     end
-    projection = _safe_normalize(projection, _unit_axis(:y))
-    cross_proj_normal = _safe_normalize(cross(dir, projection), _unit_axis(:z))
-    return _build_rotation_with_columns(dir, projection, cross_proj_normal)
+    projection = _normalize_perpendicular(projection, dir, _any_perpendicular(dir, secondary))
+    normal_new = _normalize_perpendicular(cross(dir, projection), dir, _any_perpendicular(dir, normal))
+    return _build_rotation_from_local_axes(length_axis, dir, projection, normal_new)
 end
 
-function _apply_projection_stage(node, rot::SMatrix{3,3,Float64,9}, options::AmapReconstructionOptions)
+function _apply_projection_stage(
+    node,
+    rot::SMatrix{3,3,Float64,9},
+    length_axis::Symbol,
+    options::AmapReconstructionOptions,
+)
     out = rot
     normal_up = _resolve_bool_alias(node, options.normal_up_aliases; default=false)
     plagiotropy = _resolve_bool_alias(node, options.plagiotropy_aliases; default=false)
     if normal_up
-        out = _apply_normal_up_projection(out)
+        out = _apply_normal_up_projection(out, length_axis)
     end
     if plagiotropy
-        out = _apply_plagiotropy_projection(out)
+        out = _apply_plagiotropy_projection(out, length_axis)
     end
     return out
+end
+
+function _young_final_angle(
+    young_modulus::Float64,
+    z_angle::Float64,
+    length::Float64,
+    tapering::Float64,
+)
+    if young_modulus <= 0.0 || length <= 0.0
+        return z_angle
+    end
+
+    cos_theta = cos(z_angle)
+    young = 1.0 / sqrt(young_modulus)
+    h = length / max(abs(tapering), 1e-6)
+    coeff = young * h * sqrt(abs(cos_theta))
+
+    deflexion = if z_angle > 1.553 && z_angle < 1.588
+        young * young * h * h / 2.0
+    else
+        denom = cos(coeff) * max(abs(cos_theta), 1e-8)
+        abs(denom) <= 1e-10 ? 0.0 : (sin(z_angle) * (1.0 - cos(coeff)) / denom)
+    end
+
+    amin = 0.0
+    amax = max(0.0, pi - z_angle)
+    threshold = pi / 180.0
+    precision = max(length / 10.0, 1e-6)
+
+    while (amax - amin) > threshold
+        deflexion = (amax + amin) / 2.0
+        omega = 0.0
+        sum_v = 0.0
+        increment = 1.0
+        nbiter = 0
+        while omega < deflexion && increment != 0.0 && nbiter < 500
+            term = abs(cos(z_angle + omega) - cos(z_angle + deflexion))
+            increment = precision * sqrt(2.0) * young * sqrt(term)
+            omega += increment
+            sum_v += precision
+            nbiter += 1
+        end
+        if sum_v <= (h - precision)
+            amin = deflexion
+        else
+            amax = deflexion
+        end
+    end
+
+    ((amin + amax) / 2.0) + z_angle
+end
+
+function _young_local_flexion(
+    current_angle::Float64,
+    final_angle::Float64,
+    young_modulus::Float64,
+    tapering::Float64,
+    relative_position::Float64,
+)
+    angle = 2.0 * (cos(current_angle) - cos(final_angle))
+    angle < 0.0 && return 0.0
+
+    aux = 1.0 - ((1.0 - tapering) * relative_position)
+    aux2 = aux * aux
+    aux2 <= 1e-12 && return 0.0
+
+    flre = 1.0 / (sqrt(young_modulus) * aux2)
+    flre * sqrt(angle)
+end
+
+function _component_children(node)
+    out = Any[]
+    for child in children(node)
+        link(child) == "/" && push!(out, child)
+    end
+    out
+end
+
+function _successor_anchor_node(parent_node, top_pos)
+    anchor = parent_node
+    for child in children(parent_node)
+        link(child) == "/" || continue
+        haskey(top_pos, child) || continue
+        anchor = child
+    end
+    return anchor
+end
+
+function _propagate_stiffness_to_components!(
+    node,
+    rot::SMatrix{3,3,Float64,9},
+    length_axis::Symbol,
+    node_length::Float64,
+    options::AmapReconstructionOptions,
+)
+    if !_resolve_bool_alias(node, options.stiffness_apply_aliases; default=true)
+        return
+    end
+
+    stiff_value, stiff_found = _resolve_alias(node, options.stiffness_aliases)
+    if stiff_found === nothing || stiff_value === nothing || stiff_value == 0.0
+        return
+    end
+
+    components_nodes = _component_children(node)
+    isempty(components_nodes) && return
+    node_length <= 0.0 && return
+
+    tapering_value, tapering_found = _resolve_alias(node, options.stiffness_tapering_aliases)
+    tapering = (tapering_found !== nothing && tapering_value !== nothing) ? tapering_value : 0.5
+
+    is_down = stiff_value > 0.0
+    young_modulus = abs(stiff_value)
+    young_modulus <= 0.0 && return
+
+    direction = _safe_normalize(rot * _unit_axis(length_axis), _unit_axis(length_axis))
+    z_angle = acos(clamp(direction[3], -1.0, 1.0))
+    final_angle = _young_final_angle(young_modulus, z_angle, node_length, tapering)
+
+    current_angle = z_angle
+    previous_angle = current_angle
+    current_distance_from_insertion = 0.0
+    prev_position_in_portee = 0
+    n_components = length(components_nodes)
+    target_name = isempty(options.stiffness_angle_aliases) ? :StiffnessAngle : first(options.stiffness_angle_aliases)
+
+    for component_node in components_nodes
+        relative_position_in_portee = floor(Int, (node_length * current_distance_from_insertion) / n_components)
+
+        for i in prev_position_in_portee:(relative_position_in_portee - 1)
+            local_angle = _young_local_flexion(
+                current_angle,
+                final_angle,
+                young_modulus,
+                tapering,
+                i / node_length,
+            )
+            current_angle += local_angle
+        end
+
+        propagated_angle = rad2deg(current_angle - previous_angle)
+        component_node[target_name] = is_down ? -propagated_angle : propagated_angle
+
+        prev_position_in_portee = relative_position_in_portee
+        previous_angle = current_angle
+        current_distance_from_insertion += 1.0
+    end
 end
 
 function _effective_override_value(
@@ -950,7 +1180,11 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
 
         if !explicit_translation && parent_node !== nothing
             if link_type == "<"
-                if haskey(base_rot, parent_node)
+                anchor_node = _successor_anchor_node(parent_node, top_pos)
+                if haskey(base_rot, anchor_node)
+                    current_base_rot = base_rot[anchor_node]
+                    current_base_pos = get(top_pos, anchor_node, _ZERO3)
+                elseif haskey(base_rot, parent_node)
                     current_base_rot = base_rot[parent_node]
                     current_base_pos = get(top_pos, parent_node, _ZERO3)
                 end
@@ -1098,7 +1332,7 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
         rot = _apply_orthotropy_stiffness_stage(node, rot, node_convention.length_axis, amap_cfg)
         rot = _apply_deviation_stage(node, rot, amap_cfg)
         rot = rot * _rotation_part(local_euler_t)
-        rot = _apply_projection_stage(node, rot, amap_cfg)
+        rot = _apply_projection_stage(node, rot, node_convention.length_axis, amap_cfg)
 
         lin = rot * _linear_part(local_scale_t)
         world_t = AffineMap(Matrix(lin), current_base_pos)
@@ -1113,6 +1347,14 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
         top_pos[node] = p1
         direction[node] = dir
         base_rot[node] = rot
+
+        _propagate_stiffness_to_components!(
+            node,
+            rot,
+            node_convention.length_axis,
+            norm(p1 - p0),
+            amap_cfg,
+        )
 
         ref_mesh = _resolve_ref_mesh(node, ref_meshes)
         if ref_mesh !== nothing
