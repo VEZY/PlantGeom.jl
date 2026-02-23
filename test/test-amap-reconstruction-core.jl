@@ -667,6 +667,22 @@
         @test stem[:geometry] === nothing
     end
 
+    @testset "explicit_coordinate_mode alias maps to coordinate_delegate_mode" begin
+        opts_alias = AmapReconstructionOptions(explicit_coordinate_mode=:explicit_rewire_previous)
+        @test opts_alias.coordinate_delegate_mode == :explicit_rewire_previous
+
+        opts_same = AmapReconstructionOptions(
+            coordinate_delegate_mode=:topology_default,
+            explicit_coordinate_mode=:topology_default,
+        )
+        @test opts_same.coordinate_delegate_mode == :topology_default
+
+        @test_throws ErrorException AmapReconstructionOptions(
+            coordinate_delegate_mode=:topology_default,
+            explicit_coordinate_mode=:explicit_rewire_previous,
+        )
+    end
+
     @testset "explicit_rewire_previous updates predecessor segment from explicit node coordinates" begin
         mtg = Node(NodeMTG("/", "Plant", 1, 1))
         p1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))

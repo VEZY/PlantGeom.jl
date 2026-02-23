@@ -3,6 +3,9 @@
 PlantGeom now uses the AMAP core reconstruction profile by default in
 `set_geometry_from_attributes!` and `reconstruct_geometry_from_attributes!`.
 
+If you need help choosing explicit-coordinate behavior (`explicit_coordinate_mode`),
+start with the [`AMAP Reconstruction Decision Guide`](amap_reconstruction_decision_guide.md).
+
 ```@setup amapquick
 using PlantGeom
 using MultiScaleTreeGraph

@@ -8,6 +8,7 @@ This page is tutorial-first:
 For detailed AMAP conventions, alias tables, precedence rules, and parity status, see:
 
 - [`AMAP Quickstart`](amap_quickstart.md)
+- [`AMAP Reconstruction Decision Guide`](amap_reconstruction_decision_guide.md)
 - [`AMAP Conventions Reference`](amap_conventions_reference.md)
 - [`AMAP Parity Matrix`](amap_parity_matrix.md)
 

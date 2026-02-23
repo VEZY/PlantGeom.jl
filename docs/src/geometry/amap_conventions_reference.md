@@ -18,6 +18,9 @@ If you are new to AMAP-style reconstruction, read this page in this order:
 
 The same MTG can be reconstructed very differently depending on orientation and insertion options. Most differences come from a small set of parameters (`InsertionMode`, insertion/euler angles, order overrides, and verticil handling), so those are explained with short examples below.
 
+If you want a scenario-based chooser ("I have start coordinates but no end coordinates"), use the
+[`AMAP Reconstruction Decision Guide`](amap_reconstruction_decision_guide.md).
+
 ## 1. Naming Conventions (Column Aliases)
 
 ### 1.1 Geometry Convention (`default_amap_geometry_convention()`)
@@ -57,7 +60,7 @@ The same MTG can be reconstructed very differently depending on orientation and 
 | Phyllotaxy aliases | `Phyllotaxy`, `phyllotaxy`, `PHYLLOTAXY` |
 | Verticil mode | `:rotation360` |
 | Geometrical constraint aliases | `GeometricalConstraint`, `geometrical_constraint`, `GeometryConstraint`, `geometry_constraint` |
-| Coordinate delegate mode | `:topology_default` (`:explicit_rewire_previous`, `:explicit_start_end_required`) |
+| Explicit-coordinate handling mode (`explicit_coordinate_mode`, alias: `coordinate_delegate_mode`) | `:topology_default` (`:explicit_rewire_previous`, `:explicit_start_end_required`) |
 | Azimuth aliases | `Azimuth`, `azimuth` |
 | Elevation aliases | `Elevation`, `elevation` |
 | Deviation aliases | `DeviationAngle`, `deviation_angle` |
@@ -139,8 +142,8 @@ When to use what:
 - Use topology-based placement for botanical reconstructions.
 - Use explicit `XX/YY/ZZ` when ingesting already solved 3D coordinates from another pipeline.
 - Use `EndX`/`EndY`/`EndZ` when start-end coordinates are known and must dominate angle-derived orientation.
-- Use `AmapReconstructionOptions(coordinate_delegate_mode=:explicit_start_end_required)` to require complete start/end coordinates on explicit-coordinate nodes (AMAP `CoordinateDelegate3` behavior).
-- Use `AmapReconstructionOptions(coordinate_delegate_mode=:explicit_rewire_previous)` for topology-editor style imports where each node position reorients the previous segment and the current node is a point anchor (AMAP `CoordinateDelegate2` behavior).
+- Use `AmapReconstructionOptions(explicit_coordinate_mode=:explicit_start_end_required)` to require complete start/end coordinates on explicit-coordinate nodes (AMAP `CoordinateDelegate3` behavior).
+- Use `AmapReconstructionOptions(explicit_coordinate_mode=:explicit_rewire_previous)` for topology-editor style imports where each node position rewires the previous segment and the current node becomes a point-anchor (AMAP `CoordinateDelegate2` behavior).
 
 ### 2.6 Endpoint coordinates (`EndX`/`EndY`/`EndZ`)
 
@@ -578,9 +581,10 @@ function coordinate_delegate_mode_example(mode::Symbol; return_nodes::Bool=false
     i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
     i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
     i3 = Node(i2, NodeMTG("<", "Internode", 3, 2))
+    i4 = Node(i3, NodeMTG("<", "Internode", 4, 2))
 
-    nodes = (i1, i2, i3)
-    widths = (0.050, 0.042, 0.036)
+    nodes = (i1, i2, i3, i4)
+    widths = (0.050, 0.042, 0.036, 0.032)
 
     for (node, w) in zip(nodes, widths)
         node[:Length] = 0.30
@@ -592,14 +596,23 @@ function coordinate_delegate_mode_example(mode::Symbol; return_nodes::Bool=false
     i2[:YInsertionAngle] = 25.0
     i3[:Length] = 0.22
     i3[:YInsertionAngle] = 30.0
+    i4[:Length] = 0.20
+    i4[:YInsertionAngle] = 20.0
 
     # One node carries explicit start coordinates without endpoint.
     # This is enough to separate the three coordinate modes.
     i2[:XX] = 0.30
     i2[:YY] = 0.06
     i2[:ZZ] = 0.00
+    if mode == :explicit_start_end_required
+        # Keep node 2 as a strict-mode point-anchor instead of omitting it.
+        i2[:EndX] = i2[:XX]
+        i2[:EndY] = i2[:YY]
+        i2[:EndZ] = i2[:ZZ]
+        i2[:Length] = 0.0
+    end
 
-    opts = AmapReconstructionOptions(coordinate_delegate_mode=mode)
+    opts = AmapReconstructionOptions(explicit_coordinate_mode=mode)
     reconstruct_geometry_from_attributes!(
         mtg,
         REF_MESHES;
@@ -607,20 +620,6 @@ function coordinate_delegate_mode_example(mode::Symbol; return_nodes::Bool=false
         amap_options=opts,
         root_align=false,
     )
-
-    # Rewire mode creates point anchors; hide degenerate point geometry so
-    # the panel focuses on segment placement.
-    if mode == :explicit_rewire_previous
-        for node in nodes
-            haskey(node, :geometry) || continue
-            node[:geometry] === nothing && continue
-            p0 = node[:geometry].transformation(Point(0.0, 0.0, 0.0))
-            p1 = node[:geometry].transformation(Point(1.0, 0.0, 0.0))
-            if abs(p1[1] - p0[1]) + abs(p1[2] - p0[2]) + abs(p1[3] - p0[3]) < 1e-10
-                node[:geometry] = nothing
-            end
-        end
-    end
     return return_nodes ? (mtg, nodes) : mtg
 end
 
@@ -656,6 +655,57 @@ function _print_coordinate_delegate_mode_summary(mode::Symbol)
             rpad(_format_vec3(p1), 20),
             " | ",
             round(len, digits=3),
+        )
+    end
+    println()
+end
+
+function _node_attr_str(node, name::Symbol)
+    haskey(node, name) || return "-"
+    v = node[name]
+    v === missing && return "missing"
+    return string(round(Float64(v), digits=3))
+end
+
+function _print_mode_mtg(mode::Symbol)
+    _, nodes = coordinate_delegate_mode_example(mode; return_nodes=true)
+    println("mode = ", mode)
+    println("/Plant1")
+    for (i, node) in enumerate(nodes)
+        link_label = i == 1 ? "/" : "<"
+        status = if !haskey(node, :geometry) || node[:geometry] === nothing
+            "omitted"
+        else
+            g = node[:geometry]
+            p0 = g.transformation(Point(0.0, 0.0, 0.0))
+            p1 = g.transformation(Point(1.0, 0.0, 0.0))
+            dx = p1[1] - p0[1]
+            dy = p1[2] - p0[2]
+            dz = p1[3] - p0[3]
+            len = sqrt(dx * dx + dy * dy + dz * dz)
+            len < 1e-8 ? "point-anchor" : "segment"
+        end
+        println(
+            "^",
+            link_label,
+            "Internode",
+            i,
+            "  Length=",
+            _node_attr_str(node, :Length),
+            "  XX=",
+            _node_attr_str(node, :XX),
+            "  YY=",
+            _node_attr_str(node, :YY),
+            "  ZZ=",
+            _node_attr_str(node, :ZZ),
+            "  EndX=",
+            _node_attr_str(node, :EndX),
+            "  EndY=",
+            _node_attr_str(node, :EndY),
+            "  EndZ=",
+            _node_attr_str(node, :EndZ),
+            "  status=",
+            status,
         )
     end
     println()
@@ -1092,34 +1142,17 @@ _plot_modes(
 )
 ```
 
-### 6.6 `coordinate_delegate_mode`: topology default vs explicit coordinate delegates
+### 6.6 Explicit-coordinate handling mode (`explicit_coordinate_mode`)
 
-This option controls what to do when nodes provide explicit start coordinates (`XX/YY/ZZ`).
+This option controls how explicit start coordinates (`XX/YY/ZZ`) are used during reconstruction. `explicit_coordinate_mode` is the recommended API name, and `coordinate_delegate_mode` is kept as a compatible alias.
 
-- `:topology_default`: keep standard topological reconstruction; explicit start sets current node base.
-- `:explicit_rewire_previous`: explicit node coordinates reorient the previous segment; explicit node itself is a point anchor.
-- `:explicit_start_end_required`: explicit-coordinate nodes require full `EndX/EndY/EndZ`; otherwise their geometry is skipped.
+In this section, a point-anchor means a node that stays in the MTG but has zero geometric length (a point in space, no cylinder).
 
-What this figure is doing:
+What changes between the three panels is mainly the reconstruction rule, not the base MTG. The same 4-internode chain and the same base attributes are used in all cases. The only mode-specific data tweak is for `:explicit_start_end_required`, where internode 2 is forced to `Length=0` with `EndX/EndY/EndZ = XX/YY/ZZ` so the node stays visible as a point-anchor for side-by-side comparison.
 
-- Same 3-internode chain in every panel.
-- Internode 2 has explicit `XX/YY/ZZ` and no endpoint.
-- Only `coordinate_delegate_mode` changes between panels.
+`topology_default` keeps internode 2 as a normal segment that starts at `XX/YY/ZZ`. `explicit_rewire_previous` treats internode 2 as a control point: the previous segment is redirected to this point, and internode 2 itself becomes a point-anchor. `explicit_start_end_required` applies strict start/end logic: only nodes with a full explicit segment definition can generate a segment.
 
-So the visible difference is:
-
-- `:topology_default`: internode 2 still generates regular geometry from its explicit base.
-- `:explicit_rewire_previous`: internode 2 behaves as a point anchor and rewires internode 1 direction.
-- `:explicit_start_end_required`: internode 2 is omitted because it has no `EndX/EndY/EndZ`.
-
-Disconnected pieces are expected in this demo: explicit `XX/YY/ZZ` are absolute world coordinates and can
-override topological continuity on purpose.
-
-Why panels 2 and 3 have only two cylinders:
-
-- Panel 2 (`:explicit_rewire_previous`): internode 2 is intentionally converted to a point-anchor, so it has zero length and no visible cylinder.
-- Panel 3 (`:explicit_start_end_required`): internode 2 is intentionally omitted (no endpoint).
-- Only panel 1 keeps internode 2 as a normal segment, so it shows three cylinders.
+Use `explicit_rewire_previous` when you know coordinates for only a few nodes along a long axis. In plain terms, those measured nodes act as waypoints that pull the reconstructed axis toward known positions, while the rest of the axis is still reconstructed from topology and local geometry attributes.
 
 ```@example amapref
 _plot_coordinate_delegate_modes_with_skeleton(
@@ -1127,12 +1160,12 @@ _plot_coordinate_delegate_modes_with_skeleton(
     titles=(
         "topology_default: i2 stays segment",
         "explicit_rewire_previous: i2 is anchor",
-        "explicit_start_end_required: i2 omitted",
+        "explicit_start_end_required: i2 forced anchor",
     ),
     size=(1260, 640),
-    azimuth=1.11pi,
-    elevation=0.46,
-    zoom_padding=0.055,
+    azimuth=1.36pi,
+    elevation=0.26,
+    zoom_padding=0.065,
 )
 ```
 
@@ -1141,5 +1174,13 @@ Numeric interpretation of the same scene (same data, same options):
 ```@example amapref
 for mode in (:topology_default, :explicit_rewire_previous, :explicit_start_end_required)
     _print_coordinate_delegate_mode_summary(mode)
+end
+```
+
+MTG content used in each panel (topology + key attributes):
+
+```@example amapref
+for mode in (:topology_default, :explicit_rewire_previous, :explicit_start_end_required)
+    _print_mode_mtg(mode)
 end
 ```

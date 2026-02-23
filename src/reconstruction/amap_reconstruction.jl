@@ -53,7 +53,8 @@ function AmapReconstructionOptions(;
     phyllotaxy_aliases=[:Phyllotaxy, :phyllotaxy, :PHYLLOTAXY],
     verticil_mode::Symbol=:rotation360,
     geometry_constraint_aliases=[:GeometricalConstraint, :geometrical_constraint, :GeometryConstraint, :geometry_constraint],
-    coordinate_delegate_mode::Symbol=:topology_default,
+    coordinate_delegate_mode::Union{Nothing,Symbol}=nothing,
+    explicit_coordinate_mode::Union{Nothing,Symbol}=nothing,
     azimuth_aliases=[:Azimuth, :azimuth],
     elevation_aliases=[:Elevation, :elevation],
     deviation_aliases=[:DeviationAngle, :deviation_angle],
@@ -82,11 +83,26 @@ function AmapReconstructionOptions(;
     phyllotaxy_by_order=Dict{Int,Float64}(),
     order_override_mode::Symbol=:override,
 )
+    if coordinate_delegate_mode !== nothing &&
+       explicit_coordinate_mode !== nothing &&
+       coordinate_delegate_mode != explicit_coordinate_mode
+        error(
+            "Received conflicting coordinate mode options: coordinate_delegate_mode=$coordinate_delegate_mode and explicit_coordinate_mode=$explicit_coordinate_mode.",
+        )
+    end
+    effective_coordinate_mode = if explicit_coordinate_mode !== nothing
+        explicit_coordinate_mode
+    elseif coordinate_delegate_mode !== nothing
+        coordinate_delegate_mode
+    else
+        :topology_default
+    end
+
     verticil_mode in (:rotation360, :none) ||
         error("Invalid verticil_mode '$verticil_mode'. Expected :rotation360 or :none.")
-    coordinate_delegate_mode in (:topology_default, :explicit_rewire_previous, :explicit_start_end_required) ||
+    effective_coordinate_mode in (:topology_default, :explicit_rewire_previous, :explicit_start_end_required) ||
         error(
-            "Invalid coordinate_delegate_mode '$coordinate_delegate_mode'. Expected :topology_default, :explicit_rewire_previous or :explicit_start_end_required.",
+            "Invalid explicit-coordinate handling mode '$effective_coordinate_mode'. Expected :topology_default, :explicit_rewire_previous or :explicit_start_end_required.",
         )
     order_override_mode in (:override, :missing_only) ||
         error("Invalid order_override_mode '$order_override_mode'. Expected :override or :missing_only.")
@@ -96,7 +112,7 @@ function AmapReconstructionOptions(;
         _amap_normalize_aliases(phyllotaxy_aliases),
         verticil_mode,
         _amap_normalize_aliases(geometry_constraint_aliases),
-        coordinate_delegate_mode,
+        effective_coordinate_mode,
         _amap_normalize_aliases(azimuth_aliases),
         _amap_normalize_aliases(elevation_aliases),
         _amap_normalize_aliases(deviation_aliases),

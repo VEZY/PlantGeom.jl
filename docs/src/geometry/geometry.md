@@ -42,6 +42,7 @@ To learn more about PlantGeom's geometry features:
 
 - **Reference Meshes**: Learn how to create and work with reference meshes
 - **Building Plant Models**: Step-by-step guide to constructing complete plant geometries
+- **AMAP\***: detailed documentation on the AMAP-alike conventions and reconstruction algorithms used for generating geometries from MTG structures
 - **Merging Meshes**: Tools for combining geometries at different scales
 
 ## File Format Support
