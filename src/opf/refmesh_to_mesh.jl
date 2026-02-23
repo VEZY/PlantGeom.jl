@@ -20,15 +20,32 @@ plantviz(new_mesh)
 """
 refmesh_to_mesh
 
+"""
+    geometry_to_mesh(geom)
+
+Materialize a geometry object into a concrete mesh.
+
+This is an internal extension point used by scene merging and rendering. The
+default PlantGeom method supports [`Geometry`](@ref). Additional geometry
+sources can provide their own method without changing the rendering API.
+"""
+function geometry_to_mesh(geom)
+    error("No `geometry_to_mesh` method is defined for geometry type $(typeof(geom)).")
+end
+
+function geometry_to_mesh(geom::Geometry)
+    ref_mesh = geom.ref_mesh.mesh
+
+    if geom.ref_mesh.taper
+        ref_mesh = taper(ref_mesh, geom.dUp, geom.dDwn)
+    end
+
+    apply_transformation(geom.transformation, ref_mesh)
+end
+
 function refmesh_to_mesh(node)
     if node[:geometry] !== nothing
-        ref_mesh = node[:geometry].ref_mesh.mesh
-
-        if node[:geometry].ref_mesh.taper
-            ref_mesh = taper(ref_mesh, node[:geometry].dUp, node[:geometry].dDwn)
-        end
-
-        return apply_transformation(node[:geometry].transformation, ref_mesh)
+        return geometry_to_mesh(node[:geometry])
     else
         return nothing
     end

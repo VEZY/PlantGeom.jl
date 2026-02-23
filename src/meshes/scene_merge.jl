@@ -1,4 +1,159 @@
 """
+    StaticGeometryJob
+
+Typed scene-materialization job for classic `RefMesh + transformation` geometries.
+"""
+struct StaticGeometryJob{ME,TR,S}
+    seq::Int
+    node_id::Int
+    base_mesh::ME
+    taper::Bool
+    dUp::S
+    dDwn::S
+    transformation::TR
+end
+
+"""
+    GenericGeometryJob
+
+Typed fallback job for additional geometry source types materialized through
+`geometry_to_mesh(geom)`.
+"""
+struct GenericGeometryJob{G}
+    seq::Int
+    node_id::Int
+    geometry::G
+end
+
+mutable struct GeometryJobBatches
+    static::Dict{DataType,Any}
+    generic::Dict{DataType,Any}
+end
+
+GeometryJobBatches() = GeometryJobBatches(Dict{DataType,Any}(), Dict{DataType,Any}())
+
+@inline function _push_typed_job!(dict::Dict{DataType,Any}, job::J) where {J}
+    key = J
+    if haskey(dict, key)
+        push!(dict[key]::Vector{J}, job)
+    else
+        dict[key] = J[job]
+    end
+    return nothing
+end
+
+@inline function _compile_node_geometry_jobs!(
+    batches::GeometryJobBatches,
+    seq::Int,
+    node_id::Int,
+    geom::Geometry,
+)
+    job = StaticGeometryJob(
+        seq,
+        node_id,
+        geom.ref_mesh.mesh,
+        geom.ref_mesh.taper,
+        geom.dUp,
+        geom.dDwn,
+        geom.transformation,
+    )
+    _push_typed_job!(batches.static, job)
+    return nothing
+end
+
+@inline function _compile_node_geometry_jobs!(
+    batches::GeometryJobBatches,
+    seq::Int,
+    node_id::Int,
+    geom,
+)
+    job = GenericGeometryJob(seq, node_id, geom)
+    _push_typed_job!(batches.generic, job)
+    return nothing
+end
+
+function compile_geometry_jobs(mtg; filter_fun=nothing, symbol=nothing, scale=nothing, link=nothing)
+    batches = GeometryJobBatches()
+    any_node_selected = false
+    seq = 0
+
+    MultiScaleTreeGraph.traverse!(mtg; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
+        geom = node[:geometry]
+        if geom !== nothing
+            any_node_selected = true
+            seq += 1
+            _compile_node_geometry_jobs!(batches, seq, MultiScaleTreeGraph.node_id(node), geom)
+        end
+    end
+
+    return batches, any_node_selected
+end
+
+function _materialize_batch!(
+    seqs::Vector{Int},
+    node_ids::Vector{Int},
+    meshes::Vector{Any},
+    ne_per_mesh::Vector{Int},
+    jobs::Vector{StaticGeometryJob{ME,TR,S}},
+) where {ME,TR,S}
+    @inbounds for job in jobs
+        local_mesh = if job.taper
+            taper(job.base_mesh, job.dUp, job.dDwn)
+        else
+            job.base_mesh
+        end
+        m = apply_transformation_to_mesh(job.transformation, local_mesh)
+        m === nothing && continue
+        push!(seqs, job.seq)
+        push!(node_ids, job.node_id)
+        push!(meshes, m)
+        push!(ne_per_mesh, nelements(m))
+    end
+    return nothing
+end
+
+function _materialize_batch!(
+    seqs::Vector{Int},
+    node_ids::Vector{Int},
+    meshes::Vector{Any},
+    ne_per_mesh::Vector{Int},
+    jobs::Vector{GenericGeometryJob{G}},
+) where {G}
+    @inbounds for job in jobs
+        m = geometry_to_mesh(job.geometry)
+        m === nothing && continue
+        push!(seqs, job.seq)
+        push!(node_ids, job.node_id)
+        push!(meshes, m)
+        push!(ne_per_mesh, nelements(m))
+    end
+    return nothing
+end
+
+function materialize_geometry_jobs(batches::GeometryJobBatches)
+    seqs = Int[]
+    meshes = Any[]
+    node_ids = Int[]
+    ne_per_mesh = Int[]
+
+    for jobs in values(batches.static)
+        _materialize_batch!(seqs, node_ids, meshes, ne_per_mesh, jobs)
+    end
+    for jobs in values(batches.generic)
+        _materialize_batch!(seqs, node_ids, meshes, ne_per_mesh, jobs)
+    end
+
+    if !issorted(seqs)
+        p = sortperm(seqs)
+        meshes = meshes[p]
+        node_ids = node_ids[p]
+        ne_per_mesh = ne_per_mesh[p]
+    end
+
+    return meshes, node_ids, ne_per_mesh
+end
+
+"""
     build_merged_mesh_with_map(mtg; filter_fun=nothing, symbol=nothing, scale=nothing, link=nothing)
 
 Traverse selected MTG nodes and merge their geometry meshes into a single mesh.
@@ -7,23 +162,16 @@ Returns a merged `mesh` and a `face2node::Vector{Int}` mapping each face index i
 merged mesh to the originating MTG node id.
 """
 function build_merged_mesh_with_map(mtg; filter_fun=nothing, symbol=nothing, scale=nothing, link=nothing)
-    meshes = Any[]
-    node_ids = Int[]
-    ne_per_mesh = Int[]
-    any_node_selected = Ref(false)
+    batches, any_node_selected = compile_geometry_jobs(
+        mtg;
+        filter_fun=filter_fun,
+        symbol=symbol,
+        scale=scale,
+        link=link,
+    )
+    any_node_selected || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
 
-    MultiScaleTreeGraph.traverse!(mtg; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
-        geom = node[:geometry]
-        if geom !== nothing
-            any_node_selected[] = true
-            m = refmesh_to_mesh(node)
-            push!(meshes, m)
-            push!(node_ids, MultiScaleTreeGraph.node_id(node))
-            push!(ne_per_mesh, nelements(m))
-        end
-    end
-
-    any_node_selected[] || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
+    meshes, node_ids, ne_per_mesh = materialize_geometry_jobs(batches)
     length(meshes) > 0 || error("No geometry meshes found to merge.")
 
     total_elems = sum(ne_per_mesh)
