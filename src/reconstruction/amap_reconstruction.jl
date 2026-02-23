@@ -3,6 +3,7 @@ struct AmapReconstructionOptions
     phyllotaxy_aliases::Vector{Symbol}
     verticil_mode::Symbol
     geometry_constraint_aliases::Vector{Symbol}
+    coordinate_delegate_mode::Symbol
     azimuth_aliases::Vector{Symbol}
     elevation_aliases::Vector{Symbol}
     deviation_aliases::Vector{Symbol}
@@ -52,6 +53,7 @@ function AmapReconstructionOptions(;
     phyllotaxy_aliases=[:Phyllotaxy, :phyllotaxy, :PHYLLOTAXY],
     verticil_mode::Symbol=:rotation360,
     geometry_constraint_aliases=[:GeometricalConstraint, :geometrical_constraint, :GeometryConstraint, :geometry_constraint],
+    coordinate_delegate_mode::Symbol=:topology_default,
     azimuth_aliases=[:Azimuth, :azimuth],
     elevation_aliases=[:Elevation, :elevation],
     deviation_aliases=[:DeviationAngle, :deviation_angle],
@@ -82,6 +84,10 @@ function AmapReconstructionOptions(;
 )
     verticil_mode in (:rotation360, :none) ||
         error("Invalid verticil_mode '$verticil_mode'. Expected :rotation360 or :none.")
+    coordinate_delegate_mode in (:topology_default, :explicit_rewire_previous, :explicit_start_end_required) ||
+        error(
+            "Invalid coordinate_delegate_mode '$coordinate_delegate_mode'. Expected :topology_default, :explicit_rewire_previous or :explicit_start_end_required.",
+        )
     order_override_mode in (:override, :missing_only) ||
         error("Invalid order_override_mode '$order_override_mode'. Expected :override or :missing_only.")
 
@@ -90,6 +96,7 @@ function AmapReconstructionOptions(;
         _amap_normalize_aliases(phyllotaxy_aliases),
         verticil_mode,
         _amap_normalize_aliases(geometry_constraint_aliases),
+        coordinate_delegate_mode,
         _amap_normalize_aliases(azimuth_aliases),
         _amap_normalize_aliases(elevation_aliases),
         _amap_normalize_aliases(deviation_aliases),

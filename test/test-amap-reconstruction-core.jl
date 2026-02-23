@@ -645,6 +645,65 @@
         @test abs(dir[1]) < 1e-6
     end
 
+    @testset "explicit_start_end_required skips geometry when explicit start has no complete end" begin
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        stem[:Length] = 1.0
+        stem[:Width] = 0.1
+        stem[:Thickness] = 0.1
+        stem[:XX] = 0.0
+        stem[:YY] = 0.0
+        stem[:ZZ] = 0.0
+
+        strict_opts = AmapReconstructionOptions(coordinate_delegate_mode=:explicit_start_end_required)
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=strict_opts,
+            root_align=false,
+        )
+
+        @test stem[:geometry] === nothing
+    end
+
+    @testset "explicit_rewire_previous updates predecessor segment from explicit node coordinates" begin
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        p1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        p2 = Node(p1, NodeMTG("<", "Internode", 2, 2))
+
+        for n in (p1, p2)
+            n[:Length] = 0.5
+            n[:Width] = 0.1
+            n[:Thickness] = 0.1
+        end
+        p1[:XX] = 0.0
+        p1[:YY] = 0.0
+        p1[:ZZ] = 0.0
+        p2[:XX] = 1.0
+        p2[:YY] = 0.2
+        p2[:ZZ] = 0.0
+
+        d2_opts = AmapReconstructionOptions(coordinate_delegate_mode=:explicit_rewire_previous)
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=d2_opts,
+            root_align=false,
+        )
+
+        p1_base = SVector{3,Float64}(p1[:geometry].transformation(p0))
+        p1_top = SVector{3,Float64}(p1[:geometry].transformation(px))
+        p2_base = SVector{3,Float64}(p2[:geometry].transformation(p0))
+        p2_top = SVector{3,Float64}(p2[:geometry].transformation(px))
+
+        @test maximum(abs.(p1_base .- SVector(0.0, 0.0, 0.0))) < 1e-8
+        @test maximum(abs.(p1_top .- SVector(1.0, 0.2, 0.0))) < 1e-6
+        @test maximum(abs.(p2_base .- SVector(1.0, 0.2, 0.0))) < 1e-8
+        @test norm(p2_top - p2_base) < 1e-8
+    end
+
     @testset "allometry interpolates missing width and height on axis" begin
         mtg = Node(NodeMTG("/", "Plant", 1, 1))
         i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))

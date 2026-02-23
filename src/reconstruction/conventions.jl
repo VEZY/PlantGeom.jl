@@ -780,6 +780,94 @@ function _resolve_endpoint_position(node, options::AmapReconstructionOptions; wa
     return has_all ? SVector{3,Float64}(ex, ey, ez) : nothing
 end
 
+@inline function _coordinate_delegate_mode(mode::Symbol)
+    mode in (:topology_default, :explicit_rewire_previous, :explicit_start_end_required) ||
+        error(
+            "Invalid coordinate_delegate_mode '$mode'. Expected :topology_default, :explicit_rewire_previous or :explicit_start_end_required.",
+        )
+    mode
+end
+
+function _rotation_from_direction_world_up(direction::SVector{3,Float64}, length_axis::Symbol)
+    dir = _safe_normalize(direction, _unit_axis(length_axis))
+    lateral = cross(_UP3, dir)
+    if norm(lateral) <= 1e-6
+        lateral = cross(_unit_axis(:y), dir)
+    end
+    secondary = _normalize_perpendicular(
+        lateral,
+        dir,
+        _any_perpendicular(dir, _unit_axis(_secondary_axis(length_axis))),
+    )
+    normal = _normalize_perpendicular(
+        cross(dir, secondary),
+        dir,
+        _any_perpendicular(dir, _unit_axis(_normal_axis(length_axis))),
+    )
+    _build_rotation_from_local_axes(length_axis, dir, secondary, normal)
+end
+
+@inline function _coordinate_delegate2_previous_node(parent_node, link_type)
+    parent_node === nothing && return nothing
+    return link_type == "/" ? nothing : parent_node
+end
+
+function _apply_coordinate_delegate2_previous!(
+    previous_node,
+    target_pos::SVector{3,Float64},
+    default_convention::GeometryConvention,
+    conventions::AbstractDict,
+    ref_meshes::AbstractDict,
+    base_pos::IdDict{Any,SVector{3,Float64}},
+    top_pos::IdDict{Any,SVector{3,Float64}},
+    direction::IdDict{Any,SVector{3,Float64}},
+    base_rot::IdDict{Any,SMatrix{3,3,Float64,9}};
+    dUp::Real=1.0,
+    dDwn::Real=1.0,
+    warn_missing::Bool=false,
+)
+    haskey(base_pos, previous_node) || return false
+
+    prev_base = base_pos[previous_node]
+    delta = target_pos - prev_base
+    len = norm(delta)
+    len > 1e-12 || return false
+
+    prev_conv = _resolve_node_convention(previous_node, default_convention, conventions)
+    prev_rot = _rotation_from_direction_world_up(delta, prev_conv.length_axis)
+    prev_length, prev_width, prev_thickness = _resolve_scale_values(
+        previous_node,
+        prev_conv;
+        warn_missing=warn_missing,
+        length_override=len,
+    )
+
+    prev_lin = prev_rot * _scale_linear(prev_conv.length_axis, prev_length, prev_width, prev_thickness)
+    prev_world_t = AffineMap(Matrix(prev_lin), prev_base)
+    prev_world_angles_t = AffineMap(Matrix(prev_rot), prev_base)
+
+    p0 = prev_base
+    p1 = _to_svec3(prev_world_t(_unit_axis(prev_conv.length_axis)))
+    r0 = _rotation_part(prev_world_angles_t)
+    d0 = _normalize_direction(p1 - p0, r0, prev_conv.length_axis)
+
+    base_pos[previous_node] = p0
+    top_pos[previous_node] = p1
+    direction[previous_node] = d0
+    base_rot[previous_node] = r0
+
+    ref_mesh = _resolve_ref_mesh(previous_node, ref_meshes)
+    if ref_mesh !== nothing
+        previous_node[:geometry] = Geometry(
+            ref_mesh=ref_mesh,
+            transformation=prev_world_t,
+            dUp=dUp,
+            dDwn=dDwn,
+        )
+    end
+    return true
+end
+
 function _rotation_from_direction_with_hint(
     direction::SVector{3,Float64},
     length_axis::Symbol,
@@ -1869,6 +1957,7 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
     amap_insertion_mode_aliases = _compose_aliases(amap_cfg.insertion_mode_aliases, amap_cfg.insertion_aliases)
     effective_phyllotaxy_aliases = _compose_aliases(amap_cfg.phyllotaxy_aliases, phyllotaxy_aliases_norm)
     effective_verticil_mode = verticil_mode_norm == :rotation360 ? amap_cfg.verticil_mode : verticil_mode_norm
+    coordinate_mode = _coordinate_delegate_mode(amap_cfg.coordinate_delegate_mode)
 
     if amap_cfg.auto_compute_branching_order &&
        !_mtg_has_numeric_attribute(mtg, amap_cfg.order_attribute)
@@ -1958,10 +2047,55 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
             end
         end
 
+        delegate2_current = false
+        if coordinate_mode == :explicit_rewire_previous && explicit_translation
+            delegate2_current = true
+
+            if link_type == "/" && parent_node !== nothing && haskey(base_pos, parent_node)
+                # CoordinateDelegate2 behavior: decomposition child is anchored
+                # at complex base position (not at explicit coordinate).
+                current_base_pos = get(base_pos, parent_node, current_base_pos)
+            else
+                prev_node = _coordinate_delegate2_previous_node(parent_node, link_type)
+                if prev_node !== nothing
+                    _apply_coordinate_delegate2_previous!(
+                        prev_node,
+                        current_base_pos,
+                        convention,
+                        conventions,
+                        ref_meshes,
+                        base_pos,
+                        top_pos,
+                        direction,
+                        base_rot;
+                        dUp=dUp,
+                        dDwn=dDwn,
+                        warn_missing=warn_missing,
+                    )
+                end
+            end
+        end
+
         endpoint_pos = _resolve_endpoint_position(node, amap_cfg; warn_missing=warn_missing)
         endpoint_override = false
         endpoint_length = nothing
-        if endpoint_pos !== nothing
+        if coordinate_mode == :explicit_start_end_required && explicit_translation && endpoint_pos === nothing
+            # CoordinateDelegate3 strict mode: explicit start without explicit end
+            # yields an undefined segment geometry for this node.
+            warn_missing &&
+                @warn "Explicit translation without complete EndX/EndY/EndZ in :explicit_start_end_required mode; skipping node geometry."
+            p0 = current_base_pos
+            p1 = current_base_pos
+            r0 = current_base_rot
+            d0 = _normalize_direction(p1 - p0, r0, node_convention.length_axis)
+
+            base_pos[node] = p0
+            top_pos[node] = p1
+            direction[node] = d0
+            base_rot[node] = r0
+            node[:geometry] = nothing
+            return
+        elseif !delegate2_current && endpoint_pos !== nothing
             endpoint_vec = endpoint_pos - current_base_pos
             endpoint_length_val = norm(endpoint_vec)
             if endpoint_length_val > 1e-12
@@ -2076,7 +2210,9 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
             length_override=endpoint_length,
         )
 
-        rot = if endpoint_override
+        rot = if delegate2_current
+            _I3
+        elseif endpoint_override
             current_base_rot
         else
             r = _rotation_part(base_t ∘ local_insertion_t)
@@ -2094,6 +2230,10 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
                 amap_cfg,
                 constraint_cache,
             )
+        end
+
+        if delegate2_current
+            length_val = 0.0
         end
 
         lin = rot * _scale_linear(node_convention.length_axis, length_val, width_val, thickness_val)

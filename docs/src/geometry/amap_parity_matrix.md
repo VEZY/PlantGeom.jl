@@ -12,6 +12,7 @@ This matrix summarizes current PlantGeom parity for AMAPStudio core reconstructi
 | DeviationAngle stage | Implemented | World-space pre-rotation around global `+Z`. |
 | Projection stage | Implemented | `NormalUp` and `Plagiotropy` with deterministic order (`NormalUp` first) and robust degenerate-frame handling. |
 | Geometrical constraints (`GeometricalConstraint`) | Implemented | Cone/cylinder/plane families, including elliptic and cone-cylinder variants, with AMAP-style shared constraint initialization when a constraint object is reused. |
+| Coordinate delegate variants | Implemented | `:explicit_start_end_required` (strict start/end coordinates) and `:explicit_rewire_previous` (previous-segment reorientation from explicit node positions) via `AmapReconstructionOptions(coordinate_delegate_mode=...)`. |
 | Allometry delegate core semantics | Implemented | Width/height interpolation, component propagation (split-vs-copy), predecessor top smoothing, and complex accumulation from terminal components. |
 | Stiffness propagation (`Stifness`, `StifnessTapering`) | Implemented | AMAP-style propagation writes `StiffnessAngle` to `/`-linked component children (toggle with `StiffnessApply`). |
 | Stiffness straightening | Implemented | `StiffnessStraightening` dampens propagated bending after a configurable relative position (`0..1` or `0..100`). |

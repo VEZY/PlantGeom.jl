@@ -57,6 +57,7 @@ The same MTG can be reconstructed very differently depending on orientation and 
 | Phyllotaxy aliases | `Phyllotaxy`, `phyllotaxy`, `PHYLLOTAXY` |
 | Verticil mode | `:rotation360` |
 | Geometrical constraint aliases | `GeometricalConstraint`, `geometrical_constraint`, `GeometryConstraint`, `geometry_constraint` |
+| Coordinate delegate mode | `:topology_default` (`:explicit_rewire_previous`, `:explicit_start_end_required`) |
 | Azimuth aliases | `Azimuth`, `azimuth` |
 | Elevation aliases | `Elevation`, `elevation` |
 | Deviation aliases | `DeviationAngle`, `deviation_angle` |
@@ -138,6 +139,8 @@ When to use what:
 - Use topology-based placement for botanical reconstructions.
 - Use explicit `XX/YY/ZZ` when ingesting already solved 3D coordinates from another pipeline.
 - Use `EndX`/`EndY`/`EndZ` when start-end coordinates are known and must dominate angle-derived orientation.
+- Use `AmapReconstructionOptions(coordinate_delegate_mode=:explicit_start_end_required)` to require complete start/end coordinates on explicit-coordinate nodes (AMAP `CoordinateDelegate3` behavior).
+- Use `AmapReconstructionOptions(coordinate_delegate_mode=:explicit_rewire_previous)` for topology-editor style imports where each node position reorients the previous segment and the current node is a point anchor (AMAP `CoordinateDelegate2` behavior).
 
 ### 2.6 Endpoint coordinates (`EndX`/`EndY`/`EndZ`)
 
@@ -569,6 +572,241 @@ function stiffness_propagation_example(mode::Symbol)
     mtg
 end
 
+function coordinate_delegate_mode_example(mode::Symbol; return_nodes::Bool=false)
+    mtg = Node(NodeMTG("/", "Plant", 1, 1))
+
+    i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+    i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
+    i3 = Node(i2, NodeMTG("<", "Internode", 3, 2))
+
+    nodes = (i1, i2, i3)
+    widths = (0.050, 0.042, 0.036)
+
+    for (node, w) in zip(nodes, widths)
+        node[:Length] = 0.30
+        node[:Width] = w
+        node[:Thickness] = w
+        node[:YInsertionAngle] = 10.0
+    end
+    i2[:Length] = 0.24
+    i2[:YInsertionAngle] = 25.0
+    i3[:Length] = 0.22
+    i3[:YInsertionAngle] = 30.0
+
+    # One node carries explicit start coordinates without endpoint.
+    # This is enough to separate the three coordinate modes.
+    i2[:XX] = 0.30
+    i2[:YY] = 0.06
+    i2[:ZZ] = 0.00
+
+    opts = AmapReconstructionOptions(coordinate_delegate_mode=mode)
+    reconstruct_geometry_from_attributes!(
+        mtg,
+        REF_MESHES;
+        convention=CONV,
+        amap_options=opts,
+        root_align=false,
+    )
+
+    # Rewire mode creates point anchors; hide degenerate point geometry so
+    # the panel focuses on segment placement.
+    if mode == :explicit_rewire_previous
+        for node in nodes
+            haskey(node, :geometry) || continue
+            node[:geometry] === nothing && continue
+            p0 = node[:geometry].transformation(Point(0.0, 0.0, 0.0))
+            p1 = node[:geometry].transformation(Point(1.0, 0.0, 0.0))
+            if abs(p1[1] - p0[1]) + abs(p1[2] - p0[2]) + abs(p1[3] - p0[3]) < 1e-10
+                node[:geometry] = nothing
+            end
+        end
+    end
+    return return_nodes ? (mtg, nodes) : mtg
+end
+
+function _format_vec3(v)
+    return "(" * join(string.(round.(collect(v), digits=3)), ", ") * ")"
+end
+
+function _print_coordinate_delegate_mode_summary(mode::Symbol)
+    _, nodes = coordinate_delegate_mode_example(mode; return_nodes=true)
+    println("mode = ", mode)
+    println("internode | status       | start (x,y,z)        | end (x,y,z)          | length")
+    println("---------|--------------|----------------------|----------------------|--------")
+    for (i, node) in enumerate(nodes)
+        if !haskey(node, :geometry) || node[:geometry] === nothing
+            println(rpad("i$i", 9), "| ", rpad("omitted", 12), "| ", rpad("-", 20), " | ", rpad("-", 20), " | -")
+            continue
+        end
+        g = node[:geometry]
+        p0 = g.transformation(Point(0.0, 0.0, 0.0))
+        p1 = g.transformation(Point(1.0, 0.0, 0.0))
+        dx = p1[1] - p0[1]
+        dy = p1[2] - p0[2]
+        dz = p1[3] - p0[3]
+        len = sqrt(dx * dx + dy * dy + dz * dz)
+        status = len < 1e-8 ? "point-anchor" : "segment"
+        println(
+            rpad("i$i", 9),
+            "| ",
+            rpad(status, 12),
+            "| ",
+            rpad(_format_vec3(p0), 20),
+            " | ",
+            rpad(_format_vec3(p1), 20),
+            " | ",
+            round(len, digits=3),
+        )
+    end
+    println()
+end
+
+function _coordinate_delegate_mode_records(mode::Symbol)
+    mtg, nodes = coordinate_delegate_mode_example(mode; return_nodes=true)
+    records = NamedTuple[]
+    for (i, node) in enumerate(nodes)
+        if !haskey(node, :geometry) || node[:geometry] === nothing
+            p = if haskey(node, :XX) && haskey(node, :YY) && haskey(node, :ZZ)
+                Point(Float64(node[:XX]), Float64(node[:YY]), Float64(node[:ZZ]))
+            else
+                nothing
+            end
+            push!(records, (idx=i, status=:omitted, p0=p, p1=p, length=0.0))
+            continue
+        end
+        g = node[:geometry]
+        p0 = g.transformation(Point(0.0, 0.0, 0.0))
+        p1 = g.transformation(Point(1.0, 0.0, 0.0))
+        dx = p1[1] - p0[1]
+        dy = p1[2] - p0[2]
+        dz = p1[3] - p0[3]
+        len = sqrt(dx * dx + dy * dy + dz * dz)
+        status = len < 1e-8 ? :point_anchor : :segment
+        push!(records, (idx=i, status=status, p0=p0, p1=p1, length=len))
+    end
+    return mtg, records
+end
+
+function _records_bounds(records)
+    xmin_all = Inf
+    xmax_all = -Inf
+    ymin_all = Inf
+    ymax_all = -Inf
+    zmin_all = Inf
+    zmax_all = -Inf
+
+    function update_point!(p)
+        p === nothing && return
+        x = Float64(p[1])
+        y = Float64(p[2])
+        z = Float64(p[3])
+        xmin_all = min(xmin_all, x)
+        xmax_all = max(xmax_all, x)
+        ymin_all = min(ymin_all, y)
+        ymax_all = max(ymax_all, y)
+        zmin_all = min(zmin_all, z)
+        zmax_all = max(zmax_all, z)
+    end
+
+    for rec in records
+        update_point!(rec.p0)
+        update_point!(rec.p1)
+    end
+
+    if !isfinite(xmin_all)
+        return nothing
+    end
+    return (xmin_all, xmax_all, ymin_all, ymax_all, zmin_all, zmax_all)
+end
+
+function _plot_coordinate_delegate_modes_with_skeleton(
+    modes;
+    titles=string.(modes),
+    size=(1260, 640),
+    azimuth=1.11pi,
+    elevation=0.46,
+    zoom_padding=0.055,
+)
+    datasets = [_coordinate_delegate_mode_records(mode) for mode in modes]
+    scenes = first.(datasets)
+    records_by_mode = last.(datasets)
+
+    bounds_all = Tuple{Float64,Float64,Float64,Float64,Float64,Float64}[]
+    append!(bounds_all, _scene_bounds.(scenes))
+    for records in records_by_mode
+        b = _records_bounds(records)
+        b === nothing || push!(bounds_all, b)
+    end
+
+    xmin_all = minimum(first.(bounds_all))
+    xmax_all = maximum(getindex.(bounds_all, 2))
+    ymin_all = minimum(getindex.(bounds_all, 3))
+    ymax_all = maximum(getindex.(bounds_all, 4))
+    zmin_all = minimum(getindex.(bounds_all, 5))
+    zmax_all = maximum(last.(bounds_all))
+
+    xpad = max((xmax_all - xmin_all) * zoom_padding, 1e-3)
+    ypad = max((ymax_all - ymin_all) * zoom_padding, 1e-3)
+    zpad = max((zmax_all - zmin_all) * zoom_padding, 1e-3)
+
+    fig = Figure(size=size)
+    for i in eachindex(modes)
+        ax_top = Axis3(
+            fig[1, i],
+            aspect=:data,
+            title=titles[i],
+            azimuth=azimuth,
+            elevation=elevation,
+        )
+        plantviz!(ax_top, scenes[i], color=COLOR_MAP)
+        limits!(
+            ax_top,
+            xmin_all - xpad,
+            xmax_all + xpad,
+            ymin_all - ypad,
+            ymax_all + ypad,
+            zmin_all - zpad,
+            zmax_all + zpad,
+        )
+        hidedecorations!(ax_top)
+
+        ax_bottom = Axis3(
+            fig[2, i],
+            aspect=:data,
+            title="Centerline status",
+            azimuth=azimuth,
+            elevation=elevation,
+        )
+        for rec in records_by_mode[i]
+            if rec.status == :segment
+                lines!(ax_bottom, [rec.p0, rec.p1], color=:black, linewidth=4)
+            elseif rec.status == :point_anchor
+                scatter!(ax_bottom, [rec.p0], color=:orange, markersize=18)
+            elseif rec.status == :omitted && rec.p0 !== nothing
+                scatter!(ax_bottom, [rec.p0], color=:red, marker=:x, markersize=20)
+            end
+        end
+        limits!(
+            ax_bottom,
+            xmin_all - xpad,
+            xmax_all + xpad,
+            ymin_all - ypad,
+            ymax_all + ypad,
+            zmin_all - zpad,
+            zmax_all + zpad,
+        )
+        hidedecorations!(ax_bottom)
+    end
+
+    Label(
+        fig[3, 1:length(modes)],
+        "Bottom row legend: black line = segment, orange point = point-anchor, red x = omitted node",
+        fontsize=13,
+        tellwidth=false,
+    )
+    fig
+end
+
 function geometrical_constraint_example(mode::Symbol)
     mtg = Node(NodeMTG("/", "Plant", 1, 1))
     internode = Node(mtg, NodeMTG("/", "Internode", 1, 2))
@@ -614,6 +852,7 @@ function _scene_bounds(scene)
 
     traverse!(scene) do node
         haskey(node, :geometry) || return
+        node[:geometry] === nothing && return
         mesh = refmesh_to_mesh(node)
         for p in GeometryBasics.coordinates(mesh)
             x = Float64(p[1])
@@ -851,4 +1090,56 @@ _plot_modes(
     elevation=0.26,
     zoom_padding=0.06,
 )
+```
+
+### 6.6 `coordinate_delegate_mode`: topology default vs explicit coordinate delegates
+
+This option controls what to do when nodes provide explicit start coordinates (`XX/YY/ZZ`).
+
+- `:topology_default`: keep standard topological reconstruction; explicit start sets current node base.
+- `:explicit_rewire_previous`: explicit node coordinates reorient the previous segment; explicit node itself is a point anchor.
+- `:explicit_start_end_required`: explicit-coordinate nodes require full `EndX/EndY/EndZ`; otherwise their geometry is skipped.
+
+What this figure is doing:
+
+- Same 3-internode chain in every panel.
+- Internode 2 has explicit `XX/YY/ZZ` and no endpoint.
+- Only `coordinate_delegate_mode` changes between panels.
+
+So the visible difference is:
+
+- `:topology_default`: internode 2 still generates regular geometry from its explicit base.
+- `:explicit_rewire_previous`: internode 2 behaves as a point anchor and rewires internode 1 direction.
+- `:explicit_start_end_required`: internode 2 is omitted because it has no `EndX/EndY/EndZ`.
+
+Disconnected pieces are expected in this demo: explicit `XX/YY/ZZ` are absolute world coordinates and can
+override topological continuity on purpose.
+
+Why panels 2 and 3 have only two cylinders:
+
+- Panel 2 (`:explicit_rewire_previous`): internode 2 is intentionally converted to a point-anchor, so it has zero length and no visible cylinder.
+- Panel 3 (`:explicit_start_end_required`): internode 2 is intentionally omitted (no endpoint).
+- Only panel 1 keeps internode 2 as a normal segment, so it shows three cylinders.
+
+```@example amapref
+_plot_coordinate_delegate_modes_with_skeleton(
+    (:topology_default, :explicit_rewire_previous, :explicit_start_end_required),
+    titles=(
+        "topology_default: i2 stays segment",
+        "explicit_rewire_previous: i2 is anchor",
+        "explicit_start_end_required: i2 omitted",
+    ),
+    size=(1260, 640),
+    azimuth=1.11pi,
+    elevation=0.46,
+    zoom_padding=0.055,
+)
+```
+
+Numeric interpretation of the same scene (same data, same options):
+
+```@example amapref
+for mode in (:topology_default, :explicit_rewire_previous, :explicit_start_end_required)
+    _print_coordinate_delegate_mode_summary(mode)
+end
 ```
