@@ -22,6 +22,10 @@ This matrix summarizes current PlantGeom parity for AMAPStudio core reconstructi
 | Branching-order auto-compute | Implemented | `branching_order!` run once when needed and enabled. |
 | Order-based insertion/phyllotaxy overrides | Implemented | `insertion_y_by_order` and `phyllotaxy_by_order` with `:override` / `:missing_only`. |
 | Existing API surface | Implemented | Existing reconstruction calls are kept, with AMAP stages now active by default. |
+| MeshBuilder-style extrusion profiles | Implemented | `extrude_profile_mesh` / `extrude_profile_refmesh` / `extrude_tube_mesh` / `extrude_tube_refmesh` plus helpers `circle_section_profile` and `leaflet_midrib_profile`. |
+| Mesh path helpers (`makePath`, `makeSpline`, `makeInterpolation`, `makeCurve`) | Implemented | Available as `extrusion_make_path`, `extrusion_make_spline`, `extrusion_make_interpolation`, `extrusion_make_curve`. |
+| Lathe helpers (`lathe`, `latheGen`) | Implemented | Available as `lathe_mesh` / `lathe_refmesh` and `lathe_gen_mesh` / `lathe_gen_refmesh`, with AMAP-like `method=:curve` profile interpolation. |
+| Procedural refmesh caching | Implemented | `cache=...` in `*_refmesh` constructors preserves the "instantiate once, transform many" pattern for generated meshes. |
 
 ## Not Implemented Yet (Deferred)
 

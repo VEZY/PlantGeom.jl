@@ -38,6 +38,7 @@ using Plots # Add this dependency because else the tests on plot recipes return 
 end
 
 include("test-simplify_geometry.jl")
+include("test-extrusion-mesh.jl")
 include("test-geometry-convention.jl")
 include("test-topology-reconstruction.jl")
 include("test-amap-reconstruction-core.jl")
