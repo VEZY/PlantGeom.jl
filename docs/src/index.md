@@ -180,8 +180,12 @@ function build_demo_tree()
         (seg=6, az=-10.0, el=35.0, len=0.30),
         (seg=7, az=58.0, el=36.0, len=0.29),
         (seg=8, az=-122.0, el=37.0, len=0.26),
+        (seg=8, az=-84.0, el=38.0, len=0.20),
+        (seg=8, az=116.0, el=36.0, len=0.18),
         (seg=9, az=144.0, el=35.0, len=0.22),
+        (seg=9, az=102.0, el=35.0, len=0.17),
         (seg=9, az=-170.0, el=34.0, len=0.19),
+        (seg=9, az=-138.0, el=33.0, len=0.15),
     ]
 
     for (p_rank, spec) in enumerate(primary_specs)
@@ -475,8 +479,12 @@ plantviz(tree_demo, figure=(size=(980, 980),))
         (seg=6, az=-10.0, el=35.0, len=0.30),
         (seg=7, az=58.0, el=36.0, len=0.29),
         (seg=8, az=-122.0, el=37.0, len=0.26),
+        (seg=8, az=-84.0, el=38.0, len=0.20),
+        (seg=8, az=116.0, el=36.0, len=0.18),
         (seg=9, az=144.0, el=35.0, len=0.22),
+        (seg=9, az=102.0, el=35.0, len=0.17),
         (seg=9, az=-170.0, el=34.0, len=0.19),
+        (seg=9, az=-138.0, el=33.0, len=0.15),
     ]
 
         for (p_rank, spec) in enumerate(primary_specs)
