@@ -6,7 +6,8 @@ Read an OPF file, and returns an MTG.
 # Arguments
 
 - `file::String`: The path to the opf file.
-- `attr_type::DataType = Dict`: the type used to hold the attribute values for each node.
+- `attr_type::DataType = Dict`: kept for backward compatibility and ignored for
+  MultiScaleTreeGraph >= v0.15 (typed columnar attributes backend is always used).
 - `mtg_type = MutableNodeMTG`: the type used to hold the mtg encoding for each node (*i.e.*
 link, symbol, index, scale). See details section below.
 - `read_id::Bool = true`: whether to read the ID from the OPF or recompute it on the fly.
@@ -14,14 +15,8 @@ link, symbol, index, scale). See details section below.
 
 # Details
 
-`attr_type` should be:
-
-- `NamedTuple` if you don't plan to modify the attributes of the mtg, *e.g.* to use them for
-plotting or computing statistics...
-- `MutableNamedTuple` if you plan to modify the attributes values but not adding new attributes
-very often, *e.g.* recompute an attribute value...
-- `Dict` or similar (*e.g.* `OrderedDict`) if you plan to heavily modify the attributes, *e.g.*
-adding/removing attributes a lot
+`attr_type` is ignored with MultiScaleTreeGraph >= v0.15 where the typed
+columnar backend is always used.
 
 The `MultiScaleTreeGraph` package provides two types for `mtg_type`, one immutable
 (`NodeMTG`), and one mutable (`MutableNodeMTG`). If you're planning on modifying the mtg
@@ -113,13 +108,7 @@ function read_opf(
                 max_id
             )
 
-            append!(
-                mtg,
-                MultiScaleTreeGraph.parse_node_attributes(
-                    attr_type,
-                    Dict(:ref_meshes => ref_meshes)
-                )
-            )
+            mtg[:ref_meshes] = ref_meshes
             return mtg
         end
     end
@@ -401,11 +390,11 @@ Parser of the OPF topology.
 The transformation matrices in `geometry` are 3*4.
 """
 function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes, read_id=true, max_id=Ref(1))
-    link = "/" # default, for "topology" and "decomp"
+    link = :/ # default, for "topology" and "decomp"
     if node.name == "branch"
-        link = "+"
+        link = :+
     elseif node.name == "follow"
-        link = "<"
+        link = :<
     end
 
     if read_id
@@ -427,11 +416,11 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
             id,
             mtg,
             MTG,
-            MultiScaleTreeGraph.init_empty_attr(attr_type)
+            MultiScaleTreeGraph.init_empty_attr()
         )
     else
         # First node:
-        node_i = Node(id, MTG, MultiScaleTreeGraph.init_empty_attr(attr_type))
+        node_i = Node(id, MTG, MultiScaleTreeGraph.init_empty_attr())
     end
 
     # node_i.children
@@ -481,7 +470,9 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
         end
     end
 
-    append!(node_i, MultiScaleTreeGraph.parse_node_attributes(attr_type, attrs))
+    for (k, v) in attrs
+        node_i[k] = v
+    end
 
     return node_i
 end

@@ -2,6 +2,9 @@
     read_gwa(file; attr_type=Dict, mtg_type=MutableNodeMTG, read_id=true, max_id=Ref(1))
 
 Read a GWA mesh file and return a `MultiScaleTreeGraph.Node`.
+
+`attr_type` is kept for backward compatibility and ignored with
+MultiScaleTreeGraph >= v0.15 (columnar attributes backend).
 """
 
 @inline function _xml_attr(node, key, default="")
@@ -26,7 +29,7 @@ function read_gwa(file; attr_type=Dict, mtg_type=MultiScaleTreeGraph.MutableNode
         max_id[] += 1
         id
     end
-    mtg = Node(mtg_type("/", "GWA", root_id, 0), MultiScaleTreeGraph.init_empty_attr(attr_type))
+    mtg = Node(mtg_type(:/, :GWA, root_id, 0), MultiScaleTreeGraph.init_empty_attr())
 
     ref_meshes = RefMesh[]
     for mesh_node in eachelement(xroot)
@@ -79,13 +82,13 @@ function read_gwa(file; attr_type=Dict, mtg_type=MultiScaleTreeGraph.MutableNode
             id
         end
 
-        node = Node(mtg_type("+", "Mesh", node_id, 1), MultiScaleTreeGraph.init_empty_attr(attr_type))
+        node = Node(mtg_type(:+, :Mesh, node_id, 1), MultiScaleTreeGraph.init_empty_attr())
         node.geometry = Geometry(ref_mesh=ref_mesh)
         addchild!(mtg, node)
     end
 
     isempty(ref_meshes) && error("No <mesh> element found in GWA file $file")
-    append!(mtg, MultiScaleTreeGraph.parse_node_attributes(attr_type, Dict(:ref_meshes => ref_meshes)))
+    mtg[:ref_meshes] = ref_meshes
 
     return mtg
 end

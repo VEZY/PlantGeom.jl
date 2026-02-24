@@ -75,13 +75,14 @@ function write_opf(file, mtg)
     end
 
     attrBDD = addelement!(opf_elm, "attributeBDD")
-    attrs = unique(MultiScaleTreeGraph.get_features(mtg))
-    for row in eachrow(attrs)
-        (string(row.NAME) == "ref_meshes" || string(row.NAME) == "geometry") && continue
+    attrs = MultiScaleTreeGraph.get_features(mtg)
+    for i in eachindex(attrs.NAME)
+        attr_name = attrs.NAME[i]
+        attr_type = attrs.TYPE[i]
+        (attr_name == :ref_meshes || attr_name == :geometry) && continue
 
         shape_elm = addelement!(attrBDD, "attribute")
-        shape_elm["name"] = string(row.NAME)
-        attr_type = row.TYPE
+        shape_elm["name"] = string(attr_name)
 
         if attr_type == "STRING"
             attr_type_opf = "String"
@@ -92,7 +93,7 @@ function write_opf(file, mtg)
         elseif attr_type == "BOOLEAN"
             attr_type_opf = "Boolean"
         else
-            error("Unknown attribute type: $(attr_type) for attribute $(row.NAME)")
+            error("Unknown attribute type: $(attr_type) for attribute $(attr_name)")
         end
 
         shape_elm["class"] = attr_type_opf
@@ -109,12 +110,15 @@ end
     mtg_to_opf_link(link)
 """
 function mtg_to_opf_link(link)
-    if link == "/"
+    link_sym = link isa Symbol ? link : Symbol(link)
+    if link_sym == :/
         "decomp"
-    elseif link == "<"
+    elseif link_sym == :<
         "follow"
-    elseif link == "+"
+    elseif link_sym == :+
         "branch"
+    else
+        error("Unknown MTG link: $link")
     end
 end
 
@@ -146,7 +150,7 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
 
     xml_node = addelement!(xml_parent, opf_link)
 
-    xml_node["class"] = symbol(node)
+    xml_node["class"] = string(symbol(node))
     xml_node["scale"] = scale(node)
     xml_node["id"] = node_id(node)
 
@@ -178,7 +182,9 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
         elseif key == :ref_meshes
             continue
         else
-            addelement!(xml_node, string(key), string(node[key]))
+            val = node[key]
+            val === nothing && continue
+            addelement!(xml_node, string(key), string(val))
         end
     end
 

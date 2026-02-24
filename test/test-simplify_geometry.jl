@@ -14,8 +14,8 @@ mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "c
         metamer = get_node(mtg1, 2879)
         @test !isnothing(metamer) # The metamer still exists
         @test !isempty(children(metamer)) # Its leaf too
-        @test symbol(metamer[1]) == "Leaf"
-        @test length(descendants(mtg1, symbol=["Metamer", "Leaf"])) == 4032
+        @test symbol(metamer[1]) == :Leaf
+        @test length(descendants(mtg1, symbol=[:Metamer, :Leaf])) == 4032
         @test haskey(metamer, :geometry) # The geometry is still there
         @test haskey(metamer[1], :geometry)
     end
@@ -34,8 +34,8 @@ mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "c
         @test !haskey(metamer[1], :geometry) # Neither the leaf
         @test !isnothing(metamer) # The metamer still exists
         @test !isempty(children(metamer)) # Its leaf too
-        @test symbol(metamer[1]) == "Leaf"
-        @test length(descendants(mtg2, symbol=["Metamer", "Leaf"])) == 4032
+        @test symbol(metamer[1]) == :Leaf
+        @test length(descendants(mtg2, symbol=[:Metamer, :Leaf])) == 4032
     end
 
     @testset "with node deletion" begin
@@ -50,7 +50,7 @@ mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "c
         @test length(mtg3) != length(mtg)
 
         # Check that the nodes were deleted
-        @test descendants(mtg3, symbol=["Metamer", "Leaf"]) |> isempty
+        @test descendants(mtg3, symbol=[:Metamer, :Leaf]) |> isempty
     end
 
 

@@ -23,7 +23,8 @@ function Makie.plot!(p::Diagram{<:Tuple{MultiScaleTreeGraph.Node{<:MultiScaleTre
     df_coordinates, color, edge_color, text_color =
         PlantGeom.mtg_XYZ_color(mtg, color, edge_color, colormap, color_missing=p[:color_missing][])
 
-    positions = [Makie.Point3f(df_coordinates.XX[i], df_coordinates.YY[i], df_coordinates.ZZ[i]) for i in 1:size(df_coordinates, 1)]
+    nrows = size(df_coordinates)[1]
+    positions = [Makie.Point3f(df_coordinates.XX[i], df_coordinates.YY[i], df_coordinates.ZZ[i]) for i in 1:nrows]
     Makie.scatter!(
         p,
         positions,
@@ -33,13 +34,13 @@ function Makie.plot!(p::Diagram{<:Tuple{MultiScaleTreeGraph.Node{<:MultiScaleTre
 
     Makie.text!(
         p,
-        string.(df_coordinates.id),
+        string.(df_coordinates.node_id),
         position=positions,
         color=text_color,
         offset=(5, 5)
     )
 
-    for i in 2:size(df_coordinates, 1)
+    for i in 2:nrows
         Makie.lines!(
             p,
             [df_coordinates.XX_from[i], df_coordinates.XX[i]],

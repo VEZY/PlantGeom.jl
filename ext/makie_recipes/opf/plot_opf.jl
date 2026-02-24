@@ -22,9 +22,9 @@ The plot object can have the following optional arguments:
 - `index`: An integer giving the index of the attribute value to be vizualised. This is useful when the attribute is a vector of values for *e.g.* each timestep.
 - `color_cache_name`: The name of the color cache. Should be a string (default to a random string).
 - `filter_fun`: A function to filter the nodes to be plotted. Should be a function taking a node as argument and returning a boolean.
-- `symbol`: Plot only nodes with this symbol. Should be a String or a vector of.
+- `symbol`: Plot only nodes with this symbol. Prefer `Symbol` (or vector/tuple of symbols).
 - `scale`: Plot only nodes with this scale. Should be an Int or a vector of.
-- `link`: Plot only nodes with this link. Should be a String or a vector of.
+- `link`: Plot only nodes with this link. Prefer `Symbol` (or vector/tuple of symbols).
 - `cache=true`: Whether to cache the results.
 
 # Examples

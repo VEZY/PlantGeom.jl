@@ -18,7 +18,7 @@ RecipesBase.@recipe function f(mtg::MultiScaleTreeGraph.Node;
     y = df_coordinates.YY
     z = df_coordinates.ZZ
 
-    for i in 2:size(df_coordinates, 1)
+    for i in 2:size(df_coordinates)[1]
         x2 = [df_coordinates.XX_from[i], df_coordinates.XX[i]]
         y2 = [df_coordinates.YY_from[i], df_coordinates.YY[i]]
         z2 = [df_coordinates.ZZ_from[i], df_coordinates.ZZ[i]]
@@ -38,7 +38,7 @@ RecipesBase.@recipe function f(mtg::MultiScaleTreeGraph.Node;
     end
 
     hover_arg = string.(
-        "name: `node_", df_coordinates.id,
+        "name: `node_", df_coordinates.node_id,
         "`, link: `", df_coordinates.link,
         "`, symbol: `", df_coordinates.symbol,
         "`, index: `", df_coordinates.index, "`",

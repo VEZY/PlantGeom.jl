@@ -49,18 +49,18 @@ refmesh_cylinder = RefMesh("Cylinder", cylinder_mesh(), RGB(0.5, 0.5, 0.5))
 refmesh_leaf = RefMesh("Leaf", leaf_mesh(), RGB(0.1, 0.5, 0.2))
 
 function build_mtg(n_internode=5, n_roots=3)
-    mtg = Node(NodeMTG("/", "Plant", 1, 1))
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
 
     last_node = mtg
     for i in 1:n_internode
-        internode = Node(last_node, NodeMTG(i == 1 ? "/" : "<", "Internode", i, 2))
-        Node(internode, NodeMTG("+", "Leaf", i, 2))
+        internode = Node(last_node, NodeMTG(i == 1 ? :/ : :<, :Internode, i, 2))
+        Node(internode, NodeMTG(:+, :Leaf, i, 2))
         last_node = internode
     end
 
     last_root = mtg
     for i in 1:n_roots
-        last_root = Node(last_root, NodeMTG(i == 1 ? "/" : "<", "RootSegment", i, 2))
+        last_root = Node(last_root, NodeMTG(i == 1 ? :/ : :<, :RootSegment, i, 2))
     end
 
     return mtg
@@ -76,14 +76,14 @@ function add_geometry!(mtg, refmesh_cylinder, refmesh_leaf)
     phyllotaxy = 0.0
 
     traverse!(mtg) do node
-        if symbol(node) == "Internode"
+        if symbol(node) == :Internode
             t = IdentityTransformation()
             t = compose_lr(t, LinearMap(Diagonal([internode_width, internode_width, internode_length])))
             t = compose_lr(t, Translation(0.0, 0.0, current_height))
             node[:geometry] = PlantGeom.Geometry(ref_mesh=refmesh_cylinder, transformation=t)
             current_height += internode_length
             phyllotaxy += pi / 2
-        elseif symbol(node) == "Leaf"
+        elseif symbol(node) == :Leaf
             leaf_length = 0.20 + 0.10 * current_height
             leaf_width = 0.5 * leaf_length
             t = IdentityTransformation()
@@ -92,7 +92,7 @@ function add_geometry!(mtg, refmesh_cylinder, refmesh_leaf)
             t = compose_lr(t, Translation(internode_width / 2, 0.0, current_height))
             t = compose_lr(t, LinearMap(RotZ(phyllotaxy)))
             node[:geometry] = PlantGeom.Geometry(ref_mesh=refmesh_leaf, transformation=t)
-        elseif symbol(node) == "RootSegment"
+        elseif symbol(node) == :RootSegment
             t = IdentityTransformation()
             t = compose_lr(t, LinearMap(Diagonal([root_width, root_width, root_length])))
             t = compose_lr(t, Translation(0.0, 0.0, root_depth))
