@@ -431,74 +431,6 @@ function extrude_tube_mesh(
     )
 end
 
-@inline function _maybe_cached_refmesh(builder::Function, cache, key)
-    if cache === nothing
-        return builder()
-    end
-    return get!(cache, key) do
-        builder()
-    end
-end
-
-"""
-    extrude_tube_refmesh(name, path;
-        material=RGB(220 / 255, 220 / 255, 220 / 255),
-        cache=nothing,
-        n_sides=8,
-        radius=0.5,
-        radii=nothing,
-        widths=nothing,
-        heights=nothing,
-        path_normals=nothing,
-        torsion=true,
-        cap_ends=false)
-
-Create a `RefMesh` directly from [`extrude_tube_mesh`](@ref).
-"""
-function extrude_tube_refmesh(
-    name::AbstractString,
-    path::AbstractVector;
-    material=RGB(220 / 255, 220 / 255, 220 / 255),
-    cache=nothing,
-    n_sides::Integer=8,
-    radius::Real=0.5,
-    radii=nothing,
-    widths=nothing,
-    heights=nothing,
-    path_normals=nothing,
-    torsion::Bool=true,
-    cap_ends::Bool=false,
-)
-    key = (
-        :tube,
-        String(name),
-        _hashable_points(path),
-        Int(n_sides),
-        Float64(radius),
-        _hashable_values(radii),
-        _hashable_values(widths),
-        _hashable_values(heights),
-        _hashable_points(path_normals),
-        torsion,
-        cap_ends,
-        material,
-    )
-    _maybe_cached_refmesh(cache, key) do
-        mesh = extrude_tube_mesh(
-            path;
-            n_sides=n_sides,
-            radius=radius,
-            radii=radii,
-            widths=widths,
-            heights=heights,
-            path_normals=path_normals,
-            torsion=torsion,
-            cap_ends=cap_ends,
-        )
-        RefMesh(String(name), mesh, material)
-    end
-end
-
 """
     lathe_gen_mesh(n_sides, z_coords, radii;
         axis=:x, cap_ends=false)
@@ -560,9 +492,15 @@ function lathe_gen_refmesh(
         cap_ends,
         material,
     )
-    _maybe_cached_refmesh(cache, key) do
+    builder() = begin
         mesh = lathe_gen_mesh(n_sides, z_coords, radii; axis=axis, cap_ends=cap_ends)
         RefMesh(String(name), mesh, material)
+    end
+    if cache === nothing
+        return builder()
+    end
+    return get!(cache, key) do
+        builder()
     end
 end
 
@@ -645,7 +583,7 @@ function lathe_refmesh(
         cap_ends,
         material,
     )
-    _maybe_cached_refmesh(cache, key) do
+    builder() = begin
         mesh = lathe_mesh(
             n_sides,
             n,
@@ -656,6 +594,12 @@ function lathe_refmesh(
             cap_ends=cap_ends,
         )
         RefMesh(String(name), mesh, material)
+    end
+    if cache === nothing
+        return builder()
+    end
+    return get!(cache, key) do
+        builder()
     end
 end
 
@@ -700,7 +644,7 @@ function extrude_profile_refmesh(
         cap_ends,
         material,
     )
-    _maybe_cached_refmesh(cache, key) do
+    builder() = begin
         mesh = extrude_profile_mesh(
             section,
             path;
@@ -712,6 +656,12 @@ function extrude_profile_refmesh(
             cap_ends=cap_ends,
         )
         RefMesh(String(name), mesh, material)
+    end
+    if cache === nothing
+        return builder()
+    end
+    return get!(cache, key) do
+        builder()
     end
 end
 
