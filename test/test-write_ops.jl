@@ -1,7 +1,7 @@
 tmp_file = tempname()
 @testset "write_opf: read, write, read again and compare -> simple_plant" begin
-    scene_dimensions = (PlantGeom.Point3(0.0, 0.0, 0.0), PlantGeom.Point3(100.0, 100.0, 0.0))
-    positions = [PlantGeom.Point3(50.0, 50.0, 50.0), PlantGeom.Point3(60.0, 60.0, 60.0), PlantGeom.Point3(70.0, 70.0, 70.0)]
+    scene_dimensions = (GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0), GeometryBasics.Point{3,Float64}(100.0, 100.0, 0.0))
+    positions = [GeometryBasics.Point{3,Float64}(50.0, 50.0, 50.0), GeometryBasics.Point{3,Float64}(60.0, 60.0, 60.0), GeometryBasics.Point{3,Float64}(70.0, 70.0, 70.0)]
     object_table = [
         (sceneID=1, plantID=p, filePath="opf/plant_$p.opf", pos=positions[p], functional_group="plant", rotation=0.1) for p in 1:3
     ]

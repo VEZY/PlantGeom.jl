@@ -25,7 +25,7 @@ import EzXML: XMLDocument, ElementNode, setroot!, addelement!, hasnodename
 import EzXML: prettyprint # to remove
 import StaticArrays: SMatrix, SVector
 import StaticArrays
-import LinearAlgebra: I, UniformScaling, Diagonal, norm, cross # Used for geometry parsing in OPF
+import LinearAlgebra: I, UniformScaling, Diagonal, norm, cross, dot # Used for geometry parsing in OPF
 import RecipesBase
 import Base
 import OrderedCollections
@@ -35,6 +35,8 @@ import UUIDs
 
 include("geometry_backend.jl")
 include("structs.jl")
+include("reconstruction/amap_reconstruction.jl")
+include("reconstruction/conventions.jl")
 include("equality.jl")
 include("helpers.jl")
 include("opf/read_opf.jl")
@@ -48,6 +50,7 @@ include("ops/read_ops.jl")
 include("ops/write_ops.jl")
 include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
+include("meshes/extrusion.jl")
 include("meshes/scene_merge.jl")
 include("plots_recipes/plots_recipe.jl")
 include("colors/get_color_type.jl")
@@ -75,12 +78,25 @@ export taper
 export refmesh_to_mesh, get_ref_meshes_color
 export xmax, ymax, zmax, xmin, ymin, zmin
 export transform_mesh!
+export extrude_profile_mesh, extrude_profile_refmesh, extrude_tube_mesh
+export ExtrudedTubeGeometry
+export extrusion_make_path, extrusion_make_spline, extrusion_make_interpolation, extrusion_make_curve
+export lathe_gen_mesh, lathe_gen_refmesh, lathe_mesh, lathe_refmesh
+export circle_section_profile, leaflet_midrib_profile
 export Material, Phong
 export RefMesh
 export (==), names
 export get_color
-export Point3, Vec3, compose_lr
 export nvertices, nelements
+export GeometryConvention
+export default_geometry_convention
+export default_amap_geometry_convention
+export AmapReconstructionOptions
+export default_amap_reconstruction_options
+export transformation_from_attributes
+export geometry_from_attributes
+export reconstruct_geometry_from_attributes!
+export set_geometry_from_attributes!
 
 function colorbar end # Extended in PlantGeomMakie extension
 export colorbar

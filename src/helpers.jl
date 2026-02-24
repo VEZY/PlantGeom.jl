@@ -43,7 +43,7 @@ function normals_vertex(mesh::RefMesh)
 end
 
 function normals_vertex(mesh)
-    zero_vec = Vec3(0.0, 0.0, 0.0)
+    zero_vec = vec3(0.0, 0.0, 0.0)
     verts = _vertices(mesh)
     faces = _faces(mesh)
     vertex_normals = fill(zero_vec, length(verts))

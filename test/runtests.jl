@@ -38,6 +38,13 @@ using Plots # Add this dependency because else the tests on plot recipes return 
 end
 
 include("test-simplify_geometry.jl")
+include("test-extrusion-mesh.jl")
+include("test-procedural-geometry.jl")
+include("test-procedural-visual-regression.jl")
+include("test-geometry-convention.jl")
+include("test-topology-reconstruction.jl")
+include("test-amap-reconstruction-core.jl")
+include("test-amap-visual-regression.jl")
 
 @testset "Meshes interop" begin
     include("test-meshes-interop.jl")

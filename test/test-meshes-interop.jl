@@ -4,9 +4,9 @@ using Meshes
 using Unitful
 
 vertices = [
-    PlantGeom.Point3(0.0, 0.0, 0.0),
-    PlantGeom.Point3(1.0, 0.0, 0.0),
-    PlantGeom.Point3(0.0, 1.0, 0.0),
+    GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0),
+    GeometryBasics.Point{3,Float64}(1.0, 0.0, 0.0),
+    GeometryBasics.Point{3,Float64}(0.0, 1.0, 0.0),
 ]
 faces = [GeometryBasics.TriangleFace{Int}(1, 2, 3)]
 mesh_gb = GeometryBasics.Mesh(vertices, faces)
@@ -19,7 +19,7 @@ mesh_meshes = to_meshes(mesh_gb)
 mesh_gb_roundtrip = to_geometrybasics(mesh_meshes)
 @test PlantGeom.nvertices(mesh_gb_roundtrip) == 3
 @test PlantGeom.nelements(mesh_gb_roundtrip) == 1
-roundtrip_vertices = GeometryBasics.decompose(PlantGeom.Point3, mesh_gb_roundtrip)
+roundtrip_vertices = GeometryBasics.decompose(GeometryBasics.Point{3,Float64}, mesh_gb_roundtrip)
 @test roundtrip_vertices[2][1] ≈ 1.0
 @test roundtrip_vertices[3][2] ≈ 1.0
 
@@ -39,7 +39,7 @@ mesh_with_units = Meshes.SimpleMesh(
     ],
 )
 mesh_gb_from_units = to_geometrybasics(mesh_with_units)
-verts_from_units = GeometryBasics.decompose(PlantGeom.Point3, mesh_gb_from_units)
+verts_from_units = GeometryBasics.decompose(GeometryBasics.Point{3,Float64}, mesh_gb_from_units)
 @test verts_from_units[1][1] isa Float64
 @test verts_from_units[2][1] ≈ 1.0
 @test verts_from_units[3][2] ≈ 1.0

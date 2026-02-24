@@ -35,7 +35,7 @@ function read_gwa(file; attr_type=Dict, mtg_type=MultiScaleTreeGraph.MutableNode
         mesh_label = _xml_attr(mesh_node, "label", "mesh$(length(ref_meshes) + 1)")
         mesh_id_raw = parse(Int, _xml_attr(mesh_node, "id", string(length(ref_meshes))))
 
-        points = Point3[]
+        points = GeometryBasics.Point{3,Float64}[]
         faces = Face3[]
         color = RGB(220 / 255, 220 / 255, 220 / 255)
 

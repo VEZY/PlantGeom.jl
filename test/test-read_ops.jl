@@ -1,7 +1,7 @@
 file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene.ops")
 @testset "read_ops" begin
     ops = @test_nowarn read_ops(file)
-    @test ops.scene_dimensions == (PlantGeom.Point3(0.0, 0.0, 0.0), PlantGeom.Point3(2.0, 1.0, 0.0))
+    @test ops.scene_dimensions == (GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0), GeometryBasics.Point{3,Float64}(2.0, 1.0, 0.0))
     @test length(get_ref_meshes(ops)) == 5
     #Note: there are only 4 ref_meshes because the same opf file is used for the simple_plants,
     # so we can optimize it by only using the common ones.
@@ -11,8 +11,8 @@ file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene
     [@test(p.filePath == "simple_plant.opf") for p in opfs[2:end]]
     @test [p.plantID for p in opfs] == collect(1:6)
     @test [p.sceneID for p in opfs] == fill(1, 6)
-    @test opfs[1].pos == PlantGeom.Point3(0.0, 0.0, 0.0)
-    @test opfs[6].pos == PlantGeom.Point3(2.0, 1.0, 0.0)
+    @test opfs[1].pos == GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0)
+    @test opfs[6].pos == GeometryBasics.Point{3,Float64}(2.0, 1.0, 0.0)
     [@test(p.scale == 1.5) for p in opfs[[3, 5]]]
     [@test(p.scale == 1.0) for p in opfs[[1, 2, 4, 6]]]
     [@test(p.inclinationAngle == 0.0) for p in opfs]
@@ -51,13 +51,10 @@ end
         axis = axis / norm(axis)
 
         expected_tf = PlantGeom.IdentityTransformation()
-        expected_tf = PlantGeom.compose_lr(expected_tf, PlantGeom.LinearMap(PlantGeom.RotZ(rotation)))
-        expected_tf = PlantGeom.compose_lr(expected_tf, PlantGeom.LinearMap(Diagonal(SVector(scale, scale, scale))))
-        expected_tf = PlantGeom.compose_lr(
-            expected_tf,
-            PlantGeom.LinearMap(PlantGeom.RotMatrix(PlantGeom.AngleAxis(inclination_angle, axis[1], axis[2], axis[3]))),
-        )
-        expected_tf = PlantGeom.compose_lr(expected_tf, PlantGeom.Translation(x, y, z))
+        expected_tf = PlantGeom.LinearMap(PlantGeom.RotZ(rotation)) ∘ expected_tf
+        expected_tf = PlantGeom.LinearMap(Diagonal(SVector(scale, scale, scale))) ∘ expected_tf
+        expected_tf = PlantGeom.LinearMap(PlantGeom.RotMatrix(PlantGeom.AngleAxis(inclination_angle, axis[1], axis[2], axis[3]))) ∘ expected_tf
+        expected_tf = PlantGeom.Translation(x, y, z) ∘ expected_tf
 
         got_mat = PlantGeom.transformation_matrix4(opf.scene_transformation)
         expected_mat = PlantGeom.transformation_matrix4(expected_tf)
