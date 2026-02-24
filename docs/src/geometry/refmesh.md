@@ -24,16 +24,27 @@ cyl = cylinder_mesh()
 cylinder_refmesh = RefMesh("cylinder_1", cyl)
 ```
 
+
+## Reference Mesh Design Philosophy
+
+Most plants contain many similar organs - think of hundreds of leaves on a tree that share the same basic shape but differ in size and orientation. PlantGeom leverages this biological pattern through its **reference mesh** approach:
+
+1. Define a single **reference mesh** for each organ type (e.g., a generic leaf shape)
+2. Apply **transformations** (scaling, rotation, translation) to position each instance
+
+This approach offers significant benefits:
+
+- **Memory efficiency**: Store one mesh instead of hundreds of copies
+- **Smaller file sizes**: OPF files store only unique reference meshes plus transformations
+- **Performance**: Operations can be applied to reference meshes once rather than to many instances
+
+For highly specialized shapes that can't be derived from a reference (like wheat leaves with complex curvatures), PlantGeom can still use direct mesh representations.
+
 ## Overview
 
 `RefMesh` is PlantGeom's reference geometry container. It stores one canonical mesh plus metadata
 (material, normals, optional UVs). Node geometries then reuse the same reference mesh with per-node
 transformations.
-
-## Why Reference Meshes?
-
-Instead of duplicating a full mesh for every organ instance, PlantGeom stores one mesh per organ
-kind and transforms it at runtime. This is memory-efficient and matches OPF semantics.
 
 ## Structure
 
@@ -42,6 +53,15 @@ A `RefMesh` contains:
 - `name`: reference mesh name.
 - `mesh`: `GeometryBasics.Mesh` (triangular mesh).
 - `normals`, `texture_coords`, `material`, `taper` metadata.
+
+## MTG Integration
+
+Geometries in PlantGeom are attached to nodes in a Multi-scale Tree Graph (MTG) that represents plant topology:
+
+```julia
+# Attaching geometry to an MTG node
+node.geometry = Geometry(ref_mesh=some_ref_mesh, transformation=some_transformation)
+```
 
 ## Create a RefMesh
 

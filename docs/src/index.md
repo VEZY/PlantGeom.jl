@@ -4,16 +4,13 @@ CurrentModule = PlantGeom
 
 # PlantGeom
 
-Documentation for [PlantGeom](https://github.com/VEZY/PlantGeom.jl), a Julia package to manage
-plant 3D geometry on top of [MultiScaleTreeGraph](https://github.com/VEZY/MultiScaleTreeGraph.jl).
+PlantGeom provides a framework for representing, manipulating, and visualizing 3D plant architecture. The package builds on top of [MultiScaleTreeGraph](https://github.com/VEZY/MultiScaleTreeGraph.jl), and reserves the node's `:geometry` attribute.
 
-PlantGeom reserves the `:geometry` attribute on nodes.
-
-## Managing 3D for plants
+## Features
 
 ### Declaring 3D geometry
 
-- Reuse organ meshes with `RefMesh` (one canonical mesh, many transformed instances)
+- Define a reference mesh for an organ, and efficiently reuse it with `RefMesh` (one canonical mesh, many transformed instances)
 - Attach geometry per node with `Geometry(ref_mesh=..., transformation=...)`
 - Generate procedural meshes like `ExtrudedTubeGeometry` for axes, stems, and roots
 - Compose transforms (`Translation`, `LinearMap`, `Rotate`, `Scale`, `Affine`) in MTG workflows
@@ -43,8 +40,6 @@ coffee_opf = read_opf(joinpath(files_dir, "coffee.opf"))
 ```
 
 ## Showcase
-
-These are showcase scenes (not minimal examples).
 
 ### Small example plant file in 3D
 
@@ -77,7 +72,6 @@ f
 Palm generated with the VPalm module from [XPalm.jl](https://github.com/PalmStudio/XPalm.jl), which uses PlantGeom for geometry management, and then rendered with RayMakie by [Simon Danisch](https://github.com/SimonDanisch/RayDemo/tree/main):
 
 ![3D palm generated with XPalm and rendered with RayMakie](https://raw.githubusercontent.com/SimonDanisch/RayDemo/refs/heads/main/Plants/plants.png)
-
 
 ### A tree fully generated with PlantGeom
 

@@ -25,7 +25,6 @@ makedocs(;
         "Architecture" => "architecture.md",
         "3D Plots" => "makie_3d.md",
         "Geometry Concepts" => [
-            "Overview" => "geometry/geometry.md",
             "Reference Meshes" => "geometry/refmesh.md",
             "Merging Meshes" => "geometry/merging_geometry.md",
         ],
