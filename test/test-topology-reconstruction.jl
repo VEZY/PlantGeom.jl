@@ -36,9 +36,9 @@
     leaves = Any[]
 
     traverse!(mtg) do node
-        if symbol(node) == "Internode"
+        if symbol(node) == :Internode
             push!(internodes, node)
-        elseif symbol(node) == "Leaf"
+        elseif symbol(node) == :Leaf
             push!(leaves, node)
         end
     end
@@ -75,9 +75,9 @@
     first_leaf = nothing
     first_internode = nothing
     traverse!(mtg3) do node
-        if symbol(node) == "Internode" && first_internode === nothing
+        if symbol(node) == :Internode && first_internode === nothing
             first_internode = node
-        elseif symbol(node) == "Leaf" && first_leaf === nothing
+        elseif symbol(node) == :Leaf && first_leaf === nothing
             first_leaf = node
         end
     end
@@ -96,9 +96,9 @@
         mode_internode = nothing
         mode_leaf = nothing
         traverse!(mode_mtg) do node
-            if symbol(node) == "Internode" && mode_internode === nothing
+            if symbol(node) == :Internode && mode_internode === nothing
                 mode_internode = node
-            elseif symbol(node) == "Leaf" && mode_leaf === nothing
+            elseif symbol(node) == :Leaf && mode_leaf === nothing
                 mode_leaf = node
             end
         end
@@ -135,10 +135,10 @@
     end
 
     @testset "phyllotaxy fallback and verticil mode" begin
-        ramif = Node(NodeMTG("/", "Plant", 1, 1))
-        bearer = Node(ramif, NodeMTG("/", "Internode", 1, 2))
-        leaf_a = Node(bearer, NodeMTG("+", "Leaf", 1, 2))
-        leaf_b = Node(bearer, NodeMTG("+", "Leaf", 2, 2))
+        ramif = Node(NodeMTG(:/, :Plant, 1, 1))
+        bearer = Node(ramif, NodeMTG(:/, :Internode, 1, 2))
+        leaf_a = Node(bearer, NodeMTG(:+, :Leaf, 1, 2))
+        leaf_b = Node(bearer, NodeMTG(:+, :Leaf, 2, 2))
 
         bearer[:Length] = 0.3
         bearer[:Width] = 0.06
@@ -204,9 +204,9 @@
     demo_internodes = Any[]
     demo_leaves = Any[]
     traverse!(demo) do node
-        if symbol(node) == "Internode"
+        if symbol(node) == :Internode
             push!(demo_internodes, node)
-        elseif symbol(node) == "Leaf"
+        elseif symbol(node) == :Leaf
             push!(demo_leaves, node)
         end
     end

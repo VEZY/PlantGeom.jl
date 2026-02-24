@@ -1,7 +1,7 @@
 @testset "procedural geometry sources" begin
-    mtg = Node(NodeMTG("/", "Plant", 1, 1))
-    static_node = Node(mtg, NodeMTG("/", "Internode", 1, 2))
-    procedural_node = Node(mtg, NodeMTG("/", "Internode", 2, 2))
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+    static_node = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+    procedural_node = Node(mtg, NodeMTG(:/, :Internode, 2, 2))
 
     static_mesh = GeometryBasics.mesh(
         GeometryBasics.Cylinder(

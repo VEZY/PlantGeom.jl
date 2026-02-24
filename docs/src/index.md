@@ -115,7 +115,7 @@ end
 leaf_ref = RefMesh("leaf_with_petiole", leaf_mesh_with_petiole(), RGB(0.20, 0.62, 0.30))
 
 function add_axis!(parent, edge, axis_id, path, radius, color)
-    node = Node(parent, NodeMTG(edge, "Axis", axis_id, 2))
+    node = Node(parent, NodeMTG(edge, :Axis, axis_id, 2))
     node[:geometry] = ExtrudedTubeGeometry(
         path;
         n_sides=14,
@@ -129,7 +129,7 @@ function add_axis!(parent, edge, axis_id, path, radius, color)
 end
 
 function add_leaf!(parent, leaf_id, anchor, azimuth_deg, tilt_deg, leaf_ref)
-    node = Node(parent, NodeMTG("+", "Leaf", leaf_id, 3))
+    node = Node(parent, NodeMTG(:+, :Leaf, leaf_id, 3))
     rot = PlantGeom.LinearMap(
         PlantGeom.RotZ(deg2rad(azimuth_deg)) *
         PlantGeom.AngleAxis(deg2rad(tilt_deg), 0.0, 1.0, 0.0),
@@ -181,7 +181,7 @@ function grow_axis_chain!(parent, start_point, axis_counter;
         p1 = advance_point(p0, seg_azimuth, seg_elevation, seg_length)
 
         axis_counter[] += 1
-        edge = seg == 1 ? first_edge : "<"
+        edge = seg == 1 ? first_edge : :<
         seg_radius = radius * 0.84^(seg - 1)
         node = add_axis!(node, edge, axis_counter[], [p0, p1], seg_radius, color)
         push!(tips, (node=node, start=p0, tip=p1, azimuth=seg_azimuth, elevation=seg_elevation))
@@ -210,7 +210,7 @@ function add_leaf_fan!(carrier, leaf_counter, leaf_ref; n=2, azimuth_shift=84.0,
 end
 
 function build_demo_tree()
-    tree = Node(NodeMTG("/", "Plant", 1, 1))
+    tree = Node(NodeMTG(:/, :Plant, 1, 1))
 
     axis_counter = Ref(0)
     leaf_counter = Ref(0)
@@ -224,7 +224,7 @@ function build_demo_tree()
         tree,
         Point(0.0, 0.0, 0.0),
         axis_counter;
-        first_edge="/",
+        first_edge=:/,
         n_segments=9,
         azimuth_deg=8.0,
         elevation_deg=87.0,
@@ -258,7 +258,7 @@ function build_demo_tree()
             trunk_tip.node,
             trunk_tip.tip,
             axis_counter;
-            first_edge="+",
+            first_edge=:+,
             n_segments=4,
             azimuth_deg=spec.az,
             elevation_deg=spec.el,
@@ -286,7 +286,7 @@ function build_demo_tree()
                 p_tip.node,
                 p_tip.tip,
                 axis_counter;
-                first_edge="+",
+                first_edge=:+,
                 n_segments=3,
                 azimuth_deg=p_tip.azimuth + secondary_side * (36.0 + 9.0 * seg_rank) + secondary_az_jitter,
                 elevation_deg=p_tip.elevation - 8.0 + secondary_el_jitter,
@@ -308,7 +308,7 @@ function build_demo_tree()
                     s_tip.node,
                     s_tip.tip,
                     axis_counter;
-                    first_edge="+",
+                    first_edge=:+,
                     n_segments=1,
                     azimuth_deg=s_tip.azimuth + o4_side * (40.0 + 7.0 * s_rank) + o4_az_jitter,
                     elevation_deg=s_tip.elevation - 6.0 + o4_el_jitter,
@@ -326,7 +326,7 @@ function build_demo_tree()
                     o4_tip.node,
                     o4_tip.tip,
                     axis_counter;
-                    first_edge="+",
+                    first_edge=:+,
                     n_segments=2,
                     azimuth_deg=o4_tip.azimuth + o5_side * 36.0 + o5_az_jitter,
                     elevation_deg=o4_tip.elevation - 5.0 + o5_el_jitter,
@@ -413,7 +413,7 @@ plantviz(tree_demo, figure=(size=(980, 980),))
     leaf_ref = RefMesh("leaf_with_petiole", leaf_mesh_with_petiole(), RGB(0.20, 0.62, 0.30))
 
     function add_axis!(parent, edge, axis_id, path, radius, color)
-        node = Node(parent, NodeMTG(edge, "Axis", axis_id, 2))
+        node = Node(parent, NodeMTG(edge, :Axis, axis_id, 2))
         node[:geometry] = ExtrudedTubeGeometry(
             path;
             n_sides=14,
@@ -427,7 +427,7 @@ plantviz(tree_demo, figure=(size=(980, 980),))
     end
 
     function add_leaf!(parent, leaf_id, anchor, azimuth_deg, tilt_deg, leaf_ref)
-        node = Node(parent, NodeMTG("+", "Leaf", leaf_id, 3))
+        node = Node(parent, NodeMTG(:+, :Leaf, leaf_id, 3))
         rot = PlantGeom.LinearMap(
             PlantGeom.RotZ(deg2rad(azimuth_deg)) *
             PlantGeom.AngleAxis(deg2rad(tilt_deg), 0.0, 1.0, 0.0),
@@ -479,7 +479,7 @@ plantviz(tree_demo, figure=(size=(980, 980),))
             p1 = advance_point(p0, seg_azimuth, seg_elevation, seg_length)
 
             axis_counter[] += 1
-            edge = seg == 1 ? first_edge : "<"
+            edge = seg == 1 ? first_edge : :<
             seg_radius = radius * 0.84^(seg - 1)
             node = add_axis!(node, edge, axis_counter[], [p0, p1], seg_radius, color)
             push!(tips, (node=node, start=p0, tip=p1, azimuth=seg_azimuth, elevation=seg_elevation))
@@ -508,7 +508,7 @@ plantviz(tree_demo, figure=(size=(980, 980),))
     end
 
     function build_demo_tree()
-        tree = Node(NodeMTG("/", "Plant", 1, 1))
+        tree = Node(NodeMTG(:/, :Plant, 1, 1))
 
         axis_counter = Ref(0)
         leaf_counter = Ref(0)
@@ -522,7 +522,7 @@ plantviz(tree_demo, figure=(size=(980, 980),))
             tree,
             Point(0.0, 0.0, 0.0),
             axis_counter;
-            first_edge="/",
+            first_edge=:/,
             n_segments=9,
             azimuth_deg=8.0,
             elevation_deg=87.0,
@@ -556,7 +556,7 @@ plantviz(tree_demo, figure=(size=(980, 980),))
                 trunk_tip.node,
                 trunk_tip.tip,
                 axis_counter;
-                first_edge="+",
+                first_edge=:+,
                 n_segments=4,
                 azimuth_deg=spec.az,
                 elevation_deg=spec.el,
@@ -584,7 +584,7 @@ plantviz(tree_demo, figure=(size=(980, 980),))
                     p_tip.node,
                     p_tip.tip,
                     axis_counter;
-                    first_edge="+",
+                    first_edge=:+,
                     n_segments=3,
                     azimuth_deg=p_tip.azimuth + secondary_side * (36.0 + 9.0 * seg_rank) + secondary_az_jitter,
                     elevation_deg=p_tip.elevation - 8.0 + secondary_el_jitter,
@@ -606,7 +606,7 @@ plantviz(tree_demo, figure=(size=(980, 980),))
                         s_tip.node,
                         s_tip.tip,
                         axis_counter;
-                        first_edge="+",
+                        first_edge=:+,
                         n_segments=1,
                         azimuth_deg=s_tip.azimuth + o4_side * (40.0 + 7.0 * s_rank) + o4_az_jitter,
                         elevation_deg=s_tip.elevation - 6.0 + o4_el_jitter,
@@ -624,7 +624,7 @@ plantviz(tree_demo, figure=(size=(980, 980),))
                         o4_tip.node,
                         o4_tip.tip,
                         axis_counter;
-                        first_edge="+",
+                        first_edge=:+,
                         n_segments=2,
                         azimuth_deg=o4_tip.azimuth + o5_side * 36.0 + o5_az_jitter,
                         elevation_deg=o4_tip.elevation - 5.0 + o5_el_jitter,

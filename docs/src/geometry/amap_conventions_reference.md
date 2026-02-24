@@ -160,15 +160,15 @@ Notes:
 
 - If only some endpoint columns are present, endpoint override is ignored (lenient fallback).
 - If endpoint equals base (zero-length vector), endpoint override is ignored.
-- Successor `"<"` nodes continue from this computed endpoint through normal topology rules.
+- Successor `:<` nodes continue from this computed endpoint through normal topology rules.
 
 ### 2.7 Allometry delegate semantics (AMAP core)
 
 PlantGeom now applies AMAP-style allometry preprocessing before geometric stages:
 
-- Missing `Width`/`Height` can be interpolated along `"<"` axis neighborhoods.
+- Missing `Width`/`Height` can be interpolated along `:<` axis neighborhoods.
 - If only one of width/height is provided, the other is mirrored.
-- If a node has components (`"/"`), measured allometry is propagated to missing component values.
+- If a node has components (`:/`), measured allometry is propagated to missing component values.
 - Component length propagation uses AMAP split-vs-copy behavior:
   successor-chain components split parent `Length`; direct (no-succession) components copy parent `Length`.
 - For non-terminal nodes with no measured allometry, size collapses to zero (controller behavior).
@@ -272,7 +272,7 @@ Important:
 
 - it is an orientation clamp, not a full collision solver
 - it does not move the already computed base insertion point
-- for chained `"<"` axes, changing orientation still changes downstream positions through topology
+- for chained `:<` axes, changing orientation still changes downstream positions through topology
 
 ## 3. Stage Order and Semantics
 
@@ -441,7 +441,7 @@ function _base_bearer!(node)
 end
 
 function _new_leaf(parent, idx)
-    leaf = Node(parent, NodeMTG("+", "Leaf", idx, 2))
+    leaf = Node(parent, NodeMTG(:+, :Leaf, idx, 2))
     leaf[:Length] = 0.24
     leaf[:Width] = 0.12
     leaf[:Thickness] = 0.002
@@ -451,8 +451,8 @@ function _new_leaf(parent, idx)
 end
 
 function insertion_mode_example(mode::String)
-    mtg = Node(NodeMTG("/", "Plant", 1, 1))
-    bearer = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+    bearer = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
     _base_bearer!(bearer)
     # Exaggerated proportions for documentation visibility.
     bearer[:Length] = 0.10
@@ -474,8 +474,8 @@ function insertion_mode_example(mode::String)
 end
 
 function verticil_mode_example(mode::Symbol)
-    mtg = Node(NodeMTG("/", "Plant", 1, 1))
-    bearer = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+    bearer = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
     _base_bearer!(bearer)
     bearer[:Length] = 0.14
     bearer[:Width] = 0.06
@@ -499,8 +499,8 @@ function verticil_mode_example(mode::Symbol)
 end
 
 function order_override_example(mode::Symbol)
-    mtg = Node(NodeMTG("/", "Plant", 1, 1))
-    bearer = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+    bearer = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
     _base_bearer!(bearer)
 
     leaf_a = _new_leaf(bearer, 1)
@@ -524,12 +524,12 @@ function order_override_example(mode::Symbol)
 end
 
 function stiffness_propagation_example(mode::Symbol)
-    mtg = Node(NodeMTG("/", "Plant", 1, 1))
-    axis = Node(mtg, NodeMTG("/", "AxisNode", 1, 2))
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+    axis = Node(mtg, NodeMTG(:/, :AxisNode, 1, 2))
 
     # AMAP-style setup:
     # each controller node carries stiffness and writes StiffnessAngle to
-    # its linked components; successor "<" nodes then continue from the last
+    # its linked components; successor :< nodes then continue from the last
     # component top.
     n_segments = 4
     for i in 1:n_segments
@@ -542,18 +542,18 @@ function stiffness_propagation_example(mode::Symbol)
 
         # Two components are used so propagated angle is non-zero on the
         # second (visible) segment.
-        anchor = Node(axis, NodeMTG("/", "AxisDummy", 2 * i - 1, 3))
+        anchor = Node(axis, NodeMTG(:/, :AxisDummy, 2 * i - 1, 3))
         anchor[:Length] = 1.0
         anchor[:Width] = 0.05
         anchor[:Thickness] = 0.05
 
-        seg = Node(axis, NodeMTG("/", "AxisSegment", 2 * i, 3))
+        seg = Node(axis, NodeMTG(:/, :AxisSegment, 2 * i, 3))
         seg[:Length] = 1.0
         seg[:Width] = max(0.35 - 0.03 * (i - 1), 0.12)
         seg[:Thickness] = seg[:Width]
 
         if i < n_segments
-            nxt = Node(axis, NodeMTG("<", "AxisNode", i + 1, 2))
+            nxt = Node(axis, NodeMTG(:<, :AxisNode, i + 1, 2))
             nxt[:Length] = 20.0
             nxt[:Width] = 0.1
             nxt[:Thickness] = 0.1
@@ -576,12 +576,12 @@ function stiffness_propagation_example(mode::Symbol)
 end
 
 function coordinate_delegate_mode_example(mode::Symbol; return_nodes::Bool=false)
-    mtg = Node(NodeMTG("/", "Plant", 1, 1))
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
 
-    i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
-    i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
-    i3 = Node(i2, NodeMTG("<", "Internode", 3, 2))
-    i4 = Node(i3, NodeMTG("<", "Internode", 4, 2))
+    i1 = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+    i2 = Node(i1, NodeMTG(:<, :Internode, 2, 2))
+    i3 = Node(i2, NodeMTG(:<, :Internode, 3, 2))
+    i4 = Node(i3, NodeMTG(:<, :Internode, 4, 2))
 
     nodes = (i1, i2, i3, i4)
     widths = (0.050, 0.042, 0.036, 0.032)
@@ -679,7 +679,7 @@ function _print_mode_mtg(mode::Symbol)
     println("mode = ", mode)
     println("/Plant1")
     for (i, node) in enumerate(nodes)
-        link_label = i == 1 ? "/" : "<"
+        link_label = i == 1 ? :/ : :<
         status = if !PlantGeom.has_geometry(node)
             "omitted"
         else
@@ -865,8 +865,8 @@ function _plot_coordinate_delegate_modes_with_skeleton(
 end
 
 function geometrical_constraint_example(mode::Symbol)
-    mtg = Node(NodeMTG("/", "Plant", 1, 1))
-    internode = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+    internode = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
 
     # Reuse the same constraint object on all nodes (AMAP-style shared frame init).
     shared_constraint = Dict{Symbol,Any}(
@@ -890,7 +890,7 @@ function geometrical_constraint_example(mode::Symbol)
         end
 
         if i < n_segments
-            nxt = Node(internode, NodeMTG("<", "Internode", i + 1, 2))
+            nxt = Node(internode, NodeMTG(:<, :Internode, i + 1, 2))
             internode = nxt
         end
     end
@@ -1096,7 +1096,7 @@ What this figure is doing:
 - Each controller node has stiffness (`Stifness`, `StifnessTapering`) and two `/` components:
   an invisible anchor + a visible cylindrical segment.
 - `StiffnessApply=true` propagates a non-zero `StiffnessAngle` to the visible component.
-- Successor `"<"` nodes continue from the last component top (AMAPStudio-like behavior), so propagated component bending changes downstream position.
+- Successor `:<` nodes continue from the last component top (AMAPStudio-like behavior), so propagated component bending changes downstream position.
 - Only `StiffnessApply` changes between panels.
 
 Topology sketch:

@@ -72,8 +72,8 @@ function bench_reconstruct!(mtg; amap_options=AMAP_DEFAULT_OPTS)
 end
 
 function build_scratch_mtg(; n_segments::Int=40)
-    mtg = Node(NodeMTG("/", "Plant", 1, 1))
-    internode = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+    internode = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
 
     for i in 1:n_segments
         internode[:Length] = 0.22 * (0.985^(i - 1))
@@ -83,7 +83,7 @@ function build_scratch_mtg(; n_segments::Int=40)
         internode[:DeviationAngle] = 5.0 + 0.7 * cos(i / 4)
 
         if i % 2 == 0
-            leaf = Node(internode, NodeMTG("+", "Leaf", i, 2))
+            leaf = Node(internode, NodeMTG(:+, :Leaf, i, 2))
             leaf[:Length] = 0.18 + 0.02 * cos(i / 5)
             leaf[:Width] = 0.08 + 0.01 * sin(i / 7)
             leaf[:Thickness] = 0.002
@@ -93,7 +93,7 @@ function build_scratch_mtg(; n_segments::Int=40)
         end
 
         if i < n_segments
-            internode = Node(internode, NodeMTG("<", "Internode", i + 1, 2))
+            internode = Node(internode, NodeMTG(:<, :Internode, i + 1, 2))
         end
     end
 
@@ -101,8 +101,8 @@ function build_scratch_mtg(; n_segments::Int=40)
 end
 
 function build_stiffness_scene(; n_components::Int=18)
-    mtg = Node(NodeMTG("/", "Plant", 1, 1))
-    stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+    stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
     stem[:Length] = 28.0
     stem[:Width] = 0.12
     stem[:Thickness] = 0.12
@@ -111,7 +111,7 @@ function build_stiffness_scene(; n_components::Int=18)
     stem[:StiffnessApply] = true
 
     for i in 1:n_components
-        c = Node(stem, NodeMTG("/", "Leaf", i, 3))
+        c = Node(stem, NodeMTG(:/, :Leaf, i, 3))
         c[:Length] = 0.22
         c[:Width] = 0.055
         c[:Thickness] = 0.01
@@ -121,8 +121,8 @@ function build_stiffness_scene(; n_components::Int=18)
 end
 
 function build_geometrical_constraint_scene(mode::Symbol)
-    mtg = Node(NodeMTG("/", "Plant", 1, 1))
-    internode = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+    internode = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
 
     shared_constraint = Dict{Symbol,Any}(
         :type => :cone_cylinder,
@@ -144,7 +144,7 @@ function build_geometrical_constraint_scene(mode::Symbol)
         end
 
         if i < 9
-            internode = Node(internode, NodeMTG("<", "Internode", i + 1, 2))
+            internode = Node(internode, NodeMTG(:<, :Internode, i + 1, 2))
         end
     end
 
@@ -152,10 +152,10 @@ function build_geometrical_constraint_scene(mode::Symbol)
 end
 
 function build_explicit_coordinate_scene()
-    mtg = Node(NodeMTG("/", "Plant", 1, 1))
-    i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
-    i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
-    i3 = Node(i2, NodeMTG("<", "Internode", 3, 2))
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+    i1 = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+    i2 = Node(i1, NodeMTG(:<, :Internode, 2, 2))
+    i3 = Node(i2, NodeMTG(:<, :Internode, 3, 2))
 
     for n in (i1, i2, i3)
         n[:Length] = 0.45

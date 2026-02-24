@@ -216,11 +216,11 @@ end
 function _resolve_value(node, aliases::Vector{Symbol}, label::Symbol; default=0.0, warn_missing=false)
     value, found = _resolve_alias(node, aliases)
     if found === nothing
-        warn_missing && @warn "No mapped value found for '$label'. Using default $default." aliases=aliases
+        warn_missing && @warn "No mapped value found for '$label'. Using default $default." aliases = aliases
         return Float64(default)
     end
     if value === nothing
-        warn_missing && @warn "Mapped value for '$label' is not numeric. Using default $default." attr=found
+        warn_missing && @warn "Mapped value for '$label' is not numeric. Using default $default." attr = found
         return Float64(default)
     end
     return value
@@ -289,10 +289,10 @@ function transformation_from_attributes(node; convention=default_geometry_conven
     for angle in convention.angle_map
         value, found = _resolve_alias(node, angle.names)
         if found === nothing
-            warn_missing && @warn "No mapped value found for angle. Skipping." axis=angle.axis aliases=angle.names
+            warn_missing && @warn "No mapped value found for angle. Skipping." axis = angle.axis aliases = angle.names
             continue
         elseif value === nothing
-            warn_missing && @warn "Mapped angle value is not numeric. Skipping." attr=found axis=angle.axis
+            warn_missing && @warn "Mapped angle value is not numeric. Skipping." attr = found axis = angle.axis
             continue
         end
 
@@ -433,8 +433,8 @@ end
 
 function _has_explicit_translation(node, convention::GeometryConvention)
     _has_numeric_alias(node, convention.translation_map[:x]) ||
-    _has_numeric_alias(node, convention.translation_map[:y]) ||
-    _has_numeric_alias(node, convention.translation_map[:z])
+        _has_numeric_alias(node, convention.translation_map[:y]) ||
+        _has_numeric_alias(node, convention.translation_map[:z])
 end
 
 @inline function _predecessor_in_axis(node)
@@ -773,7 +773,7 @@ function _resolve_endpoint_position(node, options::AmapReconstructionOptions; wa
               (ex !== nothing) && (ey !== nothing) && (ez !== nothing)
 
     if has_any && !has_all
-        warn_missing && @warn "Incomplete EndX/EndY/EndZ endpoint ignored for node." found=(fx, fy, fz)
+        warn_missing && @warn "Incomplete EndX/EndY/EndZ endpoint ignored for node." found = (fx, fy, fz)
         return nothing
     end
 
@@ -1139,7 +1139,7 @@ function _angles_transform(
         end
 
         if !has_value
-            warn_missing && @warn "No mapped value found for angle. Skipping." axis=angle.axis aliases=angle.names
+            warn_missing && @warn "No mapped value found for angle. Skipping." axis = angle.axis aliases = angle.names
             continue
         end
 
@@ -1833,7 +1833,7 @@ function _propagate_stiffness_to_components!(
     for component_node in components_nodes
         relative_position_in_portee = floor(Int, (node_length * current_distance_from_insertion) / n_components)
 
-        for i in prev_position_in_portee:(relative_position_in_portee - 1)
+        for i in prev_position_in_portee:(relative_position_in_portee-1)
             relative_position = i / node_length
             local_angle = _young_local_flexion(
                 current_angle,
@@ -1921,11 +1921,11 @@ Reconstruct node geometries from attribute conventions and MTG topology.
 When no explicit translation attributes are found (`XX/YY/ZZ` by default), placement follows a
 topological convention close to AMAP:
 
-- `"<"`: attach to predecessor top
-- `"+"`: attach to bearer at `Offset` (or bearer length if missing)
-- `"+"`: default insertion mode is `BORDER`, adding a lateral offset of
+- `:<`: attach to predecessor top
+- `:+`: attach to bearer at `Offset` (or bearer length if missing)
+- `:+`: default insertion mode is `BORDER`, adding a lateral offset of
   `BorderInsertionOffset` (or bearer top width / 2)
-- `"/"`: attach to parent base
+- `:/`: attach to parent base
 
 If endpoint attributes (`EndX`/`EndY`/`EndZ` aliases) are present, they override angle-derived
 orientation and `Length` for that node: base position comes from translation/topology, and

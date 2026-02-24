@@ -41,8 +41,8 @@ using MultiScaleTreeGraph
 using Colors
 using GeometryBasics
 
-mtg = Node(NodeMTG("/", "Plant", 1, 1))
-axis = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+axis = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
 
 axis[:geometry] = ExtrudedTubeGeometry(
     [

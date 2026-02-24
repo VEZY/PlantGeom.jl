@@ -5,8 +5,8 @@ mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "c
         mtg1 = deepcopy(mtg)
         # Load the example OPF file
         @test !haskey(mtg1[1], :geometry)
-        # Simplify geometry from "Metamer" and "Leaf" to "Axis" 
-        merge_children_geometry!(mtg1; from=["Metamer", "Leaf"], into="Axis", delete=:none, verbose=false)
+        # Simplify geometry from :Metamer and :Leaf to :Axis 
+        merge_children_geometry!(mtg1; from=[:Metamer, :Leaf], into=:Axis, delete=:none, verbose=false)
 
         # Verify the transformation
         @test haskey(mtg1[1], :geometry)
@@ -24,8 +24,8 @@ mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "c
         # Load the example OPF file
         mtg2 = deepcopy(mtg)
         @test !haskey(mtg2[1], :geometry)
-        # Simplify geometry from "Metamer" and "Leaf" to "Axis" 
-        merge_children_geometry!(mtg2; from=["Metamer", "Leaf"], into="Axis", delete=:geometry, verbose=false)
+        # Simplify geometry from :Metamer and :Leaf to :Axis 
+        merge_children_geometry!(mtg2; from=[:Metamer, :Leaf], into=:Axis, delete=:geometry, verbose=false)
 
         # Verify the transformation
         @test haskey(mtg2[1], :geometry) # Axis has geometry
@@ -42,8 +42,8 @@ mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "c
         mtg3 = deepcopy(mtg)
         @test length(mtg3) == length(mtg)
         @test !haskey(mtg3[1], :geometry)
-        # Simplify geometry from "Metamer" and "Leaf" to "Axis" 
-        merge_children_geometry!(mtg3; from=["Metamer", "Leaf"], into="Axis", delete=:nodes, verbose=false)
+        # Simplify geometry from :Metamer and :Leaf to :Axis 
+        merge_children_geometry!(mtg3; from=[:Metamer, :Leaf], into=:Axis, delete=:nodes, verbose=false)
 
         # Verify the transformation
         @test haskey(mtg3[1], :geometry)
@@ -57,7 +57,7 @@ mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "c
     @testset "missing nodes" begin
         # Nothing should happen here
         mtg4 = deepcopy(mtg)
-        merge_children_geometry!(mtg4; from=["This", "That"], into="Axis", delete=:nodes, verbose=false)
+        merge_children_geometry!(mtg4; from=[:This, :That], into=:Axis, delete=:nodes, verbose=false)
         @test length(mtg4) == length(mtg)
         @test all(descendants(mtg4) .== descendants(mtg))
     end
