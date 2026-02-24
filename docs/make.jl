@@ -23,20 +23,22 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Architecture" => "architecture.md",
-        "2D diagrams" => [
+        "3D Plots" => "makie_3d.md",
+        "Geometry Concepts" => [
+            "Overview" => "geometry/geometry.md",
+            "Reference Meshes" => "geometry/refmesh.md",
+            "Merging Meshes" => "geometry/merging_geometry.md",
+        ],
+        "Building a 3D plant" => "geometry/building_plant_models.md",
+        "AMAP-Style reconstructions" => [
+            "Quickstart" => "geometry/amap_quickstart.md",
+            "Reconstruction Decision Guide" => "geometry/amap_reconstruction_decision_guide.md",
+            "Conventions Reference" => "geometry/amap_conventions_reference.md",
+            "AMAPStudio Parity Matrix" => "geometry/amap_parity_matrix.md",
+        ],
+        "Plotting the graph" => [
             "Makie.jl" => "plot_diagram/makie_diagram.md",
             "Plots.jl" => "plot_diagram/plots_diagram.md",
-        ],
-        "3D recipes" => "makie_3d.md",
-        "Geometry" => [
-            "Concepts" => "geometry/geometry.md",
-            "Reference Meshes" => "geometry/refmesh.md",
-            "Building Plant Models" => "geometry/building_plant_models.md",
-            "AMAP Quickstart" => "geometry/amap_quickstart.md",
-            "AMAP Reconstruction Decision Guide" => "geometry/amap_reconstruction_decision_guide.md",
-            "AMAP Conventions Reference" => "geometry/amap_conventions_reference.md",
-            "AMAP Parity Matrix" => "geometry/amap_parity_matrix.md",
-            "Merging Meshes" => "geometry/merging_geometry.md",
         ],
         "API" => "API.md"
     ]
