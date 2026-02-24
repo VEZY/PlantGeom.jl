@@ -178,6 +178,80 @@
         return mtg
     end
 
+    function geometrical_constraint_scene(mode::Symbol)
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        internode = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+
+        shared_constraint = Dict{Symbol,Any}(
+            :type => :cone_cylinder,
+            :primary_angle => 14.0,
+            :secondary_angle => 14.0,
+            :cone_length => 0.35,
+            :origin => (0.0, 0.0, 0.0),
+            :axis => (1.0, 0.0, 0.0),
+        )
+
+        n_segments = 9
+        for i in 1:n_segments
+            internode[:Length] = 0.15
+            internode[:Width] = max(0.08 - 0.004 * (i - 1), 0.04)
+            internode[:Thickness] = internode[:Width]
+            internode[:YInsertionAngle] = 19.0
+            internode[:DeviationAngle] = 8.0
+            mode === :constrained && (internode[:GeometricalConstraint] = shared_constraint)
+            if i < n_segments
+                internode = Node(internode, NodeMTG("<", "Internode", i + 1, 2))
+            end
+        end
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            root_align=false,
+        )
+        return mtg
+    end
+
+    function explicit_coordinate_mode_scene(mode::Symbol)
+        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
+        i3 = Node(i2, NodeMTG("<", "Internode", 3, 2))
+
+        for n in (i1, i2, i3)
+            n[:Length] = 0.45
+            n[:Width] = 0.09
+            n[:Thickness] = 0.09
+        end
+
+        i1[:XX] = 0.0
+        i1[:YY] = 0.0
+        i1[:ZZ] = 0.0
+        i1[:EndX] = 0.55
+        i1[:EndY] = 0.00
+        i1[:EndZ] = 0.00
+
+        i2[:XX] = 0.86
+        i2[:YY] = 0.28
+        i2[:ZZ] = 0.10
+        i2[:YInsertionAngle] = -30.0
+        i2[:Azimuth] = 25.0
+
+        i3[:YInsertionAngle] = 35.0
+        i3[:Azimuth] = -30.0
+
+        opts = AmapReconstructionOptions(explicit_coordinate_mode=mode)
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=opts,
+            root_align=false,
+        )
+        return mtg
+    end
+
     function _scene_bounds(scene)
         xmin_all = Inf
         xmax_all = -Inf
@@ -188,6 +262,7 @@
 
         traverse!(scene) do node
             haskey(node, :geometry) || return
+            node[:geometry] === nothing && return
             mesh = refmesh_to_mesh(node)
             for p in GeometryBasics.coordinates(mesh)
                 x = Float64(p[1])
@@ -289,5 +364,30 @@
         azimuth=1.5pi,
         elevation=0.20,
         zoom_padding=0.05,
+    )
+
+    @test_reference "reference_images/amap_geometrical_constraint.png" _plot_modes(
+        (:free, :constrained),
+        geometrical_constraint_scene;
+        titles=("No constraint", "Cone-cylinder constraint"),
+        size=(920, 340),
+        azimuth=1.35pi,
+        elevation=0.26,
+        zoom_padding=0.06,
+    )
+
+    @test_reference "reference_images/amap_explicit_coordinate_mode.png" _plot_modes(
+        (:topology_default, :explicit_rewire_previous, :explicit_start_end_required),
+        explicit_coordinate_mode_scene;
+        titles=(
+            "topology_default",
+            "explicit_rewire_previous",
+            "explicit_start_end_required",
+        ),
+        size=(1260, 320),
+        ncols=3,
+        azimuth=1.35pi,
+        elevation=0.24,
+        zoom_padding=0.07,
     )
 end
