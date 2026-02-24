@@ -4,6 +4,9 @@ function Makie.plot!(plot::PlantViz{<:Tuple{Union{T,Vector{T}}}}) where {T<:RefM
     plot_refmesh(plot, :mtg)
 end
 
+_as_colorant(color::Colorant) = color
+_as_colorant(color) = parse(Colorant, color)
+
 function plot_refmesh(plot, mtg_name=:mtg)
     Makie.map!(plot.attributes, [:colormap], :colormap_resolved) do cm
         get_colormap(cm)
@@ -31,8 +34,10 @@ function plot_refmesh(plot, mtg_name=:mtg)
             colorant = c
         end
 
-        # Parsing the colors in the dictionary into Colorants:
-        colorant_dict = Dict{String,Union{Colorant,Vector{<:Colorant}}}([k => isa(v, AbstractArray) ? parse.(Colorant, v) : fill(parse(Colorant, v), PlantGeom.nvertices(p[k])) for (k, v) in colorant])
+        # Normalize user colors; avoid parsing values that are already Colorants.
+        colorant_dict = Dict([k => isa(v, AbstractArray) ?
+                                   _as_colorant.(v) :
+                                   fill(_as_colorant(v), PlantGeom.nvertices(p[k])) for (k, v) in colorant])
 
         if length(colorant) != n_meshes
             ref_cols = get_ref_meshes_color(opf)

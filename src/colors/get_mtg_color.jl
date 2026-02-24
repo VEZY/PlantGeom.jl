@@ -16,6 +16,9 @@ struct VectorColorant
     colors::Vector{Colorant}
 end
 
+_as_colorant(color::Colorant) = color
+_as_colorant(color) = parse(Colorant, color)
+
 """
     get_mtg_color(color, opf)
 
@@ -64,7 +67,7 @@ function get_mtg_color(::Type{AttributeColorantType}, color, opf)
 end
 
 function get_mtg_color(::Type{T}, color, opf) where {T<:Symbol}
-    return parse(Colorant, color)
+    return _as_colorant(color)
 end
 
 function get_mtg_color(::Type{T}, color, opf) where {T<:Colorant}
@@ -73,7 +76,7 @@ end
 
 function get_mtg_color(::Type{DictRefMeshColorantType}, color, opf)
     # Parsing the colors in the dictionary into Colorants:
-    new_color = Dict{String,Colorant}([k => parse(Colorant, v) for (k, v) in color])
+    new_color = Dict{String,Colorant}([k => _as_colorant(v) for (k, v) in color])
     return DictRefMeshColorant(new_color)
 end
 
@@ -86,10 +89,9 @@ function get_mtg_color(::Type{DictVertexRefMeshColorantType}, color, opf)
         n_verts = nvertices(ref_mesh)
         if v isa AbstractVector
             @assert length(v) == n_verts "The length of the color vector for refmesh $k does not match the number of vertices of that refmesh ($(length(v)) != $n_verts)"
-            col = v isa AbstractVector{Colorant} ? v : parse.(Colorant, v)
+            col = _as_colorant.(v)
         else
-            col = v isa Colorant ? v : parse(Colorant, v)
-            col = fill(col, n_verts)
+            col = fill(_as_colorant(v), n_verts)
         end
         push!(new_color, k => col)
     end
@@ -101,5 +103,5 @@ function get_mtg_color(::Type{VectorColorantType}, color, opf)
 end
 
 function get_mtg_color(::Type{VectorSymbolType}, color, opf)
-    return VectorColorant(parse.(Colorant, color))
+    return VectorColorant(_as_colorant.(color))
 end
