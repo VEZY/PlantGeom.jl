@@ -1,5 +1,9 @@
 # RefMesh
 
+This page focuses on shared reference-mesh workflows (`RefMesh` + `Geometry`).
+For the procedural extrusion counterpart (`ExtrudedTubeGeometry`,
+`extrude_*`, `lathe_*`), see [`Procedural / Extrusion Geometry`](procedural_geometry.md).
+
 ```@setup refmesh
 using PlantGeom
 using CairoMakie

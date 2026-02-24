@@ -22,10 +22,11 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        "Architecture" => "architecture.md",
+        "IO and File Formats" => "io.md",
         "3D Plots" => "makie_3d.md",
         "Geometry Concepts" => [
             "Reference Meshes" => "geometry/refmesh.md",
+            "Procedural / Extrusion Geometry" => "geometry/procedural_geometry.md",
             "Merging Meshes" => "geometry/merging_geometry.md",
         ],
         "Building a 3D plant" => "geometry/building_plant_models.md",
@@ -39,6 +40,7 @@ makedocs(;
             "Makie.jl" => "plot_diagram/makie_diagram.md",
             "Plots.jl" => "plot_diagram/plots_diagram.md",
         ],
+        "For developpers" => "architecture.md",
         "API" => "API.md"
     ]
 )

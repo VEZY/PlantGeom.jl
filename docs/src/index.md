@@ -15,6 +15,10 @@ PlantGeom provides a framework for representing, manipulating, and visualizing 3
 - Generate procedural meshes like `ExtrudedTubeGeometry` for axes, stems, and roots
 - Compose transforms (`Translation`, `LinearMap`, `Rotate`, `Scale`, `Affine`) in MTG workflows
 
+See:
+- [`Reference Meshes`](geometry/refmesh.md)
+- [`Procedural / Extrusion Geometry`](geometry/procedural_geometry.md)
+
 ### Plotting
 
 - Render plant meshes in 3D with `plantviz` / `plantviz!`

@@ -12,6 +12,11 @@ For detailed AMAP conventions, alias tables, precedence rules, and parity status
 - [`AMAP Conventions Reference`](amap_conventions_reference.md)
 - [`AMAP Parity Matrix`](amap_parity_matrix.md)
 
+This tutorial emphasizes attribute-based reconstruction with reusable `RefMesh`.
+For direct procedural axis/organ geometry (`ExtrudedTubeGeometry`,
+`extrude_profile_*`, `extrude_tube_mesh`, `lathe_*`), see
+[`Procedural / Extrusion Geometry`](procedural_geometry.md).
+
 All reference meshes below follow the AMAP standard direction: organ length along local `+X`.
 
 ```@setup buildgeom
