@@ -263,11 +263,11 @@ function build_demo_tree()
                     o4_tip.tip,
                     axis_counter;
                     first_edge="+",
-                    n_segments=1,
+                    n_segments=2,
                     azimuth_deg=o4_tip.azimuth + o5_side * 36.0 + o5_az_jitter,
                     elevation_deg=o4_tip.elevation - 5.0 + o5_el_jitter,
                     base_length=0.09,
-                    taper=0.9,
+                    taper=0.86,
                     radius=0.0052,
                     color=bark_fine,
                 )
@@ -285,15 +285,18 @@ function build_demo_tree()
                 end
 
                 if s_rank >= length(secondary) - 1 || seg_rank == length(primary)
-                    add_leaf_fan!(
-                        order5[end],
-                        leaf_counter,
-                        leaf_ref;
-                        n=(s_rank == length(secondary) && seg_rank == length(primary) ? 2 : 1),
-                        azimuth_shift=78.0 * o5_side,
-                        fan_step=7.0,
-                        tilt=16.0,
-                    )
+                    for (o5_rank, o5_tip) in enumerate(order5)
+                        leaf_side = branch_jitter(p_rank + 7, seg_rank, 10 * s_rank + o5_rank, 1.0) >= 0 ? 1.0 : -1.0
+                        add_leaf_fan!(
+                            o5_tip,
+                            leaf_counter,
+                            leaf_ref;
+                            n=(o5_rank == length(order5) ? 2 : 1),
+                            azimuth_shift=(70.0 + 8.0 * o5_rank) * leaf_side,
+                            fan_step=7.0,
+                            tilt=14.0 + 1.5 * o5_rank,
+                        )
+                    end
                 end
             end
         end
@@ -562,11 +565,11 @@ plantviz(tree_demo, figure=(size=(980, 980),))
                         o4_tip.tip,
                         axis_counter;
                         first_edge="+",
-                        n_segments=1,
+                        n_segments=2,
                         azimuth_deg=o4_tip.azimuth + o5_side * 36.0 + o5_az_jitter,
                         elevation_deg=o4_tip.elevation - 5.0 + o5_el_jitter,
                         base_length=0.09,
-                        taper=0.9,
+                        taper=0.86,
                         radius=0.0052,
                         color=bark_fine,
                     )
@@ -584,15 +587,18 @@ plantviz(tree_demo, figure=(size=(980, 980),))
                     end
 
                     if s_rank >= length(secondary) - 1 || seg_rank == length(primary)
-                        add_leaf_fan!(
-                            order5[end],
-                            leaf_counter,
-                            leaf_ref;
-                            n=(s_rank == length(secondary) && seg_rank == length(primary) ? 2 : 1),
-                            azimuth_shift=78.0 * o5_side,
-                            fan_step=7.0,
-                            tilt=16.0,
-                        )
+                        for (o5_rank, o5_tip) in enumerate(order5)
+                            leaf_side = branch_jitter(p_rank + 7, seg_rank, 10 * s_rank + o5_rank, 1.0) >= 0 ? 1.0 : -1.0
+                            add_leaf_fan!(
+                                o5_tip,
+                                leaf_counter,
+                                leaf_ref;
+                                n=(o5_rank == length(order5) ? 2 : 1),
+                                azimuth_shift=(70.0 + 8.0 * o5_rank) * leaf_side,
+                                fan_step=7.0,
+                                tilt=14.0 + 1.5 * o5_rank,
+                            )
+                        end
                     end
                 end
             end
