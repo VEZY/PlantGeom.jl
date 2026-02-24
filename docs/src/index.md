@@ -206,9 +206,8 @@ function build_demo_tree()
         for (seg_rank, p_tip) in enumerate(primary)
             seg_rank == 1 && continue
             secondary_selector = branch_jitter(p_rank, seg_rank, 8, 1.0)
-            spawn_secondary = seg_rank == length(primary) ||
-                              (seg_rank == 2 && secondary_selector > -0.15) ||
-                              (seg_rank == 3 && secondary_selector > 0.55)
+            spawn_secondary = (seg_rank == length(primary) - 1) ||
+                              (seg_rank == 2 && secondary_selector > -0.10)
             spawn_secondary || continue
             secondary_side = secondary_side_state
             secondary_side_state *= -1.0
@@ -502,9 +501,8 @@ plantviz(tree_demo, figure=(size=(980, 980),))
         for (seg_rank, p_tip) in enumerate(primary)
             seg_rank == 1 && continue
             secondary_selector = branch_jitter(p_rank, seg_rank, 8, 1.0)
-            spawn_secondary = seg_rank == length(primary) ||
-                              (seg_rank == 2 && secondary_selector > -0.15) ||
-                              (seg_rank == 3 && secondary_selector > 0.55)
+            spawn_secondary = (seg_rank == length(primary) - 1) ||
+                              (seg_rank == 2 && secondary_selector > -0.10)
             spawn_secondary || continue
             secondary_side = secondary_side_state
             secondary_side_state *= -1.0
