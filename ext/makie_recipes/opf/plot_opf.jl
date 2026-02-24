@@ -70,9 +70,9 @@ function plot_opf(plot, mtg_name=:mtg)
 
     Makie.map!(plot.attributes, [:filter_fun], :filter_fun_resolved) do filter_fun
         if isnothing(filter_fun)
-            f = node -> node[:geometry] !== nothing
+            f = node -> PlantGeom.has_geometry(node)
         else
-            f = node -> node[:geometry] !== nothing && filter_fun(node)
+            f = node -> PlantGeom.has_geometry(node) && filter_fun(node)
         end
 
         return f

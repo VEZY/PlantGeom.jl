@@ -24,6 +24,17 @@ function nelements(mesh)
     _nfaces(mesh)
 end
 
+"""
+    has_geometry(node)
+
+Return true if the node has geometry, false otherwise.
+"""
+@inline function has_geometry(node)
+    haskey(node, :geometry) || return false
+    geom = node[:geometry]
+    !(geom === nothing || ismissing(geom))
+end
+
 function normals(mesh::RefMesh)
     if length(mesh.normals) == 0
         verts = _vertices(mesh.mesh)

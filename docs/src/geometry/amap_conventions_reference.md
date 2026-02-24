@@ -627,13 +627,19 @@ function _format_vec3(v)
     return "(" * join(string.(round.(collect(v), digits=3)), ", ") * ")"
 end
 
+@inline function _has_present_value(node, name::Symbol)
+    haskey(node, name) || return false
+    value = node[name]
+    !(value === nothing || ismissing(value))
+end
+
 function _print_coordinate_delegate_mode_summary(mode::Symbol)
     _, nodes = coordinate_delegate_mode_example(mode; return_nodes=true)
     println("mode = ", mode)
     println("internode | status       | start (x,y,z)        | end (x,y,z)          | length")
     println("---------|--------------|----------------------|----------------------|--------")
     for (i, node) in enumerate(nodes)
-        if !haskey(node, :geometry) || node[:geometry] === nothing
+        if !PlantGeom.has_geometry(node)
             println(rpad("i$i", 9), "| ", rpad("omitted", 12), "| ", rpad("-", 20), " | ", rpad("-", 20), " | -")
             continue
         end
@@ -663,8 +669,9 @@ end
 function _node_attr_str(node, name::Symbol)
     haskey(node, name) || return "-"
     v = node[name]
-    v === missing && return "missing"
-    return string(round(Float64(v), digits=3))
+    (v === missing || v === nothing) && return "missing"
+    v isa Number && return string(round(Float64(v), digits=3))
+    return string(v)
 end
 
 function _print_mode_mtg(mode::Symbol)
@@ -673,7 +680,7 @@ function _print_mode_mtg(mode::Symbol)
     println("/Plant1")
     for (i, node) in enumerate(nodes)
         link_label = i == 1 ? "/" : "<"
-        status = if !haskey(node, :geometry) || node[:geometry] === nothing
+        status = if !PlantGeom.has_geometry(node)
             "omitted"
         else
             g = node[:geometry]
@@ -715,8 +722,8 @@ function _coordinate_delegate_mode_records(mode::Symbol)
     mtg, nodes = coordinate_delegate_mode_example(mode; return_nodes=true)
     records = NamedTuple[]
     for (i, node) in enumerate(nodes)
-        if !haskey(node, :geometry) || node[:geometry] === nothing
-            p = if haskey(node, :XX) && haskey(node, :YY) && haskey(node, :ZZ)
+        if !PlantGeom.has_geometry(node)
+            p = if _has_present_value(node, :XX) && _has_present_value(node, :YY) && _has_present_value(node, :ZZ)
                 Point(Float64(node[:XX]), Float64(node[:YY]), Float64(node[:ZZ]))
             else
                 nothing
@@ -901,9 +908,9 @@ function _scene_bounds(scene)
     zmax_all = -Inf
 
     traverse!(scene) do node
-        haskey(node, :geometry) || return
-        node[:geometry] === nothing && return
+        PlantGeom.has_geometry(node) || return
         mesh = refmesh_to_mesh(node)
+        mesh === nothing && return
         for p in GeometryBasics.coordinates(mesh)
             x = Float64(p[1])
             y = Float64(p[2])

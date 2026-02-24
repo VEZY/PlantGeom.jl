@@ -44,7 +44,7 @@ function geometry_to_mesh(geom::Geometry)
 end
 
 function refmesh_to_mesh(node)
-    if node[:geometry] !== nothing
+    if has_geometry(node)
         return geometry_to_mesh(node[:geometry])
     else
         return nothing

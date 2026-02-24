@@ -42,7 +42,7 @@ function merge_children_geometry!(mtg; from, into, delete=:nodes, verbose=true, 
 
     # Traverse the tree and simplify the geometry
     MultiScaleTreeGraph.traverse!(mtg, symbol=into_symbol) do node_into
-        meshes_vec = MultiScaleTreeGraph.traverse(node_into, filter_fun=x -> haskey(x, :geometry), symbol=from_symbols) do node_from
+        meshes_vec = MultiScaleTreeGraph.traverse(node_into, filter_fun=x -> has_geometry(x), symbol=from_symbols) do node_from
             refmesh_to_mesh(node_from)
         end
         if isempty(meshes_vec)
