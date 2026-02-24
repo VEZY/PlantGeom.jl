@@ -6,7 +6,7 @@ Write a scene file (`.ops`), with the given dimensions and object table.
 # Arguments
 
 - `file::String`: Path of the `.ops` file to write.
-- `scene_dimensions::Tuple{Point3,Point3}`: Dimensions of the scene.
+- `scene_dimensions::Tuple{GeometryBasics.Point{3,Float64},GeometryBasics.Point{3,Float64}}`: Dimensions of the scene.
 - `object_table`: Table with the objects to write in the `.ops` file.
 """
 function write_ops(file, scene_dimensions, object_table)

@@ -1,7 +1,7 @@
 file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene.ops")
 @testset "read_ops_file" begin
     ops = @test_nowarn read_ops_file(file)
-    @test ops.scene_dimensions == (PlantGeom.Point3(0.0, 0.0, 0.0), PlantGeom.Point3(2.0, 1.0, 0.0))
+    @test ops.scene_dimensions == (GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0), GeometryBasics.Point{3,Float64}(2.0, 1.0, 0.0))
     @test length(ops.object_table) == 6
     object_table = Tables.columntable(ops.object_table)
     @test object_table.plantID == collect(1:6)
@@ -13,19 +13,19 @@ file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene
     @test object_table.scale == [1.0, 1.0, 1.5, 1.0, 1.5, 1.0]
     @test object_table.sceneID == fill(1, 6)
     @test object_table.pos == [
-        PlantGeom.Point3(0.0, 0.0, 0.0),
-        PlantGeom.Point3(1.0, 0.0, 0.0),
-        PlantGeom.Point3(2.0, 0.0, 0.0),
-        PlantGeom.Point3(0.0, 1.0, 0.0),
-        PlantGeom.Point3(1.0, 1.0, 0.0),
-        PlantGeom.Point3(2.0, 1.0, 0.0)
+        GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0),
+        GeometryBasics.Point{3,Float64}(1.0, 0.0, 0.0),
+        GeometryBasics.Point{3,Float64}(2.0, 0.0, 0.0),
+        GeometryBasics.Point{3,Float64}(0.0, 1.0, 0.0),
+        GeometryBasics.Point{3,Float64}(1.0, 1.0, 0.0),
+        GeometryBasics.Point{3,Float64}(2.0, 1.0, 0.0)
     ]
 end
 
 legacy_file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene_legacy.ops")
 @testset "read_ops_file relaxed legacy layout" begin
     ops = @test_nowarn read_ops_file(legacy_file; relaxed=true, assume_scale_column=false, opf_scale=1.0, gwa_scale=0.01)
-    @test ops.scene_dimensions == (PlantGeom.Point3(0.0, 0.0, 0.0), PlantGeom.Point3(2.0, 1.0, 0.0))
+    @test ops.scene_dimensions == (GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0), GeometryBasics.Point{3,Float64}(2.0, 1.0, 0.0))
     @test length(ops.object_table) == 2
     table = Tables.columntable(ops.object_table)
     @test table.scale == [1.0, 0.01]

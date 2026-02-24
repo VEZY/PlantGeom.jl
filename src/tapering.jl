@@ -12,7 +12,7 @@ function taper(mesh, dUp, dDwn)
         xmax = maximum(Xs)
         deltaX = xmax - xmin
 
-        scaled_mesh = Vector{Point3}(undef, length(mesh_points))
+        scaled_mesh = Vector{GeometryBasics.Point{3,Float64}}(undef, length(mesh_points))
         for i in eachindex(mesh_points)
             p = mesh_points[i]
             dX = p[1] - xmin

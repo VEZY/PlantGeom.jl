@@ -18,21 +18,29 @@ makedocs(;
         example_size_threshold=500000,
         size_threshold=2_500_000,
         size_threshold_warn=2_500_000,
+        collapselevel=3,
     ),
     pages=[
         "Home" => "index.md",
-        "Architecture" => "architecture.md",
-        "2D diagrams" => [
+        "IO and File Formats" => "io.md",
+        "3D Plots" => "makie_3d.md",
+        "Geometry Concepts" => [
+            "Reference Meshes" => "geometry/refmesh.md",
+            "Procedural / Extrusion Geometry" => "geometry/procedural_geometry.md",
+            "Merging Meshes" => "geometry/merging_geometry.md",
+        ],
+        "Building a 3D plant" => "geometry/building_plant_models.md",
+        "AMAP-Style reconstructions" => [
+            "Quickstart" => "geometry/amap_quickstart.md",
+            "Reconstruction Decision Guide" => "geometry/amap_reconstruction_decision_guide.md",
+            "Conventions Reference" => "geometry/amap_conventions_reference.md",
+            "AMAPStudio Parity Matrix" => "geometry/amap_parity_matrix.md",
+        ],
+        "Plotting the graph" => [
             "Makie.jl" => "plot_diagram/makie_diagram.md",
             "Plots.jl" => "plot_diagram/plots_diagram.md",
         ],
-        "3D recipes" => "makie_3d.md",
-        "Geometry" => [
-            "Concepts" => "geometry/geometry.md",
-            "Reference Meshes" => "geometry/refmesh.md",
-            "Building Plant Models" => "geometry/building_plant_models.md",
-            "Merging Meshes" => "geometry/merging_geometry.md",
-        ],
+        "For developpers" => "architecture.md",
         "API" => "API.md"
     ]
 )

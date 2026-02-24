@@ -56,7 +56,7 @@ plantviz(mtg, color = Dict(1 => vertex_color))
 # Or even coloring by the value of the Z coordinates of each vertex:
 transform!(
     mtg,
-    (x -> [v[3] for v in GeometryBasics.decompose(Point3, refmesh_to_mesh(x))]) => :z_vertex,
+    (x -> [v[3] for v in GeometryBasics.coordinates(refmesh_to_mesh(x))]) => :z_vertex,
     filter_fun=node -> hasproperty(node, :geometry)
 )
 plantviz(mtg, color = :z, showsegments = true)

@@ -188,11 +188,10 @@ function compute_vertex_colors!(::DictRefMeshColorant, plot, mtg_name)
     ) do colorant, color_missing, opf, filter_fun, symbol, scale, link
         vertex_colors = Vector{Colorant}()
         MultiScaleTreeGraph.traverse!(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
-            geom = node[:geometry]
             m = PlantGeom.refmesh_to_mesh(node)
             # Determine color from refmesh name; if a per-vertex vector is provided use it
             name = get_ref_mesh_name(node)
-            cols = get(colorant.colors, name, material_single_color(geom.ref_mesh.material))
+            cols = get(colorant.colors, name, PlantGeom.geometry_display_color(node))
             append!(vertex_colors, fill(cols, PlantGeom.nvertices(m)))
         end
         return vertex_colors
@@ -209,11 +208,10 @@ function compute_vertex_colors!(::DictVertexRefMeshColorant, plot, mtg_name)
     ) do colorant, color_missing, opf, filter_fun, symbol, scale, link
         vertex_colors = Vector{Colorant}()
         MultiScaleTreeGraph.traverse!(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
-            geom = node[:geometry] # we need the geometry to know how many vertices there are
             m = PlantGeom.refmesh_to_mesh(node)
             # Determine color from refmesh name; if a per-vertex vector is provided use it
             name = get_ref_mesh_name(node)
-            cols = get(colorant.colors, name, fill(material_single_color(geom.ref_mesh.material), PlantGeom.nvertices(m)))
+            cols = get(colorant.colors, name, fill(PlantGeom.geometry_display_color(node), PlantGeom.nvertices(m)))
             append!(vertex_colors, cols)
         end
         return vertex_colors
@@ -227,10 +225,9 @@ function compute_vertex_colors!(::RefMeshColorant, plot, mtg_name)
     map!(plot.attributes, [mtg_name, :filter_fun_resolved, :symbol, :scale, :link], :vertex_colors) do opf, filter_fun, symbol, scale, link
         vertex_colors = Vector{Colorant}()
         MultiScaleTreeGraph.traverse!(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
-            geom = node[:geometry] # we need the geometry to know how many vertices there are
             m = PlantGeom.refmesh_to_mesh(node)
             # Determine color from refmesh name; if a per-vertex vector is provided use it
-            cols = fill(material_single_color(geom.ref_mesh.material), PlantGeom.nvertices(m))
+            cols = fill(PlantGeom.geometry_display_color(node), PlantGeom.nvertices(m))
             append!(vertex_colors, cols)
         end
         return vertex_colors
