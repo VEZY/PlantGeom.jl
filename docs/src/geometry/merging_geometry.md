@@ -33,8 +33,8 @@ merge_children_geometry!(mtg; from, into, delete=:nodes, verbose=true, child_lin
 ### Parameters
 
 - `mtg`: The MultiScaleTreeGraph to process.
-- `from`: The type(s) of nodes whose geometry should be merged upward (lower scale). Can be a string or a vector of strings, *e.g.* `["Metamer", "Leaf"]`.
-- `into`: The type of nodes to merge into (higher scale). Must be a single string, *e.g.* "Axis".
+- `from`: The type(s) of nodes whose geometry should be merged upward (lower scale). Can be a Symbol or a vector of Symbol, *e.g.* `[:Metamer, :Leaf]`.
+- `into`: The type of nodes to merge into (higher scale). Must be a single Symbol, *e.g.* `:Axis`.
 - `delete`: A symbol indicating what to do after merging:
   - `:none`: Keep both the original nodes and their geometry.
   - `:geometry`: Keep the original nodes but remove their geometry (saves memory).
@@ -78,10 +78,10 @@ mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "c
 # Create a copy to preserve the original
 mtg_merged1 = deepcopy(mtg)
 
-# Merge geometry from "Metamer" and "Leaf" into "Axis"
+# Merge geometry from :Metamer and :Leaf into :Axis
 merge_children_geometry!(mtg_merged1; 
-    from=["Metamer", "Leaf"], 
-    into="Axis", 
+    from=[:Metamer, :Leaf], 
+    into=:Axis, 
     delete=:geometry, 
 )
 
@@ -108,8 +108,8 @@ mtg_merged2 = deepcopy(mtg)
 
 # Merge geometry and delete the original nodes
 merge_children_geometry!(mtg_merged2; 
-    from=["Metamer", "Leaf"], 
-    into="Axis", 
+    from=[:Metamer, :Leaf], 
+    into=:Axis, 
     delete=:nodes, 
 )
 

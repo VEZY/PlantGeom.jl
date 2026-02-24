@@ -13,7 +13,7 @@ function get_ref_meshes(mtg)
 
     ref_meshes = OrderedCollections.OrderedSet{RefMesh}()
     traverse!(x) do node
-        if haskey(node, :geometry) && isa(node[:geometry], Geometry)
+        if has_geometry(node) && isa(node[:geometry], Geometry)
             push!(ref_meshes, node[:geometry].ref_mesh)
         end
     end
@@ -87,8 +87,8 @@ function meshBDD_to_meshes(x)
         mesh_points = pop!(value, "points")
         mesh_faces = pop!(value, "faces")
 
-        points3d = [point3(mesh_points[p], mesh_points[p + 1], mesh_points[p + 2]) for p in 1:3:length(mesh_points)]
-        faces3d = [face3(mesh_faces[p], mesh_faces[p + 1], mesh_faces[p + 2]) for p in 1:3:length(mesh_faces)]
+        points3d = [point3(mesh_points[p], mesh_points[p+1], mesh_points[p+2]) for p in 1:3:length(mesh_points)]
+        faces3d = [face3(mesh_faces[p], mesh_faces[p+1], mesh_faces[p+2]) for p in 1:3:length(mesh_faces)]
 
         push!(mesh, "mesh" => _mesh(points3d, faces3d))
         merge!(mesh, value)

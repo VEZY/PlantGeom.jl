@@ -7,7 +7,7 @@ The transformation is composed with the previous transformation if any.
 `transformation` must be a `CoordinateTransformations.Transformation`.
 """
 function transform_mesh!(node::MultiScaleTreeGraph.Node, transformation::Transformation)
-    if node[:geometry] !== nothing
+    if has_geometry(node)
         node[:geometry].transformation = transformation ∘ node[:geometry].transformation
     end
 end

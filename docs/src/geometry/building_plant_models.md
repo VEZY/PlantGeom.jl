@@ -90,17 +90,17 @@ leaf_global_heading_convention = GeometryConvention(
 )
 
 function build_mtg_from_scratch(n_internodes=8, n_roots=4)
-    mtg = Node(NodeMTG("/", "Plant", 1, 1))
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
 
     stem = mtg
     for i in 1:n_internodes
-        stem = Node(stem, NodeMTG(i == 1 ? "/" : "<", "Internode", i, 2))
-        Node(stem, NodeMTG("+", "Leaf", i, 2))
+        stem = Node(stem, NodeMTG(i == 1 ? :/ : :<, :Internode, i, 2))
+        Node(stem, NodeMTG(:+, :Leaf, i, 2))
     end
 
     roots = mtg
     for i in 1:n_roots
-        roots = Node(roots, NodeMTG(i == 1 ? "/" : "<", "RootSegment", i, 2))
+        roots = Node(roots, NodeMTG(i == 1 ? :/ : :<, :RootSegment, i, 2))
     end
 
     mtg
@@ -114,7 +114,7 @@ function assign_advanced_attributes!(mtg)
     traverse!(mtg) do node
         organ = symbol(node)
 
-        if organ == "Internode"
+        if organ == :Internode
             internode_rank += 1
             node[:Length] = 0.30 * 0.95^(internode_rank - 1)
             node[:Width] = 0.08 * 0.93^(internode_rank - 1)
@@ -122,7 +122,7 @@ function assign_advanced_attributes!(mtg)
             node[:XEuler] = 0.0
             node[:YEuler] = 3.0 * sin(internode_rank / 3)
             node[:ZEuler] = 0.0
-        elseif organ == "Leaf"
+        elseif organ == :Leaf
             leaf_rank += 1
             node[:Length] = 0.20 + 0.012 * leaf_rank
             node[:Width] = 0.52 * node[:Length]
@@ -137,7 +137,7 @@ function assign_advanced_attributes!(mtg)
             node[:pivot_x] = 0.0
             node[:pivot_y] = 0.0
             node[:pivot_z] = 0.0
-        elseif organ == "RootSegment"
+        elseif organ == :RootSegment
             root_rank += 1
             node[:Length] = 0.45 * 0.92^(root_rank - 1)
             node[:Width] = 0.05 * 0.90^(root_rank - 1)
@@ -336,17 +336,17 @@ plantviz(
     end
 
     function build_mtg(n_internodes=8, n_roots=4)
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
 
         stem = mtg
         for i in 1:n_internodes
-            stem = Node(stem, NodeMTG(i == 1 ? "/" : "<", "Internode", i, 2))
-            Node(stem, NodeMTG("+", "Leaf", i, 2))
+            stem = Node(stem, NodeMTG(i == 1 ? :/ : :<, :Internode, i, 2))
+            Node(stem, NodeMTG(:+, :Leaf, i, 2))
         end
 
         roots = mtg
         for i in 1:n_roots
-            roots = Node(roots, NodeMTG(i == 1 ? "/" : "<", "RootSegment", i, 2))
+            roots = Node(roots, NodeMTG(i == 1 ? :/ : :<, :RootSegment, i, 2))
         end
 
         mtg
@@ -360,13 +360,13 @@ plantviz(
         traverse!(mtg) do node
             organ = symbol(node)
 
-            if organ == "Internode"
+            if organ == :Internode
                 internode_rank += 1
                 node[:Length] = 0.30 * 0.95^(internode_rank - 1)
                 node[:Width] = 0.08 * 0.93^(internode_rank - 1)
                 node[:Thickness] = node[:Width]
                 node[:YEuler] = 3.0 * sin(internode_rank / 3)
-            elseif organ == "Leaf"
+            elseif organ == :Leaf
                 leaf_rank += 1
                 node[:Length] = 0.20 + 0.012 * leaf_rank
                 node[:Width] = 0.52 * node[:Length]
@@ -380,7 +380,7 @@ plantviz(
                 node[:pivot_x] = 0.0
                 node[:pivot_y] = 0.0
                 node[:pivot_z] = 0.0
-            elseif organ == "RootSegment"
+            elseif organ == :RootSegment
                 root_rank += 1
                 node[:Length] = 0.45 * 0.92^(root_rank - 1)
                 node[:Width] = 0.05 * 0.90^(root_rank - 1)
@@ -392,9 +392,9 @@ plantviz(
         mtg
     end
 
-    refmesh_stem = RefMesh("Stem", cylinder_mesh_x(0.5, 1.0), RGB(0.55, 0.45, 0.35))
-    refmesh_leaf = RefMesh("Leaf", leaf_mesh_x(), RGB(0.1, 0.5, 0.2))
-    refmesh_root = RefMesh("Root", cylinder_mesh_x(0.5, 1.0), RGB(0.45, 0.35, 0.25))
+    refmesh_stem = RefMesh(:Stem, cylinder_mesh_x(0.5, 1.0), RGB(0.55, 0.45, 0.35))
+    refmesh_leaf = RefMesh(:Leaf, leaf_mesh_x(), RGB(0.1, 0.5, 0.2))
+    refmesh_root = RefMesh(:Root, cylinder_mesh_x(0.5, 1.0), RGB(0.45, 0.35, 0.25))
 
     ref_meshes = Dict(
         "Internode" => refmesh_stem,

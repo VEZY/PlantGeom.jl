@@ -239,9 +239,9 @@ object directly to `node[:geometry]`.
 on demand by the same scene merge/render pipeline used for classic `Geometry`.
 
 ```@example refmesh
-mtg_proc = Node(NodeMTG("/", "Plant", 1, 1))
-stem = Node(mtg_proc, NodeMTG("/", "Internode", 1, 2))
-tube = Node(mtg_proc, NodeMTG("/", "Internode", 2, 2))
+mtg_proc = Node(NodeMTG(:/, :Plant, 1, 1))
+stem = Node(mtg_proc, NodeMTG(:/, :Internode, 1, 2))
+tube = Node(mtg_proc, NodeMTG(:/, :Internode, 2, 2))
 
 stem[:geometry] = PlantGeom.Geometry(
     ref_mesh=RefMesh(

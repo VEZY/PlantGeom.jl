@@ -6,8 +6,10 @@ Simplifies the geometry of a MultiScaleTreeGraph (MTG) by merging low-scale geom
 # Arguments
 
 - `mtg`: The MultiScaleTreeGraph to process.
-- `from`: The string for the type of nodes to simplify, this is the lower scale meshes that need to be merged. Can be a string or a vector of strings, *e.g.* ["Petiole", "Rachis"].
-- `into`: The string for the type of nodes to merge into. Must be a single string, *e.g.* "Leaf".
+- `from`: The symbol for the type of nodes to simplify. Can be a symbol/string or
+  a vector/tuple of those, *e.g.* `[:Petiole, :Rachis]`.
+- `into`: The symbol for the type of nodes to merge into. Must be a single
+  symbol/string, *e.g.* `:Leaf`.
 - `delete`: A symbol indicating whether to delete the nodes or the geometry after merging:
   - `:none`: No deletion will be performed, the geometry is merged into the `into` nodes, and also kept as before in the `from` nodes.
   - `:nodes`: The nodes of type `from` will be deleted after merging.
@@ -24,39 +26,48 @@ default function is `new_child_link`, which tries to be clever considering the p
 
 If no geometry is found in the children nodes of type `from`, an informational message is logged.
 """
+@inline _normalize_node_symbol(x::Symbol) = x
+@inline _normalize_node_symbol(x::AbstractString) = Symbol(x)
+@inline _normalize_node_symbol(x::Char) = Symbol(x)
+@inline _normalize_node_symbol(x) = throw(ArgumentError("Expected Symbol/String (or container of these), got $(typeof(x))."))
+@inline _normalize_node_symbols(xs::Union{Tuple,AbstractArray}) = map(_normalize_node_symbol, xs)
+
 function merge_children_geometry!(mtg; from, into, delete=:nodes, verbose=true, child_link_fun=x -> new_child_link(x, verbose))
-    @assert into isa AbstractString """`into` must be a single string, e.g. "Leaf"."""
+    @assert !(into isa Union{Tuple,AbstractArray}) """`into` must be a single symbol/string, e.g. :Leaf."""
     @assert delete in (:none, :nodes, :geometry) """`delete` must be either `:nodes` or `:geometry`."""
     delete == :nodes && @assert child_link_fun isa Function """`child_link_fun` must be a function that takes a parent node targeted for deletion, and returns the new links for their children."""
 
+    into_symbol = _normalize_node_symbol(into)
+    from_symbols = from isa Union{Tuple,AbstractArray} ? _normalize_node_symbols(from) : _normalize_node_symbol(from)
+
     # Traverse the tree and simplify the geometry
-    MultiScaleTreeGraph.traverse!(mtg, symbol=into) do node_into
-        meshes_vec = MultiScaleTreeGraph.traverse(node_into, filter_fun=x -> haskey(x, :geometry), symbol=from) do node_from
+    MultiScaleTreeGraph.traverse!(mtg, symbol=into_symbol) do node_into
+        meshes_vec = MultiScaleTreeGraph.traverse(node_into, filter_fun=x -> has_geometry(x), symbol=from_symbols) do node_from
             refmesh_to_mesh(node_from)
         end
         if isempty(meshes_vec)
             # First, test if we find any children nodes of type `from`:
-            no_nodes_as_descendants = MultiScaleTreeGraph.descendants(node_into, symbol=from) |> isempty
+            no_nodes_as_descendants = MultiScaleTreeGraph.descendants(node_into, symbol=from_symbols) |> isempty
             if verbose
                 if no_nodes_as_descendants
-                    @info "No children nodes of type $from found in node $node_into"
+                    @info "No children nodes of type $from_symbols found in node $node_into"
                 else
-                    @info "No geometry found in children nodes $from for node $node_into"
+                    @info "No geometry found in children nodes $from_symbols for node $node_into"
                 end
             end
             return nothing
         end
         # Build a new reference mesh out of the children nodes
-        ref_mesh = RefMesh(string(into, MultiScaleTreeGraph.node_id(node_into)), _merge_meshes(meshes_vec))
+        ref_mesh = RefMesh(string(into_symbol, MultiScaleTreeGraph.node_id(node_into)), _merge_meshes(meshes_vec))
         node_into.geometry = Geometry(ref_mesh=ref_mesh)
         return nothing
     end
 
     # We delete at the end to avoid deleting nodes that are still being traversed if delete == :nodes
     if delete == :nodes
-        MultiScaleTreeGraph.delete_nodes!(mtg, symbol=from, child_link_fun=child_link_fun)
+        MultiScaleTreeGraph.delete_nodes!(mtg, symbol=from_symbols, child_link_fun=child_link_fun)
     elseif delete == :geometry
-        MultiScaleTreeGraph.traverse!(mtg, symbol=from) do node_from
+        MultiScaleTreeGraph.traverse!(mtg, symbol=from_symbols) do node_from
             pop!(node_from, :geometry)
         end
     end

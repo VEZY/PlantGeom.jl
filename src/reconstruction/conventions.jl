@@ -216,11 +216,11 @@ end
 function _resolve_value(node, aliases::Vector{Symbol}, label::Symbol; default=0.0, warn_missing=false)
     value, found = _resolve_alias(node, aliases)
     if found === nothing
-        warn_missing && @warn "No mapped value found for '$label'. Using default $default." aliases=aliases
+        warn_missing && @warn "No mapped value found for '$label'. Using default $default." aliases = aliases
         return Float64(default)
     end
     if value === nothing
-        warn_missing && @warn "Mapped value for '$label' is not numeric. Using default $default." attr=found
+        warn_missing && @warn "Mapped value for '$label' is not numeric. Using default $default." attr = found
         return Float64(default)
     end
     return value
@@ -289,10 +289,10 @@ function transformation_from_attributes(node; convention=default_geometry_conven
     for angle in convention.angle_map
         value, found = _resolve_alias(node, angle.names)
         if found === nothing
-            warn_missing && @warn "No mapped value found for angle. Skipping." axis=angle.axis aliases=angle.names
+            warn_missing && @warn "No mapped value found for angle. Skipping." axis = angle.axis aliases = angle.names
             continue
         elseif value === nothing
-            warn_missing && @warn "Mapped angle value is not numeric. Skipping." attr=found axis=angle.axis
+            warn_missing && @warn "Mapped angle value is not numeric. Skipping." attr = found axis = angle.axis
             continue
         end
 
@@ -433,18 +433,18 @@ end
 
 function _has_explicit_translation(node, convention::GeometryConvention)
     _has_numeric_alias(node, convention.translation_map[:x]) ||
-    _has_numeric_alias(node, convention.translation_map[:y]) ||
-    _has_numeric_alias(node, convention.translation_map[:z])
+        _has_numeric_alias(node, convention.translation_map[:y]) ||
+        _has_numeric_alias(node, convention.translation_map[:z])
 end
 
 @inline function _predecessor_in_axis(node)
     isroot(node) && return nothing
-    return link(node) == "<" ? parent(node) : nothing
+    return link(node) == :< ? parent(node) : nothing
 end
 
 function _first_successor_in_axis(node)
     for child in children(node)
-        link(child) == "<" && return child
+        link(child) == :< && return child
     end
     return nothing
 end
@@ -512,7 +512,7 @@ end
 function _component_children(node)
     out = Any[]
     for child in children(node)
-        link(child) == "/" || continue
+        link(child) == :/ || continue
         cur = child
         while cur !== nothing
             push!(out, cur)
@@ -538,14 +538,14 @@ end
     isroot(node) && return nothing
 
     lnk = link(node)
-    if lnk == "/"
+    if lnk == :/
         return parent(node)
-    elseif lnk == "<"
+    elseif lnk == :<
         cur = node
         while true
             pred = _predecessor_in_axis(cur)
             pred === nothing && return nothing
-            if link(pred) == "/"
+            if link(pred) == :/
                 return parent(pred)
             end
             cur = pred
@@ -773,7 +773,7 @@ function _resolve_endpoint_position(node, options::AmapReconstructionOptions; wa
               (ex !== nothing) && (ey !== nothing) && (ez !== nothing)
 
     if has_any && !has_all
-        warn_missing && @warn "Incomplete EndX/EndY/EndZ endpoint ignored for node." found=(fx, fy, fz)
+        warn_missing && @warn "Incomplete EndX/EndY/EndZ endpoint ignored for node." found = (fx, fy, fz)
         return nothing
     end
 
@@ -809,7 +809,7 @@ end
 
 @inline function _coordinate_delegate2_previous_node(parent_node, link_type)
     parent_node === nothing && return nothing
-    return link_type == "/" ? nothing : parent_node
+    return link_type == :/ ? nothing : parent_node
 end
 
 function _apply_coordinate_delegate2_previous!(
@@ -887,8 +887,8 @@ end
 function _resolve_ref_mesh(node, ref_meshes::AbstractDict)
     name = symbol(node)
     haskey(ref_meshes, name) && return ref_meshes[name]
-    name_sym = Symbol(name)
-    haskey(ref_meshes, name_sym) && return ref_meshes[name_sym]
+    name_str = String(name)
+    haskey(ref_meshes, name_str) && return ref_meshes[name_str]
     return nothing
 end
 
@@ -896,8 +896,8 @@ function _resolve_node_convention(node, default_convention::GeometryConvention, 
     isempty(conventions) && return default_convention
     name = symbol(node)
     haskey(conventions, name) && return conventions[name]
-    name_sym = Symbol(name)
-    haskey(conventions, name_sym) && return conventions[name_sym]
+    name_str = String(name)
+    haskey(conventions, name_str) && return conventions[name_str]
     return default_convention
 end
 
@@ -992,7 +992,7 @@ function _ramification_rank(node, parent_node)
     found = false
 
     for child in children(parent_node)
-        if link(child) == "+" && symbol(child) == node_symbol
+        if link(child) == :+ && symbol(child) == node_symbol
             if child === node
                 rank = total
                 found = true
@@ -1139,7 +1139,7 @@ function _angles_transform(
         end
 
         if !has_value
-            warn_missing && @warn "No mapped value found for angle. Skipping." axis=angle.axis aliases=angle.names
+            warn_missing && @warn "No mapped value found for angle. Skipping." axis = angle.axis aliases = angle.names
             continue
         end
 
@@ -1778,7 +1778,7 @@ end
 function _successor_anchor_node(parent_node, top_pos)
     anchor = parent_node
     for child in children(parent_node)
-        link(child) == "/" || continue
+        link(child) == :/ || continue
         haskey(top_pos, child) || continue
         anchor = child
     end
@@ -1833,7 +1833,7 @@ function _propagate_stiffness_to_components!(
     for component_node in components_nodes
         relative_position_in_portee = floor(Int, (node_length * current_distance_from_insertion) / n_components)
 
-        for i in prev_position_in_portee:(relative_position_in_portee - 1)
+        for i in prev_position_in_portee:(relative_position_in_portee-1)
             relative_position = i / node_length
             local_angle = _young_local_flexion(
                 current_angle,
@@ -1921,11 +1921,11 @@ Reconstruct node geometries from attribute conventions and MTG topology.
 When no explicit translation attributes are found (`XX/YY/ZZ` by default), placement follows a
 topological convention close to AMAP:
 
-- `"<"`: attach to predecessor top
-- `"+"`: attach to bearer at `Offset` (or bearer length if missing)
-- `"+"`: default insertion mode is `BORDER`, adding a lateral offset of
+- `:<`: attach to predecessor top
+- `:+`: attach to bearer at `Offset` (or bearer length if missing)
+- `:+`: default insertion mode is `BORDER`, adding a lateral offset of
   `BorderInsertionOffset` (or bearer top width / 2)
-- `"/"`: attach to parent base
+- `:/`: attach to parent base
 
 If endpoint attributes (`EndX`/`EndY`/`EndZ` aliases) are present, they override angle-derived
 orientation and `Length` for that node: base position comes from translation/topology, and
@@ -1991,7 +1991,7 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
         current_base_pos = _ZERO3
 
         if !explicit_translation && parent_node !== nothing
-            if link_type == "<"
+            if link_type == :<
                 anchor_node = _successor_anchor_node(parent_node, top_pos)
                 if haskey(base_rot, anchor_node)
                     current_base_rot = base_rot[anchor_node]
@@ -2000,7 +2000,7 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
                     current_base_rot = base_rot[parent_node]
                     current_base_pos = get(top_pos, parent_node, _ZERO3)
                 end
-            elseif link_type == "+"
+            elseif link_type == :+
                 if haskey(base_rot, parent_node)
                     parent_conv = _resolve_node_convention(parent_node, convention, conventions)
                     parent_length = _resolve_value(
@@ -2015,7 +2015,7 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
                     current_base_pos = get(base_pos, parent_node, _ZERO3) +
                                        get(direction, parent_node, _unit_axis(parent_conv.length_axis)) * offset_val
                 end
-            elseif link_type == "/"
+            elseif link_type == :/
                 if haskey(base_rot, parent_node)
                     current_base_rot = base_rot[parent_node]
                     current_base_pos = get(base_pos, parent_node, _ZERO3)
@@ -2051,7 +2051,7 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
         if coordinate_mode == :explicit_rewire_previous && explicit_translation
             delegate2_current = true
 
-            if link_type == "/" && parent_node !== nothing && haskey(base_pos, parent_node)
+            if link_type == :/ && parent_node !== nothing && haskey(base_pos, parent_node)
                 # CoordinateDelegate2 behavior: decomposition child is anchored
                 # at complex base position (not at explicit coordinate).
                 current_base_pos = get(base_pos, parent_node, current_base_pos)
@@ -2130,7 +2130,7 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
         local_euler_t = endpoint_override ? IdentityTransformation() :
                         transformation_from_attributes(node; convention=conv_euler_only, warn_missing=warn_missing)
 
-        if !endpoint_override && link_type == "+" && parent_node !== nothing
+        if !endpoint_override && link_type == :+ && parent_node !== nothing
             extra_x_deg = _fallback_insertion_x_angle_deg_amap(
                 node,
                 parent_node,
@@ -2150,7 +2150,7 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
         base_t = _frame_transform(current_base_rot, current_base_pos)
 
         if !endpoint_override && !explicit_translation &&
-           link_type == "+" && parent_node !== nothing && haskey(base_rot, parent_node)
+           link_type == :+ && parent_node !== nothing && haskey(base_rot, parent_node)
             mode_aliases = _compose_aliases(insertion_mode_aliases_norm, amap_insertion_mode_aliases)
             mode = _insertion_mode(node, mode_aliases)
             if mode != :CENTER

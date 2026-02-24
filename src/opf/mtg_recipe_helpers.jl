@@ -15,7 +15,7 @@ Nothing, mutates the mtg in-place (adds :XX, :YY and :ZZ to nodes).
 file = joinpath(dirname(dirname(pathof(MultiScaleTreeGraph))),"test","files","simple_plant.mtg")
 mtg = read_mtg(file)
 coordinates!(mtg)
-DataFrame(mtg, [:XX, :YY, :ZZ])
+to_table(mtg, vars=[:XX, :YY, :ZZ])
 ```
 """
 function coordinates!(mtg; angle=45, force=false)
@@ -68,7 +68,7 @@ function new_pos(node, angle, phyllotaxy)
         great_parent_node_YY = great_parent_node[:YY]
     end
 
-    if link(node) == "/"
+    if link(node) == :/
         extend_length = 0.2
     else
         extend_length = 1
@@ -76,7 +76,7 @@ function new_pos(node, angle, phyllotaxy)
 
     point = extend_pos(great_parent_node_XX, great_parent_node_YY, parent_node[:XX], parent_node[:YY], extend_length)
 
-    if link(node) == "+"
+    if link(node) == :+
         point =
             rotate_point(
                 parent_node[:XX],
@@ -161,7 +161,10 @@ function mtg_coordinates_df!(mtg, attr=:YY; force=false)
     # Get the coordinates of the parent of the node to draw edges:
     coordinates_parent!(mtg)
 
-    DataFrame(mtg, unique([:XX, :YY, :ZZ, :XX_from, :YY_from, :ZZ_from, attr]))
+    MultiScaleTreeGraph.to_table(
+        mtg,
+        vars=unique([:XX, :YY, :ZZ, :XX_from, :YY_from, :ZZ_from, attr])
+    )
 end
 
 function attribute_range(mtg, attr; ustrip=false)

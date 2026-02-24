@@ -32,8 +32,8 @@
     pz = SVector{3,Float64}(0.0, 0.0, 1.0)
 
     @testset "azimuth and elevation orientation override" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
         stem[:Length] = 1.0
         stem[:Width] = 0.1
         stem[:Thickness] = 0.1
@@ -58,8 +58,8 @@
     end
 
     @testset "deviation world axis rotation" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
         stem[:Length] = 1.0
         stem[:Width] = 0.1
         stem[:Thickness] = 0.1
@@ -82,8 +82,8 @@
     end
 
     @testset "orthotropy and stiffness angle precedence" begin
-        mtg_ortho = Node(NodeMTG("/", "Plant", 1, 1))
-        stem_ortho = Node(mtg_ortho, NodeMTG("/", "Internode", 1, 2))
+        mtg_ortho = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem_ortho = Node(mtg_ortho, NodeMTG(:/, :Internode, 1, 2))
         stem_ortho[:Length] = 1.0
         stem_ortho[:Width] = 0.1
         stem_ortho[:Thickness] = 0.1
@@ -102,8 +102,8 @@
         )
         @test dir_ortho[3] > 0.0
 
-        mtg_stiff = Node(NodeMTG("/", "Plant", 1, 1))
-        stem_stiff = Node(mtg_stiff, NodeMTG("/", "Internode", 1, 2))
+        mtg_stiff = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem_stiff = Node(mtg_stiff, NodeMTG(:/, :Internode, 1, 2))
         stem_stiff[:Length] = 1.0
         stem_stiff[:Width] = 0.1
         stem_stiff[:Thickness] = 0.1
@@ -125,10 +125,10 @@
     end
 
     @testset "stiffness propagation to component children" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
-        c1 = Node(stem, NodeMTG("/", "Leaf", 1, 3))
-        c2 = Node(stem, NodeMTG("/", "Leaf", 2, 3))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        c1 = Node(stem, NodeMTG(:/, :Leaf, 1, 3))
+        c2 = Node(stem, NodeMTG(:/, :Leaf, 2, 3))
 
         stem[:Length] = 40.0
         stem[:Width] = 0.15
@@ -158,9 +158,9 @@
         comps_up = Any[]
         stem_up = nothing
         traverse!(mtg_up) do node
-            if symbol(node) == "Internode" && stem_up === nothing
+            if symbol(node) == :Internode && stem_up === nothing
                 stem_up = node
-            elseif symbol(node) == "Leaf"
+            elseif symbol(node) == :Leaf
                 push!(comps_up, node)
             end
         end
@@ -180,9 +180,9 @@
         comps_off = Any[]
         stem_off = nothing
         traverse!(mtg_off) do node
-            if symbol(node) == "Internode" && stem_off === nothing
+            if symbol(node) == :Internode && stem_off === nothing
                 stem_off = node
-            elseif symbol(node) == "Leaf"
+            elseif symbol(node) == :Leaf
                 push!(comps_off, node)
             end
         end
@@ -204,8 +204,8 @@
 
     @testset "stiffness straightening dampens distal bending" begin
         function _build_straightening_case()
-            mtg = Node(NodeMTG("/", "Plant", 1, 1))
-            stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+            mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+            stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
             stem[:Length] = 30.0
             stem[:Width] = 0.12
             stem[:Thickness] = 0.12
@@ -214,7 +214,7 @@
 
             comps = Any[]
             for i in 1:8
-                c = Node(stem, NodeMTG("/", "Leaf", i, 3))
+                c = Node(stem, NodeMTG(:/, :Leaf, i, 3))
                 c[:Length] = 0.2
                 c[:Width] = 0.05
                 c[:Thickness] = 0.01
@@ -251,8 +251,8 @@
     end
 
     @testset "broken attribute applies AMAP broken-segment rule" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
         stem[:Length] = 20.0
         stem[:Width] = 0.12
         stem[:Thickness] = 0.12
@@ -261,7 +261,7 @@
 
         comps = Any[]
         for i in 1:5
-            c = Node(stem, NodeMTG("/", "Leaf", i, 3))
+            c = Node(stem, NodeMTG(:/, :Leaf, i, 3))
             c[:Length] = 0.2
             c[:Width] = 0.05
             c[:Thickness] = 0.01
@@ -284,11 +284,11 @@
     end
 
     @testset "successor anchors on last component top (AMAP parity)" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
-        comp1 = Node(stem, NodeMTG("/", "Leaf", 1, 3))
-        comp2 = Node(stem, NodeMTG("/", "Leaf", 2, 3))
-        succ = Node(stem, NodeMTG("<", "Internode", 2, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        comp1 = Node(stem, NodeMTG(:/, :Leaf, 1, 3))
+        comp2 = Node(stem, NodeMTG(:/, :Leaf, 2, 3))
+        succ = Node(stem, NodeMTG(:<, :Internode, 2, 2))
 
         stem[:Length] = 0.8
         stem[:Width] = 0.12
@@ -325,8 +325,8 @@
     end
 
     @testset "projection flags normal up and plagiotropy" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
         stem[:Length] = 1.0
         stem[:Width] = 0.1
         stem[:Thickness] = 0.1
@@ -351,8 +351,8 @@
     end
 
     @testset "projection remains stable when direction is near world up" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
         stem[:Length] = 1.0
         stem[:Width] = 0.1
         stem[:Thickness] = 0.1
@@ -389,8 +389,8 @@
 
     @testset "projection edge case remains stable for non-x length axis" begin
         conv_z = default_geometry_convention(length_axis=:z)
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
         stem[:Length] = 1.0
         stem[:Width] = 0.2
         stem[:Thickness] = 0.1
@@ -427,9 +427,9 @@
     end
 
     @testset "orientation reset on successor axis" begin
-        mtg_base = Node(NodeMTG("/", "Plant", 1, 1))
-        i1 = Node(mtg_base, NodeMTG("/", "Internode", 1, 2))
-        i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
+        mtg_base = Node(NodeMTG(:/, :Plant, 1, 1))
+        i1 = Node(mtg_base, NodeMTG(:/, :Internode, 1, 2))
+        i2 = Node(i1, NodeMTG(:<, :Internode, 2, 2))
         i1[:Length] = 0.4
         i1[:Width] = 0.08
         i1[:Thickness] = 0.08
@@ -442,10 +442,10 @@
         internodes_reset = Any[]
         internodes_base = Any[]
         traverse!(mtg_reset) do node
-            symbol(node) == "Internode" && push!(internodes_reset, node)
+            symbol(node) == :Internode && push!(internodes_reset, node)
         end
         traverse!(mtg_base) do node
-            symbol(node) == "Internode" && push!(internodes_base, node)
+            symbol(node) == :Internode && push!(internodes_base, node)
         end
         internodes_reset[2][:OrientationReset] = true
 
@@ -475,9 +475,9 @@
         first_leaf = nothing
         first_internode = nothing
         traverse!(mtg) do node
-            if symbol(node) == "Internode" && first_internode === nothing
+            if symbol(node) == :Internode && first_internode === nothing
                 first_internode = node
-            elseif symbol(node) == "Leaf" && first_leaf === nothing
+            elseif symbol(node) == :Leaf && first_leaf === nothing
                 first_leaf = node
             end
         end
@@ -491,10 +491,10 @@
     end
 
     @testset "order map behavior with branching order" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        bearer = Node(mtg, NodeMTG("/", "Internode", 1, 2))
-        leaf_a = Node(bearer, NodeMTG("+", "Leaf", 1, 2))
-        leaf_b = Node(bearer, NodeMTG("+", "Leaf", 2, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        bearer = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        leaf_a = Node(bearer, NodeMTG(:+, :Leaf, 1, 2))
+        leaf_b = Node(bearer, NodeMTG(:+, :Leaf, 2, 2))
 
         bearer[:Length] = 0.3
         bearer[:Width] = 0.08
@@ -547,8 +547,8 @@
     end
 
     @testset "endpoint coordinates override orientation and length" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
         stem[:Length] = 0.4
         stem[:Width] = 0.15
         stem[:Thickness] = 0.12
@@ -581,10 +581,10 @@
     end
 
     @testset "endpoint coordinates work with topology start and successor chaining" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
-        i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
-        i3 = Node(i2, NodeMTG("<", "Internode", 3, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        i1 = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        i2 = Node(i1, NodeMTG(:<, :Internode, 2, 2))
+        i3 = Node(i2, NodeMTG(:<, :Internode, 3, 2))
 
         i1[:Length] = 1.0
         i1[:Width] = 0.1
@@ -620,8 +620,8 @@
     end
 
     @testset "incomplete endpoint coordinates are ignored" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
         stem[:Length] = 1.0
         stem[:Width] = 0.1
         stem[:Thickness] = 0.1
@@ -646,8 +646,8 @@
     end
 
     @testset "explicit_start_end_required skips geometry when explicit start has no complete end" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
         stem[:Length] = 1.0
         stem[:Width] = 0.1
         stem[:Thickness] = 0.1
@@ -684,9 +684,9 @@
     end
 
     @testset "explicit_rewire_previous updates predecessor segment from explicit node coordinates" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        p1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
-        p2 = Node(p1, NodeMTG("<", "Internode", 2, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        p1 = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        p2 = Node(p1, NodeMTG(:<, :Internode, 2, 2))
 
         for n in (p1, p2)
             n[:Length] = 0.5
@@ -721,10 +721,10 @@
     end
 
     @testset "allometry interpolates missing width and height on axis" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
-        i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
-        i3 = Node(i2, NodeMTG("<", "Internode", 3, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        i1 = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        i2 = Node(i1, NodeMTG(:<, :Internode, 2, 2))
+        i3 = Node(i2, NodeMTG(:<, :Internode, 3, 2))
 
         for n in (i1, i2, i3)
             n[:Length] = 0.2
@@ -747,19 +747,19 @@
     end
 
     @testset "allometry propagation to components split vs copy semantics" begin
-        mtg_split = Node(NodeMTG("/", "Plant", 1, 1))
-        ctrl_split = Node(mtg_split, NodeMTG("/", "Internode", 1, 2))
-        c1 = Node(ctrl_split, NodeMTG("/", "Leaf", 1, 3))
-        c2 = Node(c1, NodeMTG("<", "Leaf", 2, 3))
+        mtg_split = Node(NodeMTG(:/, :Plant, 1, 1))
+        ctrl_split = Node(mtg_split, NodeMTG(:/, :Internode, 1, 2))
+        c1 = Node(ctrl_split, NodeMTG(:/, :Leaf, 1, 3))
+        c2 = Node(c1, NodeMTG(:<, :Leaf, 2, 3))
 
         ctrl_split[:Length] = 0.8
         ctrl_split[:Width] = 0.2
         ctrl_split[:Thickness] = 0.1
 
-        mtg_copy = Node(NodeMTG("/", "Plant", 1, 1))
-        ctrl_copy = Node(mtg_copy, NodeMTG("/", "Internode", 1, 2))
-        c3 = Node(ctrl_copy, NodeMTG("/", "Leaf", 1, 3))
-        c4 = Node(ctrl_copy, NodeMTG("/", "Leaf", 2, 3))
+        mtg_copy = Node(NodeMTG(:/, :Plant, 1, 1))
+        ctrl_copy = Node(mtg_copy, NodeMTG(:/, :Internode, 1, 2))
+        c3 = Node(ctrl_copy, NodeMTG(:/, :Leaf, 1, 3))
+        c4 = Node(ctrl_copy, NodeMTG(:/, :Leaf, 2, 3))
 
         ctrl_copy[:Length] = 0.8
         ctrl_copy[:Width] = 0.2
@@ -789,10 +789,10 @@
     end
 
     @testset "allometry accumulates terminal components to complex when missing" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        complex = Node(mtg, NodeMTG("/", "Internode", 1, 2))
-        comp1 = Node(complex, NodeMTG("/", "Leaf", 1, 3))
-        comp2 = Node(comp1, NodeMTG("<", "Leaf", 2, 3))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        complex = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        comp1 = Node(complex, NodeMTG(:/, :Leaf, 1, 3))
+        comp2 = Node(comp1, NodeMTG(:<, :Leaf, 2, 3))
 
         comp1[:Length] = 0.3
         comp1[:Width] = 0.1
@@ -815,9 +815,9 @@
     end
 
     @testset "allometry smooths predecessor top dimensions" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
-        i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        i1 = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        i2 = Node(i1, NodeMTG(:<, :Internode, 2, 2))
 
         i1[:Length] = 0.2
         i1[:Width] = 0.1
@@ -839,12 +839,12 @@
     end
 
     @testset "geometrical cone constraint clamps successor direction" begin
-        mtg_free = Node(NodeMTG("/", "Plant", 1, 1))
-        f1 = Node(mtg_free, NodeMTG("/", "Internode", 1, 2))
-        f2 = Node(f1, NodeMTG("<", "Internode", 2, 2))
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
-        i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
+        mtg_free = Node(NodeMTG(:/, :Plant, 1, 1))
+        f1 = Node(mtg_free, NodeMTG(:/, :Internode, 1, 2))
+        f2 = Node(f1, NodeMTG(:<, :Internode, 2, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        i1 = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        i2 = Node(i1, NodeMTG(:<, :Internode, 2, 2))
 
         for n in (f1, f2, i1, i2)
             n[:Length] = 1.0
@@ -897,12 +897,12 @@
     end
 
     @testset "geometrical cylinder constraint clamps successor tip radius" begin
-        mtg_free = Node(NodeMTG("/", "Plant", 1, 1))
-        f1 = Node(mtg_free, NodeMTG("/", "Internode", 1, 2))
-        f2 = Node(f1, NodeMTG("<", "Internode", 2, 2))
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
-        i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
+        mtg_free = Node(NodeMTG(:/, :Plant, 1, 1))
+        f1 = Node(mtg_free, NodeMTG(:/, :Internode, 1, 2))
+        f2 = Node(f1, NodeMTG(:<, :Internode, 2, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        i1 = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        i2 = Node(i1, NodeMTG(:<, :Internode, 2, 2))
 
         for n in (f1, f2, i1, i2)
             n[:Length] = 1.0
@@ -950,8 +950,8 @@
     end
 
     @testset "plane constraint projects direction into plane when base is out" begin
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        stem = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
 
         stem[:Length] = 1.0
         stem[:Width] = 0.1

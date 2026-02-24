@@ -68,7 +68,7 @@
     end
 
     function _new_leaf(parent, idx)
-        leaf = Node(parent, NodeMTG("+", "Leaf", idx, 2))
+        leaf = Node(parent, NodeMTG(:+, :Leaf, idx, 2))
         leaf[:Length] = 0.24
         leaf[:Width] = 0.12
         leaf[:Thickness] = 0.002
@@ -78,8 +78,8 @@
     end
 
     function insertion_mode_scene(mode::String)
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        bearer = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        bearer = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
         _base_bearer!(bearer)
         bearer[:Length] = 0.10
         bearer[:Width] = 0.16
@@ -100,8 +100,8 @@
     end
 
     function verticil_mode_scene(mode::Symbol)
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        bearer = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        bearer = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
         _base_bearer!(bearer)
         bearer[:Length] = 0.14
         bearer[:Width] = 0.06
@@ -129,8 +129,8 @@
     end
 
     function stiffness_scene(mode::Symbol)
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        axis = Node(mtg, NodeMTG("/", "AxisNode", 1, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        axis = Node(mtg, NodeMTG(:/, :AxisNode, 1, 2))
 
         for i in 1:4
             axis[:Length] = 20.0
@@ -140,18 +140,18 @@
             axis[:StifnessTapering] = 0.5
             axis[:StiffnessApply] = mode == :propagate
 
-            anchor = Node(axis, NodeMTG("/", "AxisDummy", 2 * i - 1, 3))
+            anchor = Node(axis, NodeMTG(:/, :AxisDummy, 2 * i - 1, 3))
             anchor[:Length] = 1.0
             anchor[:Width] = 0.05
             anchor[:Thickness] = 0.05
 
-            seg = Node(axis, NodeMTG("/", "AxisSegment", 2 * i, 3))
+            seg = Node(axis, NodeMTG(:/, :AxisSegment, 2 * i, 3))
             seg[:Length] = 1.0
             seg[:Width] = max(0.35 - 0.03 * (i - 1), 0.12)
             seg[:Thickness] = seg[:Width]
 
             if i < 4
-                nxt = Node(axis, NodeMTG("<", "AxisNode", i + 1, 2))
+                nxt = Node(axis, NodeMTG(:<, :AxisNode, i + 1, 2))
                 nxt[:Length] = 20.0
                 nxt[:Width] = 0.1
                 nxt[:Thickness] = 0.1
@@ -179,8 +179,8 @@
     end
 
     function geometrical_constraint_scene(mode::Symbol)
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        internode = Node(mtg, NodeMTG("/", "Internode", 1, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        internode = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
 
         shared_constraint = Dict{Symbol,Any}(
             :type => :cone_cylinder,
@@ -200,7 +200,7 @@
             internode[:DeviationAngle] = 8.0
             mode === :constrained && (internode[:GeometricalConstraint] = shared_constraint)
             if i < n_segments
-                internode = Node(internode, NodeMTG("<", "Internode", i + 1, 2))
+                internode = Node(internode, NodeMTG(:<, :Internode, i + 1, 2))
             end
         end
 
@@ -214,10 +214,10 @@
     end
 
     function explicit_coordinate_mode_scene(mode::Symbol)
-        mtg = Node(NodeMTG("/", "Plant", 1, 1))
-        i1 = Node(mtg, NodeMTG("/", "Internode", 1, 2))
-        i2 = Node(i1, NodeMTG("<", "Internode", 2, 2))
-        i3 = Node(i2, NodeMTG("<", "Internode", 3, 2))
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        i1 = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        i2 = Node(i1, NodeMTG(:<, :Internode, 2, 2))
+        i3 = Node(i2, NodeMTG(:<, :Internode, 3, 2))
 
         for n in (i1, i2, i3)
             n[:Length] = 0.45

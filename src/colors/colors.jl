@@ -123,7 +123,7 @@ function mtg_XYZ_color(mtg, color, edge_color, colormap; color_missing=RGBA(0, 0
             ecol = df_coordinates[:, edge_color]
             max_edge_color = maximum(skipmissing(ecol))
             edge_color_var = []
-            for i in 2:size(df_coordinates, 1)
+            for i in 2:size(df_coordinates)[1]
                 if ecol[i-1] === missing || ecol[i] === missing
                     push!(edge_color_var, color_missing)
                 else
@@ -134,7 +134,7 @@ function mtg_XYZ_color(mtg, color, edge_color, colormap; color_missing=RGBA(0, 0
         end
     elseif typeof(edge_color) <: Colorant || typeof(edge_color) <: String || typeof(edge_color) <: Symbol
         # edge_color is just a single color
-        edge_color_var = fill([edge_color, edge_color], size(df_coordinates, 1))
+        edge_color_var = fill([edge_color, edge_color], size(df_coordinates)[1])
     else
         error(
             "edge_color argument should be of type Colorant ",

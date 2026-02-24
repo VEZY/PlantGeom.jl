@@ -23,14 +23,18 @@ and `pos`) are applied to geometry during loading.
 Additional keyword arguments are forwarded to [`read_ops_file`](@ref), e.g.
 `relaxed=true` and `assume_scale_column=false` for legacy OPS rows where the
 scale column is missing.
+
+`attr_type` is kept for backward compatibility and ignored with
+MultiScaleTreeGraph >= v0.15 (columnar attributes backend).
 """
 function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, kwargs...)
     scene_dimensions, object_table = read_ops_file(file; kwargs...)
 
-    scene = Node(mtg_type("/", "Scene", 1, 0), MultiScaleTreeGraph.init_empty_attr(attr_type))
+    scene = Node(mtg_type(:/, :Scene, 1, 0), MultiScaleTreeGraph.init_empty_attr())
     scene.scene_dimensions = scene_dimensions
 
-    node_max_id = Ref(0)
+    # MTG columnar attributes are indexed by positive node ids; reserve 1 for scene root.
+    node_max_id = Ref(2)
 
     opfs = Node[]
     opf_orig_position = Dict{String,Int}()
@@ -53,7 +57,7 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, kwargs...)
             else
                 error("Unsupported OPS object extension: $ext in $file")
             end
-            haskey(node_attributes(opf), :ref_meshes) && delete!(node_attributes(opf), :ref_meshes)
+            haskey(opf, :ref_meshes) && pop!(opf, :ref_meshes)
             push!(opfs, opf)
             opf_orig_position[opf_file] = length(opfs)
         end

@@ -110,13 +110,13 @@ end
 
 @testset "Makie recipes: filter nodes" begin
     @testset "Symbol" begin
-        fig, ax, p = plantviz(opf, symbol="Leaf")
+        fig, ax, p = plantviz(opf, symbol=:Leaf)
         @test_reference "reference_images/opf_filter_symbol_leaf.png" fig
 
-        fig, ax, p = plantviz(opf, symbol="Leaf", color=:Length, colorrange=(0, 0.2))
+        fig, ax, p = plantviz(opf, symbol=:Leaf, color=:Length, colorrange=(0, 0.2))
         @test_reference "reference_images/opf_filter_symbol_leaf_colored_var.png" fig
 
-        fig, ax, p = plantviz(opf, symbol="Leaf", color=:red)
+        fig, ax, p = plantviz(opf, symbol=:Leaf, color=:red)
         @test_reference "reference_images/opf_filter_symbol_leaf_colored_red.png" fig
     end
 
@@ -131,16 +131,16 @@ end
 
 
     @testset "Link" begin
-        fig, ax, p = plantviz(opf, link="+")
+        fig, ax, p = plantviz(opf, link=:+)
         @test_reference "reference_images/opf_filter_symbol_leaf.png" fig
-        # This is the same test as just `plantviz(opf, symbol="Leaf")` because only the leaves are branching
+        # This is the same test as just `plantviz(opf, symbol=:Leaf)` because only the leaves are branching
     end
 
 
     @testset "Filter function" begin
-        fig, ax, p = plantviz(opf, filter_fun=node -> link(node) == "+")
+        fig, ax, p = plantviz(opf, filter_fun=node -> link(node) == :+)
         @test_reference "reference_images/opf_filter_symbol_leaf.png" fig
-        # This is the same test as just `plantviz(opf, symbol="Leaf")` because only the leaves are branching
+        # This is the same test as just `plantviz(opf, symbol=:Leaf)` because only the leaves are branching
     end
 end
 

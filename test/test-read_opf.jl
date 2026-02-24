@@ -28,7 +28,7 @@ end
 @testset "read_opf: simple_plant.opf -> meshes" begin
     Internode = get_node(mtg, 4)
 
-    @test sort(collect(keys(Internode))) == [:Length, :Width, :geometry]
+    @test sort(collect(keys(Internode))) == [:Length, :Width, :XEuler, :geometry]
     @test sort(names(Internode)) == [:Length, :Width, :XEuler, :geometry]
     @test isa(Internode[:geometry], PlantGeom.Geometry)
 

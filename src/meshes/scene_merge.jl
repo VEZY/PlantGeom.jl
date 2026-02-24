@@ -78,12 +78,11 @@ function compile_geometry_jobs(mtg; filter_fun=nothing, symbol=nothing, scale=no
     seq = 0
 
     MultiScaleTreeGraph.traverse!(mtg; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
+        has_geometry(node) || return nothing
         geom = node[:geometry]
-        if geom !== nothing
-            any_node_selected = true
-            seq += 1
-            _compile_node_geometry_jobs!(batches, seq, MultiScaleTreeGraph.node_id(node), geom)
-        end
+        any_node_selected = true
+        seq += 1
+        _compile_node_geometry_jobs!(batches, seq, MultiScaleTreeGraph.node_id(node), geom)
     end
 
     return batches, any_node_selected
