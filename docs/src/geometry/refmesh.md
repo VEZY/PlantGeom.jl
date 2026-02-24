@@ -5,6 +5,7 @@ using PlantGeom
 using CairoMakie
 using GeometryBasics
 using Colors
+using MultiScaleTreeGraph
 
 CairoMakie.activate!()
 
@@ -104,7 +105,7 @@ plantviz(leaflet_refmesh)
 
 ### Circular Tube Helper (`makeCircle`-style)
 
-For axis-like organs, use the dedicated circular section helper and tube wrapper:
+For axis-like organs, use the dedicated circular section helper:
 
 ```@example refmesh
 tube_path = [
@@ -114,16 +115,15 @@ tube_path = [
     Point(1.0, 0.10, 0.08),
 ]
 
-tube_refmesh = extrude_tube_refmesh(
-    "tube_extruded",
+tube_mesh = extrude_tube_mesh(
     tube_path;
     n_sides=10,
     radius=0.5,
     radii=[1.0, 0.85, 0.7, 0.55], # taper
     torsion=true,
     cap_ends=true,
-    material=RGB(0.55, 0.45, 0.35),
 )
+tube_refmesh = RefMesh("tube_extruded", tube_mesh, RGB(0.55, 0.45, 0.35))
 
 plantviz(tube_refmesh)
 ```
@@ -178,29 +178,24 @@ plantviz(lathe_ref)
 For reconstruction pipelines, do not rebuild procedural meshes for every node.
 Keep the same pattern as classic OPF refmeshes: build once, then reuse with node transforms.
 
-Use the same constructor with an optional `cache` dictionary:
+Use a small cache keyed by your geometry parameters:
 
 ```@example refmesh
-cache = Dict{Any,Any}()
+cache = Dict{Any,RefMesh}()
+key = (:shaft_r04_l10, 12, 0.4, true)
 
-shaft_ref = extrude_tube_refmesh(
-    "shaft_r04_l10",
-    [Point(0.0, 0.0, 0.0), Point(1.0, 0.0, 0.0)];
-    cache=cache,
-    n_sides=12,
-    radius=0.4,
-    cap_ends=true,
-)
+shaft_ref = get!(cache, key) do
+    mesh = extrude_tube_mesh(
+        [Point(0.0, 0.0, 0.0), Point(1.0, 0.0, 0.0)];
+        n_sides=12,
+        radius=0.4,
+        cap_ends=true,
+    )
+    RefMesh("shaft_r04_l10", mesh, RGB(0.55, 0.45, 0.35))
+end
 
-# same parameters => same RefMesh instance reused
-shaft_ref_again = extrude_tube_refmesh(
-    "shaft_r04_l10",
-    [Point(0.0, 0.0, 0.0), Point(1.0, 0.0, 0.0)];
-    cache=cache,
-    n_sides=12,
-    radius=0.4,
-    cap_ends=true,
-)
+# same key => same RefMesh instance reused
+shaft_ref_again = cache[key]
 
 shaft_ref === shaft_ref_again
 ```
@@ -210,6 +205,48 @@ Recommended integration rule:
 - when many nodes share the same procedural shape parameters: use cached constructors and reuse the `RefMesh`
 - when each node has unique geometry (for example organ-specific measured profile): build one `RefMesh` per unique parameter set
 - keep node placement in `Geometry` transforms (`translation/rotation/scale`) as usual
+
+## Procedural Node Geometry (Without RefMesh)
+
+If each node has its own geometry parameters, you can assign a procedural geometry
+object directly to `node[:geometry]`.
+
+`ExtrudedTubeGeometry` is the first concrete type for that workflow. It is built
+on demand by the same scene merge/render pipeline used for classic `Geometry`.
+
+```@example refmesh
+mtg_proc = Node(NodeMTG("/", "Plant", 1, 1))
+stem = Node(mtg_proc, NodeMTG("/", "Internode", 1, 2))
+tube = Node(mtg_proc, NodeMTG("/", "Internode", 2, 2))
+
+stem[:geometry] = PlantGeom.Geometry(
+    ref_mesh=RefMesh(
+        "stem_ref",
+        GeometryBasics.mesh(GeometryBasics.Cylinder(Point(0.0, 0.0, 0.0), Point(1.0, 0.0, 0.0), 0.06)),
+        RGB(0.55, 0.45, 0.35),
+    ),
+)
+
+tube[:geometry] = ExtrudedTubeGeometry(
+    [
+        Point(0.0, 0.0, 0.0),
+        Point(0.2, 0.03, 0.00),
+        Point(0.4, 0.08, 0.01),
+        Point(0.7, 0.14, 0.03),
+        Point(1.0, 0.18, 0.05),
+        Point(1.2, 0.20, 0.06),
+    ];
+    n_sides=18,
+    radius=0.05,
+    radii=[1.0, 0.95, 0.88, 0.80, 0.72, 0.65],
+    torsion=false,
+    cap_ends=true,
+    material=RGB(0.35, 0.50, 0.70),
+    transformation=PlantGeom.Translation(1.25, 0.0, 0.0),
+)
+
+plantviz(mtg_proc)
+```
 
 ### Cylinder-like Primitive
 

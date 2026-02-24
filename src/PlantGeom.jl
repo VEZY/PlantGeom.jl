@@ -78,7 +78,8 @@ export taper
 export refmesh_to_mesh, get_ref_meshes_color
 export xmax, ymax, zmax, xmin, ymin, zmin
 export transform_mesh!
-export extrude_profile_mesh, extrude_profile_refmesh, extrude_tube_mesh, extrude_tube_refmesh
+export extrude_profile_mesh, extrude_profile_refmesh, extrude_tube_mesh
+export ExtrudedTubeGeometry
 export extrusion_make_path, extrusion_make_spline, extrusion_make_interpolation, extrusion_make_curve
 export lathe_gen_mesh, lathe_gen_refmesh, lathe_mesh, lathe_refmesh
 export circle_section_profile, leaflet_midrib_profile

@@ -25,8 +25,16 @@ end
 
 Get the name of the reference mesh used for the current node.
 """
-function get_ref_mesh_name(node)
-    return node[:geometry].ref_mesh.name
+function get_ref_mesh_name(node::MultiScaleTreeGraph.Node)
+    return get_ref_mesh_name(node[:geometry])
+end
+
+function get_ref_mesh_name(geom::Geometry)
+    return geom.ref_mesh.name
+end
+
+function get_ref_mesh_name(geom)
+    return string(nameof(typeof(geom)))
 end
 
 """
@@ -144,4 +152,16 @@ end
 
 function material_single_color(x::Colorant)
     x
+end
+
+@inline function geometry_display_color(node::MultiScaleTreeGraph.Node)
+    geometry_display_color(node[:geometry])
+end
+
+@inline function geometry_display_color(geom::Geometry)
+    material_single_color(geom.ref_mesh.material)
+end
+
+@inline function geometry_display_color(::Any)
+    RGB(220 / 255, 220 / 255, 220 / 255)
 end

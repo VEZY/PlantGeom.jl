@@ -67,7 +67,7 @@
     @test nvertices(tube_caps) == 14 # +2 cap centers
     @test nelements(tube_caps) == 24 # sides 12 + caps 12
 
-    tube_ref = extrude_tube_refmesh("tube", path; n_sides=6, radius=0.5)
+    tube_ref = PlantGeom.extrude_tube_refmesh("tube", path; n_sides=6, radius=0.5)
     @test tube_ref isa RefMesh
     @test tube_ref.name == "tube"
     @test nvertices(tube_ref) == 12
@@ -113,10 +113,10 @@
     @test nelements(lathe_ref) == nelements(lathe_m)
 
     cache = Dict{Any,Any}()
-    tube_c1 = extrude_tube_refmesh("tube_cached", path; cache=cache, n_sides=8, radius=0.4)
-    tube_c2 = extrude_tube_refmesh("tube_cached", path; cache=cache, n_sides=8, radius=0.4)
-    tube_c3 = extrude_tube_refmesh("tube_cached", path; cache=cache, n_sides=8, radius=0.5)
-    tube_c4 = extrude_tube_refmesh("tube_cached", path; cache=cache, n_sides=8, radius=0.4, material=RGB(0.1, 0.2, 0.3))
+    tube_c1 = PlantGeom.extrude_tube_refmesh("tube_cached", path; cache=cache, n_sides=8, radius=0.4)
+    tube_c2 = PlantGeom.extrude_tube_refmesh("tube_cached", path; cache=cache, n_sides=8, radius=0.4)
+    tube_c3 = PlantGeom.extrude_tube_refmesh("tube_cached", path; cache=cache, n_sides=8, radius=0.5)
+    tube_c4 = PlantGeom.extrude_tube_refmesh("tube_cached", path; cache=cache, n_sides=8, radius=0.4, material=RGB(0.1, 0.2, 0.3))
     @test tube_c1 === tube_c2
     @test tube_c1 !== tube_c3
     @test tube_c1 !== tube_c4
