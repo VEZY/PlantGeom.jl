@@ -18,6 +18,7 @@ makedocs(;
         example_size_threshold=500000,
         size_threshold=2_500_000,
         size_threshold_warn=2_500_000,
+        collapselevel=3,
     ),
     pages=[
         "Home" => "index.md",

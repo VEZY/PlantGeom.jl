@@ -4,16 +4,82 @@ CurrentModule = PlantGeom
 
 # PlantGeom
 
-Documentation for [PlantGeom](https://github.com/VEZY/PlantGeom.jl), a package for plant 3D geometry
-on top of [MultiScaleTreeGraph](https://github.com/VEZY/MultiScaleTreeGraph.jl).
-
-Main capabilities:
-
-- OPF/OPS IO (`read_opf`, `write_opf`, `read_ops`, `write_ops`)
-- 3D plotting with `plantviz` / `plantviz!`
-- Geometry transformations through `Geometry` + `CoordinateTransformations`
+Documentation for [PlantGeom](https://github.com/VEZY/PlantGeom.jl), a Julia package to manage
+plant 3D geometry on top of [MultiScaleTreeGraph](https://github.com/VEZY/MultiScaleTreeGraph.jl).
 
 PlantGeom reserves the `:geometry` attribute on nodes.
+
+## Managing 3D for plants
+
+### Declaring 3D geometry
+
+- Reuse organ meshes with `RefMesh` (one canonical mesh, many transformed instances)
+- Attach geometry per node with `Geometry(ref_mesh=..., transformation=...)`
+- Generate procedural meshes like `ExtrudedTubeGeometry` for axes, stems, and roots
+- Compose transforms (`Translation`, `LinearMap`, `Rotate`, `Scale`, `Affine`) in MTG workflows
+
+### Plotting
+
+- Render plant meshes in 3D with `plantviz` / `plantviz!`
+- Color by mesh defaults, constants, dictionaries, or MTG attributes
+- Use Makie backends (`GLMakie`, `WGLMakie`, `CairoMakie`) for interactive or static output
+- Inspect topology with `diagram` in 2D/3D
+
+### Reading and writing files
+
+- OPF files: `read_opf` and `write_opf`
+- OPS scenes: `read_ops_file`, `read_ops`, and `write_ops`
+
+```@setup home
+using CairoMakie
+using PlantGeom
+using MultiScaleTreeGraph
+
+CairoMakie.activate!()
+
+files_dir = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files")
+small_opf = read_opf(joinpath(files_dir, "simple_plant.opf"))
+coffee_opf = read_opf(joinpath(files_dir, "coffee.opf"))
+```
+
+## Showcase
+
+These are showcase scenes (not minimal examples).
+
+### Small example plant file in 3D
+
+```@example home
+plantviz(small_opf, figure=(size=(860, 640),))
+```
+
+### Same plant as a 2D MTG graph
+
+```@example home
+diagram(small_opf, color=:olivedrab3, edge_color=:gray35)
+```
+
+### Coffee plant in 3D
+
+```@example home
+plantviz(coffee_opf, figure=(size=(900, 700),))
+```
+
+### Coffee plant colored by a variable (e.g. `:light_interception` or `:Area`)
+
+```@example home
+f, ax, p = plantviz(coffee_opf, color=:Area, figure=(size=(900, 700),))
+colorbar(f[1, 2], p)
+f
+```
+
+### 3D palm generated with XPalm + RayMakie
+
+Palm generated with the VPalm module from [XPalm.jl](https://github.com/PalmStudio/XPalm.jl), which uses PlantGeom for geometry management, and then rendered with RayMakie by [Simon Danisch](https://github.com/SimonDanisch/RayDemo/tree/main):
+
+![3D palm generated with XPalm and rendered with RayMakie](https://raw.githubusercontent.com/SimonDanisch/RayDemo/refs/heads/main/Plants/plants.png)
+
+
+### A tree fully generated with PlantGeom
 
 ```@setup home
 using CairoMakie
@@ -308,13 +374,9 @@ end
 tree_demo = build_demo_tree()
 ```
 
-## Quick Example
-
 ```@example home
 plantviz(tree_demo, figure=(size=(980, 980),))
 ```
-
-## Reproduce in a Script
 
 !!! details "Code to reproduce this image"
     ```julia
@@ -611,3 +673,14 @@ plantviz(tree_demo, figure=(size=(980, 980),))
 
     plantviz(tree_demo, figure=(size=(980, 980),))
     ```
+
+## Quick IO snippet
+
+```julia
+mtg = read_opf("path/to/plant.opf")
+write_opf("path/to/plant_copy.opf", mtg)
+
+scene_dimensions, object_table = read_ops_file("path/to/scene.ops")
+scene = read_ops("path/to/scene.ops")
+write_ops("path/to/scene_copy.ops", scene_dimensions, object_table)
+```
