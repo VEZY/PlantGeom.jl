@@ -149,16 +149,21 @@ Get the reference meshes colors (only the diffuse part for now).
 
 # Arguments
 - `meshes::Dict{Int, RefMesh}`: Dictionary of reference meshes as returned by `parse_ref_meshes`
+- `meshes::AbstractVector{<:RefMesh}`: Vector/list of reference meshes (legacy and plotting workflows)
 
 # Returns
 - `Dict{String, Colorant}`: Dictionary mapping mesh names to their diffuse colors
 
 # Notes
 - Only the diffuse component of the material is used for the color
-- The input is expected to be a dictionary with shape IDs as keys (not an array)
+- Dictionary input preserves OPF shape-ID keyed workflows
 """
 function get_ref_meshes_color(meshes::Dict{Int,T}) where {T<:RefMesh}
     Dict(i.name => material_single_color(i.material) for i in values(meshes))
+end
+
+function get_ref_meshes_color(meshes::AbstractVector{T}) where {T<:RefMesh}
+    Dict(i.name => material_single_color(i.material) for i in meshes)
 end
 
 get_ref_meshes_color(refmesh::T) where {T<:RefMesh} = Dict(refmesh.name => material_single_color(refmesh.material))
