@@ -60,7 +60,7 @@ function read_opf(
         error("Cannot read OPF files version other than 2.0")
     end
 
-    editable = parse(Bool, xroot["editable"])
+    editable = get(xroot.attributes, "editable", "true") |> x -> parse(Bool, x)
 
     opf_attr = Dict{Symbol,Any}()
     # node = elements(xroot)[end]
@@ -215,7 +215,7 @@ function parse_meshBDD!(node; file="")
         m.name != "mesh" ? @warn("Unknown node element in meshBDD: $(m.name)") : nothing
         mesh = Dict{String,Any}()
         mesh["name"] = m["name"]
-        mesh["enableScale"] = parse(Bool, m["enableScale"])
+        mesh["enableScale"] = get(m.attributes, "enableScale", "true") |> x -> parse(Bool, x)
 
         for i in eachelement(m)
             if i.name == "faces"

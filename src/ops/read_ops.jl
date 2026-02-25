@@ -102,20 +102,23 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, kwargs...)
         addchild!(scene, opf)
     end
 
-    p_0 = scene_dimensions[1]
-    p_max = scene_dimensions[2]
+    # Only create ground quadrangle if scene dimensions are provided
+    if !isnothing(scene_dimensions)
+        p_0 = scene_dimensions[1]
+        p_max = scene_dimensions[2]
 
-    p = [
-        point3(p_0),
-        point3(p_max[1], p_0[2], p_0[3]),
-        point3(p_max),
-        point3(p_0[1], p_max[2], p_0[3])
-    ]
-    c = [face3(1, 2, 3), face3(3, 4, 1)]
-    scene_quadrangle = _mesh(p, c)
+        p = [
+            point3(p_0),
+            point3(p_max[1], p_0[2], p_0[3]),
+            point3(p_max),
+            point3(p_0[1], p_max[2], p_0[3])
+        ]
+        c = [face3(1, 2, 3), face3(3, 4, 1)]
+        scene_quadrangle = _mesh(p, c)
 
-    scene_refmesh = RefMesh("Scene", scene_quadrangle, RGBA(159 / 255, 182 / 255, 205 / 255, 0.1))
-    scene.geometry = Geometry(ref_mesh=scene_refmesh)
+        scene_refmesh = RefMesh("Scene", scene_quadrangle, RGBA(159 / 255, 182 / 255, 205 / 255, 0.1))
+        scene.geometry = Geometry(ref_mesh=scene_refmesh)
+    end
 
     return scene
 end
