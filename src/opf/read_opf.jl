@@ -114,7 +114,6 @@ function read_opf(
     end
 end
 
-
 """
 Parse an array of values from the OPF into a Julia array (Arrays in OPFs
 are not following XML recommendations)
@@ -123,7 +122,13 @@ function parse_opf_array(elem, type=Float64)
     if type == String
         strip(elem)
     else
-        parsed = map(x -> x == "NA" ? nothing : parse(type, x), split(elem))
+        parsed = map(split(elem)) do e
+            e == "NA" && return nothing
+            isempty(e) && return nothing
+            parsed_e = tryparse(type, e)
+            isnothing(parsed_e) && @warn "Could not parse attribute value '$e' in OPF as type $type (type defined in `attributeBDD`)."
+            return parsed_e
+        end
         if length(parsed) == 1
             return parsed[1]
         else
@@ -139,8 +144,8 @@ end
         push!(out, face3(ids[1], ids[2], ids[3]))
         return out
     end
-    for i in 2:(length(ids) - 1)
-        push!(out, face3(ids[1], ids[i], ids[i + 1]))
+    for i in 2:(length(ids)-1)
+        push!(out, face3(ids[1], ids[i], ids[i+1]))
     end
     out
 end
@@ -154,7 +159,7 @@ function _opf_parse_faces(elem, file::AbstractString, mesh_name::AbstractString)
         flat_ids = content isa Integer ? Int[content] : Int[content...]
         length(flat_ids) % 3 == 0 || error("Invalid flat face list in OPF mesh '$mesh_name' from file $file")
         for p in 1:3:length(flat_ids)
-            push!(faces3d, face3(flat_ids[p] + 1, flat_ids[p + 1] + 1, flat_ids[p + 2] + 1))
+            push!(faces3d, face3(flat_ids[p] + 1, flat_ids[p+1] + 1, flat_ids[p+2] + 1))
         end
         return faces3d
     end
@@ -219,19 +224,19 @@ function parse_meshBDD!(node; file="")
             elseif i.name == "textureCoords"
                 content = parse_opf_array(i.content) ./ 100
                 content = [
-                    GeometryBasics.Point{2,Float64}(content[p], content[p + 1]) for p in 1:2:length(content)
+                    GeometryBasics.Point{2,Float64}(content[p], content[p+1]) for p in 1:2:length(content)
                 ]
                 push!(mesh, "textureCoords" => content)
             elseif i.name == "normals"
                 content = parse_opf_array(i.content)
                 content = [
-                    vec3(content[p], content[p + 1], content[p + 2]) for p in 1:3:length(content)
+                    vec3(content[p], content[p+1], content[p+2]) for p in 1:3:length(content)
                 ]
                 push!(mesh, "normals" => content)
             elseif i.name == "points"
                 content = parse_opf_array(i.content) ./ 100
                 content = [
-                    point3(content[p], content[p + 1], content[p + 2]) for p in 1:3:length(content)
+                    point3(content[p], content[p+1], content[p+2]) for p in 1:3:length(content)
                 ]
                 push!(mesh, i.name => content)
             else
