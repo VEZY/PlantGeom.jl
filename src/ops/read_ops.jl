@@ -14,7 +14,7 @@ function _ops_inclination_linear_map(inclination_azimut::Real, inclination_angle
 end
 
 """
-    read_ops(file; attr_type=Dict{String,Any}, mtg_type=MutableNodeMTG, kwargs...)
+    read_ops(file; attr_type=Dict{String,Any}, mtg_type=MutableNodeMTG, attribute_types=Dict(), kwargs...)
 
 Reads an OPS file and returns the content as a `MultiScaleTreeGraph`.
 Per-object OPS transforms (`rotation`, `scale`, `inclinationAzimut`/`inclinationAngle`,
@@ -26,8 +26,11 @@ scale column is missing.
 
 `attr_type` is kept for backward compatibility and ignored with
 MultiScaleTreeGraph >= v0.15 (columnar attributes backend).
+
+`attribute_types` is forwarded to [`read_opf`](@ref) and can be used to
+override OPF attribute types by name (CSV-like typing override).
 """
-function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, kwargs...)
+function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, attribute_types=Dict(), kwargs...)
     scene_dimensions, object_table = read_ops_file(file; kwargs...)
 
     scene = Node(mtg_type(:/, :Scene, 1, 0), MultiScaleTreeGraph.init_empty_attr())
@@ -51,7 +54,14 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, kwargs...)
             object_path = joinpath(dirname(file), opf_file)
             ext = lowercase(splitext(opf_file)[2])
             opf = if ext == ".opf"
-                read_opf(object_path, attr_type=attr_type, mtg_type=mtg_type, read_id=false, max_id=node_max_id)
+                read_opf(
+                    object_path,
+                    attr_type=attr_type,
+                    mtg_type=mtg_type,
+                    read_id=false,
+                    max_id=node_max_id,
+                    attribute_types=attribute_types
+                )
             elseif ext == ".gwa"
                 read_gwa(object_path, attr_type=attr_type, mtg_type=mtg_type, read_id=false, max_id=node_max_id)
             else

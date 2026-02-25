@@ -80,3 +80,21 @@ nogroup_file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files"
     @test children(ops)[1].functional_group == ""
     @test_throws ErrorException read_ops(nogroup_file; require_functional_group=true)
 end
+
+@testset "read_ops forwards attribute_types to read_opf" begin
+    files_dir = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files")
+    mktempdir() do tmp
+        cp(joinpath(files_dir, "simple_plant.opf"), joinpath(tmp, "simple_plant.opf"); force=true)
+
+        ops_path = joinpath(tmp, "scene_attr_types.ops")
+        open(ops_path, "w") do io
+            println(io, "T 0.0 0.0 0.0 2.0 1.0 flat")
+            println(io, "#[Archimed] plant")
+            println(io, "1\t1\tsimple_plant.opf\t0.0\t0.0\t0.0\t1.0\t0.0\t0.0\t0.0")
+        end
+
+        scene = read_ops(ops_path; attribute_types=Dict("Length" => String))
+        only_opf = only(children(scene))
+        @test descendants(only_opf, :Length, ignore_nothing=true) == Any["0.1", "0.2", "0.1", "0.2"]
+    end
+end
