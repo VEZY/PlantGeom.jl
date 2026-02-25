@@ -38,9 +38,20 @@ function get_ref_mesh_name(geom)
 end
 
 """
-    parse_ref_meshes(mtg)
+    parse_ref_meshes(opf_attr)
 
-Parse the reference meshes of an OPF into RefMeshes.
+Parse the reference meshes from OPF attributes into a dictionary.
+
+# Arguments
+- `opf_attr::Dict`: Dictionary containing OPF attributes including `:meshBDD`, `:materialBDD`, and `:shapeBDD`
+
+# Returns
+- `Dict{Int, RefMesh}`: A dictionary mapping shape IDs to RefMesh objects
+
+# Notes
+- The returned dictionary uses the actual shape IDs from the OPF file as keys
+- This differs from the previous implementation which returned an array with 1-based indexing
+- Shape IDs, mesh indices, and material indices are used as-is from the OPF file (0-based)
 """
 function parse_ref_meshes(x)
     meshes = Dict{Int,RefMesh}()
@@ -68,12 +79,8 @@ function parse_ref_meshes(x)
         )
     end
 
-    refmeshes = RefMesh[]
-    for i in sort(collect(keys(meshes)))
-        push!(refmeshes, meshes[i])
-    end
-
-    return refmeshes
+    # Return the dictionary with shape IDs as keys, not an array
+    return meshes
 end
 
 """
@@ -136,11 +143,26 @@ end
 align_ref_meshes(refmesh::T) where {T<:RefMesh} = Dict(refmesh.name => refmesh.mesh)
 
 """
-    get_ref_meshes_color(meshes::Vector{<:RefMesh})
+    get_ref_meshes_color(meshes)
 
 Get the reference meshes colors (only the diffuse part for now).
+
+# Arguments
+- `meshes::Dict{Int, RefMesh}`: Dictionary of reference meshes as returned by `parse_ref_meshes`
+- `meshes::AbstractVector{<:RefMesh}`: Vector/list of reference meshes (legacy and plotting workflows)
+
+# Returns
+- `Dict{String, Colorant}`: Dictionary mapping mesh names to their diffuse colors
+
+# Notes
+- Only the diffuse component of the material is used for the color
+- Dictionary input preserves OPF shape-ID keyed workflows
 """
-function get_ref_meshes_color(meshes::Vector{T}) where {T<:RefMesh}
+function get_ref_meshes_color(meshes::Dict{Int,T}) where {T<:RefMesh}
+    Dict(i.name => material_single_color(i.material) for i in values(meshes))
+end
+
+function get_ref_meshes_color(meshes::AbstractVector{T}) where {T<:RefMesh}
     Dict(i.name => material_single_color(i.material) for i in meshes)
 end
 

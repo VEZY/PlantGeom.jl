@@ -24,7 +24,7 @@ An OPF (`.opf`) is an XML file describing one object (typically one plant):
 - materials (`materialBDD`)
 - mesh/material mapping (`shapeBDD`)
 - attribute dictionary (`attributeBDD`)
-- MTG topology and per-node values (`topology`), which is the graph structure with node attributes (*i.e.* the mtg), including geometry (transformation matrix and index of the reference mesh).
+- MTG topology and per-node values (`topology`), which is the graph structure with node attributes (*i.e.* the mtg), including geometry (transformation matrix and reference-mesh `shapeIndex`).
 
 Minimal structure (illustrative):
 
@@ -152,6 +152,25 @@ rm(tmp_ops; force=true)
 summary
 ```
 
+## OPF Reference Mesh IDs
+
+`read_opf` stores reference meshes on the MTG root as `opf[:ref_meshes]`, a
+`Dict{Int,RefMesh}` keyed by OPF shape IDs (the same IDs used by
+`shapeIndex`, typically 0-based).
+
+```@example io
+ref_meshes_by_id = opf[:ref_meshes]
+shape_ids = sort(collect(keys(ref_meshes_by_id)))
+(
+    n_ref_meshes=length(ref_meshes_by_id),
+    first_shape_id=first(shape_ids),
+    id_type=eltype(shape_ids),
+)
+```
+
+If you only need a list for plotting, use `get_ref_meshes(opf)` (or
+`collect(values(opf[:ref_meshes]))`).
+
 ## Which Reader Should I Use?
 
 | Goal | Recommended function |
@@ -166,5 +185,8 @@ summary
 - `read_ops` resolves object file paths relative to the OPS file directory.
 - `write_ops` writes scene rows; referenced OPF/GWA files must exist where the
   scene expects them.
+- You can override OPF attribute typing explicitly with
+  `read_opf(file; attribute_types=Dict("Length" => Float64))` (same keyword is
+  available in `read_ops` and forwarded to embedded OPFs).
 - For reconstruction workflows from `.mtg`, see:
   [AMAP-Style Quickstart](geometry/amap_quickstart.md).

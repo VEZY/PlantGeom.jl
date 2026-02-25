@@ -1,5 +1,5 @@
 """
-    read_opf(file; attr_type = Dict, mtg_type = MutableNodeMTG)
+    read_opf(file; attr_type = Dict, mtg_type = MutableNodeMTG, attribute_types = Dict())
 
 Read an OPF file, and returns an MTG.
 
@@ -12,6 +12,8 @@ Read an OPF file, and returns an MTG.
 link, symbol, index, scale). See details section below.
 - `read_id::Bool = true`: whether to read the ID from the OPF or recompute it on the fly.
 - `max_id::RefValue{Int64}=Ref(1)`: the ID of the first node, if `read_id==false`.
+- `attribute_types::Dict = Dict()`: optional explicit mapping from attribute name (`String` or `Symbol`)
+  to Julia type (`Int*`, `Float*`, `Bool`, `String`). When provided, it overrides `attributeBDD`.
 
 # Details
 
@@ -30,7 +32,9 @@ See the documentation of the MTG format from the MTG package documentation for f
 
 # Returns
 
-The MTG root node.
+The MTG root node. OPF reference meshes are attached on the root as
+`opf[:ref_meshes]::Dict{Int,RefMesh}`, keyed by OPF shape IDs (`shapeIndex`,
+typically 0-based).
 
 # Examples
 
@@ -46,7 +50,8 @@ function read_opf(
     attr_type=Dict,
     mtg_type=MultiScaleTreeGraph.MutableNodeMTG,
     read_id=true,
-    max_id=Ref(1)
+    max_id=Ref(1),
+    attribute_types=Dict()
 )
 
     doc = readxml(file)
@@ -60,7 +65,7 @@ function read_opf(
         error("Cannot read OPF files version other than 2.0")
     end
 
-    editable = parse(Bool, xroot["editable"])
+    editable = haskey(xroot, "editable") ? parse(Bool, xroot["editable"]) : true
 
     opf_attr = Dict{Symbol,Any}()
     # node = elements(xroot)[end]
@@ -82,11 +87,7 @@ function read_opf(
                 [String, Int64, Int64]
             )
 
-            # Increment index by 1 because Julia is 1-based indexing (OPF is 0-based):
-            for (key, value) in shapeBDD
-                value["materialIndex"] += 1
-                value["meshIndex"] += 1
-            end
+
 
             push!(opf_attr, :shapeBDD => shapeBDD)
         end
@@ -97,15 +98,30 @@ function read_opf(
 
         if node.name == "topology"
             ref_meshes = parse_ref_meshes(opf_attr)
+            
+            # Handle missing attributeBDD by creating an empty one that will be populated dynamically
+            if !haskey(opf_attr, :attributeBDD)
+                opf_attr[:attributeBDD] = Dict{String,String}()
+            end
+
+            features = get_attr_type(opf_attr[:attributeBDD])
+            normalized_attribute_types = _normalize_attribute_types(attribute_types)
+            for (attr_name, type_) in normalized_attribute_types
+                features[attr_name] = type_
+                opf_attr[:attributeBDD][attr_name] = _julia_attr_type_to_opf_class(type_)
+            end
+            
             mtg = parse_opf_topology!(
                 node,
                 nothing,
-                get_attr_type(opf_attr[:attributeBDD]),
+                features,
                 attr_type,
                 mtg_type,
                 ref_meshes,
                 read_id,
-                max_id
+                max_id,
+                opf_attr[:attributeBDD],   # Pass attributeBDD for dynamic updates
+                normalized_attribute_types # Explicit user mapping (CSV-like override)
             )
 
             mtg[:ref_meshes] = ref_meshes
@@ -215,7 +231,7 @@ function parse_meshBDD!(node; file="")
         m.name != "mesh" ? @warn("Unknown node element in meshBDD: $(m.name)") : nothing
         mesh = Dict{String,Any}()
         mesh["name"] = m["name"]
-        mesh["enableScale"] = parse(Bool, m["enableScale"])
+        mesh["enableScale"] = haskey(m, "enableScale") ? parse(Bool, m["enableScale"]) : true
 
         for i in eachelement(m)
             if i.name == "faces"
@@ -246,7 +262,7 @@ function parse_meshBDD!(node; file="")
 
         push!(
             meshes,
-            parse(Int, m["Id"]) + 1 =>
+            parse(Int, m["Id"]) =>
                 OPFmesh(
                     mesh["name"],
                     mesh["enableScale"],
@@ -311,7 +327,7 @@ function parse_opf_elements!(node, elem_types)
                 push!(elems_, el.name => content)
             end
         end
-        push!(elem_dict, parse(Int, m["Id"]) + 1 => elems_)
+        push!(elem_dict, parse(Int, m["Id"]) => elems_)
     end
     return elem_dict
 end
@@ -331,21 +347,164 @@ end
 Get the attributes types in Julia `DataType`.
 """
 function get_attr_type(attr)
-    attr_Type = Dict{String,DataType}()
-    for i in keys(attr)
-        if attr[i] in ["Object", "String", "Color", "Image"]
-            push!(attr_Type, i => String)
-        elseif attr[i] == "Integer"
-            push!(attr_Type, i => Int32)
-        elseif attr[i] in ["Double", "Metre", "Centimetre", "Millimetre", "10E-5 Metre", "Metre_100"]
-            push!(attr_Type, i => Float32)
-        elseif attr[i] == "Boolean"
-            push!(attr_Type, i => Bool)
+    attr_type = Dict{String,DataType}()
+    for (name, class_name) in attr
+        attr_type[String(name)] = _opf_attr_class_to_julia_type(String(class_name))
+    end
+    attr_type
+end
+
+@inline function _opf_attr_class_to_julia_type(class_name::String)
+    if class_name in ["Object", "String", "Color", "Image"]
+        return String
+    elseif class_name == "Integer"
+        return Int32
+    elseif class_name in ["Double", "Metre", "Centimetre", "Millimetre", "10E-5 Metre", "Metre_100"]
+        return Float32
+    elseif class_name == "Boolean"
+        return Bool
+    else
+        error("Attribute type `$(class_name)` not recognised in attributeBDD.")
+    end
+end
+
+@inline function _julia_attr_type_to_opf_class(type_::DataType)
+    if type_ <: Integer
+        return "Integer"
+    elseif type_ <: AbstractFloat
+        return "Double"
+    elseif type_ == Bool
+        return "Boolean"
+    elseif type_ <: AbstractString
+        return "String"
+    else
+        return "String"
+    end
+end
+
+function _normalize_attribute_types(attribute_types)
+    normalized = Dict{String,DataType}()
+    isnothing(attribute_types) && return normalized
+
+    for (name, type_) in attribute_types
+        attr_name = String(name)
+        attr_type = type_ isa DataType ? type_ : (type_ isa Type ? type_ : nothing)
+        isnothing(attr_type) && error(
+            "Invalid attribute type override for '$attr_name': expected a Julia type, got $(typeof(type_))."
+        )
+
+        normalized[attr_name] = if attr_type == Bool
+            Bool
+        elseif attr_type <: Integer
+            Int64
+        elseif attr_type <: AbstractFloat
+            Float64
+        elseif attr_type <: AbstractString
+            String
         else
-            error("Attribute type `$(attr[i])` not recognised in attributeBDD.")
+            error(
+                "Unsupported attribute type override for '$attr_name': $attr_type. " *
+                "Use integer, float, bool, or string types."
+            )
         end
     end
-    return attr_Type
+
+    normalized
+end
+
+@inline function _infer_dynamic_attribute_type(raw_content::AbstractString)
+    tokens = split(strip(raw_content))
+    isempty(tokens) && return String
+
+    non_na_tokens = filter(t -> t != "NA" && !isempty(t), tokens)
+    isempty(non_na_tokens) && return String
+
+    if all(t -> !isnothing(tryparse(Int64, t)), non_na_tokens)
+        return Int32
+    end
+
+    if all(t -> !isnothing(tryparse(Float64, t)), non_na_tokens)
+        return Float32
+    end
+
+    if all(t -> lowercase(t) in ("true", "false"), non_na_tokens)
+        return Bool
+    end
+
+    String
+end
+
+@inline function _next_dynamic_attribute_type(type_::DataType)
+    if type_ <: Integer
+        return Float32
+    elseif type_ <: AbstractFloat
+        return String
+    elseif type_ == Bool
+        return String
+    else
+        return nothing
+    end
+end
+
+function _try_parse_opf_array(raw_content::AbstractString, type_::DataType)
+    if type_ <: AbstractString
+        return strip(raw_content), true
+    end
+
+    tokens = split(raw_content)
+    parsed = Vector{Any}(undef, length(tokens))
+
+    for (i, token) in enumerate(tokens)
+        if token == "NA" || isempty(token)
+            parsed[i] = nothing
+            continue
+        end
+
+        parsed_value = if type_ == Bool
+            lower = lowercase(token)
+            lower == "true" ? true : (lower == "false" ? false : nothing)
+        else
+            tryparse(type_, token)
+        end
+
+        if isnothing(parsed_value)
+            return nothing, false
+        end
+        parsed[i] = parsed_value
+    end
+
+    if length(parsed) == 1
+        return parsed[1], true
+    end
+    parsed, true
+end
+
+function _parse_dynamic_attribute_value!(
+    raw_content::AbstractString,
+    attr_name::String,
+    features::Dict{String,DataType},
+    attributeBDD::Dict{String,String}
+)
+    current_type = features[attr_name]
+    parsed_value, ok = _try_parse_opf_array(raw_content, current_type)
+    ok && return parsed_value
+
+    while true
+        next_type = _next_dynamic_attribute_type(current_type)
+        isnothing(next_type) && break
+        current_type = next_type
+        parsed_value, ok = _try_parse_opf_array(raw_content, current_type)
+        if ok
+            features[attr_name] = current_type
+            attributeBDD[attr_name] = _julia_attr_type_to_opf_class(current_type)
+            return parsed_value
+        end
+    end
+
+    # Last-resort fallback for mixed non-numeric values.
+    features[attr_name] = String
+    attributeBDD[attr_name] = "String"
+    strip(raw_content)
 end
 
 
@@ -360,7 +519,7 @@ function parse_geometry(elem)
     geom = Dict{Symbol,Union{Int,Float64,SMatrix{3,4}}}()
     for i in eachelement(elem)
         if i.name == "shapeIndex"
-            push!(geom, :shapeIndex => parse(Int, i.content) + 1)
+            push!(geom, :shapeIndex => parse(Int, i.content))
         elseif i.name == "mat"
             push!(geom, :mat => SMatrix{3,4}(reshape(parse_opf_array(i.content), 4, 3)'))
         elseif i.name == "dUp"
@@ -375,7 +534,7 @@ end
 
 """
 
-    parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes, id_set=Set{Int}())
+    parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes, ...)
 
 Parser of the OPF topology.
 
@@ -389,12 +548,27 @@ Parser of the OPF topology.
 - `ref_meshes::Dict`: the reference meshes.
 - `read_id::Bool`: whether to read the ID from the OPF or recompute it on the fly.
 - `max_id::RefValue{Int64}=Ref(1)`: the ID of the first node, if `read_id==false`.
+- `attributeBDD::Dict{String,String}=Dict{String,String}()`: the attributeBDD for dynamic attribute type discovery.
+- `attribute_types::Dict{String,DataType}=Dict{String,DataType}()`: explicit user type mapping.
+- `dynamic_attributes::Set{String}=Set{String}()`: names of attributes inferred dynamically.
 
 # Note
 
 The transformation matrices in `geometry` are 3*4.
 """
-function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes, read_id=true, max_id=Ref(1))
+function parse_opf_topology!(
+    node,
+    mtg,
+    features,
+    attr_type,
+    mtg_type,
+    ref_meshes,
+    read_id=true,
+    max_id=Ref(1),
+    attributeBDD=Dict{String,String}(),
+    attribute_types=Dict{String,DataType}(),
+    dynamic_attributes=Set{String}()
+)
     link = :/ # default, for "topology" and "decomp"
     if node.name == "branch"
         link = :+
@@ -434,10 +608,7 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
     # Handle the children, can be attributes of children nodes:
     # elem = elements(node)[1]
     for elem in eachelement(node)
-        # If an element is an attribute, add it to the attributes of the Node:
-        if elem.name in keys(features)
-            push!(attrs, Symbol(elem.name) => parse_opf_array(elem.content, features[elem.name]))
-        elseif elem.name == "geometry"
+        if elem.name == "geometry"
 
             geom = parse_geometry(elem)
 
@@ -469,9 +640,46 @@ function parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshe
                 )
             end
         elseif elem.name in ["decomp", "branch", "follow"]
-            parse_opf_topology!(elem, node_i, features, attr_type, mtg_type, ref_meshes, read_id, max_id)
+            parse_opf_topology!(
+                elem,
+                node_i,
+                features,
+                attr_type,
+                mtg_type,
+                ref_meshes,
+                read_id,
+                max_id,
+                attributeBDD,
+                attribute_types,
+                dynamic_attributes
+            )
         else
-            error("Attribute $(elem.name) not found in attributeBDD (or badly written?)")
+            attr_name = elem.name
+
+            if !haskey(features, attr_name)
+                if haskey(attribute_types, attr_name)
+                    features[attr_name] = attribute_types[attr_name]
+                    attributeBDD[attr_name] = _julia_attr_type_to_opf_class(attribute_types[attr_name])
+                elseif haskey(attributeBDD, attr_name)
+                    features[attr_name] = _opf_attr_class_to_julia_type(attributeBDD[attr_name])
+                else
+                    inferred_type = _infer_dynamic_attribute_type(elem.content)
+                    features[attr_name] = inferred_type
+                    attributeBDD[attr_name] = _julia_attr_type_to_opf_class(inferred_type)
+                    push!(dynamic_attributes, attr_name)
+                end
+            end
+
+            if haskey(features, attr_name)
+                parsed_attr = if (attr_name in dynamic_attributes) && !haskey(attribute_types, attr_name)
+                    _parse_dynamic_attribute_value!(elem.content, attr_name, features, attributeBDD)
+                else
+                    parse_opf_array(elem.content, features[attr_name])
+                end
+                push!(attrs, Symbol(attr_name) => parsed_attr)
+            else
+                error("Attribute $(attr_name) not found in attributeBDD (or badly written?)")
+            end
         end
     end
 

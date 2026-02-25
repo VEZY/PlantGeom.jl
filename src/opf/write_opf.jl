@@ -18,11 +18,11 @@ function write_opf(file, mtg)
         mtg[:ref_meshes] = get_ref_meshes(mtg)
     end
 
-    for (key, mesh_) in enumerate(mtg[:ref_meshes])
+    for (id, mesh_) in mtg[:ref_meshes]
         mesh_elm = addelement!(meshBDD, "mesh")
         mesh_elm["name"] = mesh_.name
         mesh_elm["shape"] = ""
-        mesh_elm["Id"] = key - 1
+        mesh_elm["Id"] = id
         mesh_elm["enableScale"] = mesh_.taper
 
         points_cm = Iterators.flatten((p[1] * 100, p[2] * 100, p[3] * 100) for p in _vertices(mesh_.mesh))
@@ -52,9 +52,9 @@ function write_opf(file, mtg)
     end
 
     materialBDD = addelement!(opf_elm, "materialBDD")
-    for (key, mesh_) in enumerate(mtg[:ref_meshes])
+    for (id, mesh_) in mtg[:ref_meshes]
         mat_elm = addelement!(materialBDD, "material")
-        mat_elm["Id"] = key - 1
+        mat_elm["Id"] = id
 
         mat = material_to_opf_string(mesh_.material)
         addelement!(mat_elm, "emission", mat[:emission])
@@ -65,13 +65,13 @@ function write_opf(file, mtg)
     end
 
     shapeBDD = addelement!(opf_elm, "shapeBDD")
-    for (key, mesh_) in enumerate(mtg[:ref_meshes])
+    for (id, mesh_) in mtg[:ref_meshes]
         shape_elm = addelement!(shapeBDD, "shape")
-        shape_elm["Id"] = key - 1
+        shape_elm["Id"] = id
 
         addelement!(shape_elm, "name", mesh_.name)
-        addelement!(shape_elm, "meshIndex", string(key - 1))
-        addelement!(shape_elm, "materialIndex", string(key - 1))
+        addelement!(shape_elm, "meshIndex", string(id))
+        addelement!(shape_elm, "materialIndex", string(id))
     end
 
     attrBDD = addelement!(opf_elm, "attributeBDD")

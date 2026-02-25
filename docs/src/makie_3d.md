@@ -40,6 +40,7 @@ Page()
 CairoMakie.activate!()
 mtg = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf"))
 ref_meshes = get_ref_meshes(mtg);
+ref_meshes_by_id = mtg[:ref_meshes];
 transform!(mtg, :Area => (x -> [x*i for i in 1:12]) => :dummy_var, ignore_nothing = true)
 ```
 
@@ -59,7 +60,12 @@ using GLMakie
 
 ### Default colors
 
-The default behavior of `plantviz(mtg)` -without providing colors- is to use the color of each reference mesh as the color of the corresponding node mesh. In other words, a leaf in a tree will be colored with the same color as the reference mesh used to represent it. This reference mesh is available as an attribute in the root node of the MTG. We can extract those reference meshes like so:
+The default behavior of `plantviz(mtg)` -without providing colors- is to use
+the color of each reference mesh as the color of the corresponding node mesh.
+In other words, a leaf in a tree will be colored with the same color as the
+reference mesh used to represent it. For plotting, use
+`get_ref_meshes(mtg)` (list of meshes). For OPF-stable IDs, use
+`mtg[:ref_meshes]` (dictionary keyed by shape IDs).
 
 ```@example 2
 using PlantGeom, CairoMakie
@@ -69,6 +75,7 @@ file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
 mtg = read_opf(file)
 
 ref_meshes = get_ref_meshes(mtg)
+ref_meshes_by_id = mtg[:ref_meshes]
 ```
 
 Then we can plot them in sequence:
@@ -100,12 +107,13 @@ We can also associate a new color to each reference mesh.
 We can get the default color of each reference mesh by using:
 
 ```@example 2
-get_ref_meshes_color(ref_meshes)
+get_ref_meshes_color(ref_meshes_by_id)
 ```
 
 Now we know there are two reference meshes, one for a cylinder called "Mesh0" colored in brown, and a second one for the leaf that is green.
 
-To update their colors we can simply pass the new colors as a dictionary mapping colors to the names of the reference meshes like so:
+To update their colors we can simply pass a dictionary mapping reference-mesh
+names to colors like so:
 
 ```@example 2
 plantviz(mtg, color = Dict("Mesh0" => :gray87, "Mesh1" => "#42A25ABD"))

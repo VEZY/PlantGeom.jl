@@ -60,16 +60,22 @@ function read_ops_file(
     else
         findfirst(x -> occursin(r"^T ([+-]?\d+(\.\d+)?)(\s+[+-]?\d+(\.\d+)?){4}\s+flat", x), lines)
     end
-    scene_dim_line === nothing && error("Scene dimensions not found in file $file")
-
-    scene_dim_values = lines[scene_dim_line] |> x -> replace(x, "T" => "") |> strip |> split
-    length(scene_dim_values) == 6 || error("Scene dimensions incomplete in file $file, expected `xOrigin yOrigin zOrigin xSize ySize flat`, got: $scene_dim_values")
-    scene_dim_values = parse.(Float64, scene_dim_values[1:5])
-    scene_dimensions = (point3(scene_dim_values[1:3]), point3(scene_dim_values[4], scene_dim_values[5], scene_dim_values[3]))
+    
+    # Scene dimensions are optional
+    if scene_dim_line === nothing
+        scene_dimensions = nothing
+        start_line = 1
+    else
+        scene_dim_values = lines[scene_dim_line] |> x -> replace(x, "T" => "") |> strip |> split
+        length(scene_dim_values) == 6 || error("Scene dimensions incomplete in file $file, expected `xOrigin yOrigin zOrigin xSize ySize flat`, got: $scene_dim_values")
+        scene_dim_values = parse.(Float64, scene_dim_values[1:5])
+        scene_dimensions = (point3(scene_dim_values[1:3]), point3(scene_dim_values[4], scene_dim_values[5], scene_dim_values[3]))
+        start_line = scene_dim_line + 1
+    end
 
     object_table = NamedTuple[]
     functional_group = string(default_functional_group)
-    for (i, line) in enumerate(lines[scene_dim_line+1:end])
+    for (i, line) in enumerate(lines[start_line:end])
         if occursin("#[Archimed]", line)
             functional_group = replace(line, r"^.*#\[Archimed\]\s*" => "") |> strip
             continue
