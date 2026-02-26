@@ -176,22 +176,19 @@ function attribute_range(mtg, attr; ustrip=false)
             ignore_nothing=true
         )
 
-    if first(vals) isa Symbol || first(vals) isa Colorant
-        # If the attribute value is already a colorant or a symbol, make sure all values are unique and 
-        # of type colorant:
-        # unique_vals = unique(vals)
-        # unique_vals isa Vector{Colorant{N0f8}} || (unique_vals = color_as_colorant.(unique_vals))
+    isempty(vals) && error("No value found for attribute $attr_name (or all values are nothing).")
+
+    elem_type = eltype(vals)
+
+    if elem_type <: Symbol || elem_type <: Colorant
+        # If the attribute value is already a colorant or a symbol, no numeric range is needed.
         return nothing
-    elseif length(vals[1]) == 1
-        # vals is a vector of values
-        range_val = extrema(vals)
+    elseif elem_type <: AbstractVector
+        # vals is a vector of vectors, compute the range from flattened non-nothing entries.
+        range_val = extrema(Iterators.filter(x -> x !== nothing, Iterators.flatten(vals)))
     else
-        # vals is a vector of vectors, we need to compute the range of ranges
-        vals_no_nothing = filter(x -> x !== nothing, vals)
-        if length(vals_no_nothing) == 0
-            error("No value for attribute $attr_name (all values are nothing).")
-        end
-        range_val = (minimum(minimum.(vals_no_nothing)), maximum(maximum.(vals_no_nothing)))
+        # vals is a vector of scalar values.
+        range_val = extrema(vals)
     end
 
     if ustrip

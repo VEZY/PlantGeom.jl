@@ -38,12 +38,7 @@ function Makie.extract_colormap(plot::PlantViz{<:Tuple{MultiScaleTreeGraph.Node}
     mtg_name = hasproperty(plot, :mtg) ? :mtg : :object
     attr_value = plot.colorant[].color
 
-    attribute_values = descendants(plot[mtg_name][], attr_value; ignore_nothing=true, self=true)
-    if first(attribute_values) isa AbstractVector
-        attribute_values = map(x -> Unitful.ustrip(getindex(x, plot.index_resolved[])), attribute_values)
-    else
-        attribute_values = Unitful.ustrip.(attribute_values)
-    end
+    attribute_values = _collect_plot_attribute_values(plot[mtg_name][], attr_value, plot.index_resolved[])
 
     return Makie.ColorMapping(
         attribute_values,
@@ -56,4 +51,16 @@ function Makie.extract_colormap(plot::PlantViz{<:Tuple{MultiScaleTreeGraph.Node}
         Makie.ComputePipeline.get_observable!(plot.lowclip),
         Makie.ComputePipeline.get_observable!(plot.nan_color),
     )
+end
+
+@inline _colorbar_value(x) = x
+@inline _colorbar_value(x::Unitful.Quantity) = Unitful.ustrip(x)
+
+function _collect_plot_attribute_values(mtg, attr_name::Symbol, index::Integer)
+    attribute_values = descendants(mtg, attr_name; ignore_nothing=true, self=true)
+    if eltype(attribute_values) <: AbstractVector
+        attribute_values = _colorbar_value.(map(x -> getindex(x, index), attribute_values))
+    else
+        attribute_values = _colorbar_value.(attribute_values)
+    end
 end
