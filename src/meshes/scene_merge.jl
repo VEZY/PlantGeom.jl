@@ -158,7 +158,7 @@ end
 Traverse selected MTG nodes and merge their geometry meshes into a single mesh.
 
 Returns a merged `mesh` and a `face2node::Vector{Int}` mapping each face index in the
-merged mesh to the originating MTG node id.
+merged mesh to the originating MTG node id (`MultiScaleTreeGraph.node_id(node)`).
 """
 function build_merged_mesh_with_map(mtg; filter_fun=nothing, symbol=nothing, scale=nothing, link=nothing)
     batches, any_node_selected = compile_geometry_jobs(

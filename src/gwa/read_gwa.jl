@@ -5,6 +5,7 @@ Read a GWA mesh file and return a `MultiScaleTreeGraph.Node`.
 
 `attr_type` is kept for backward compatibility and ignored with
 MultiScaleTreeGraph >= v0.15 (columnar attributes backend).
+Each parsed mesh node stores its original mesh id as `:source_topology_id`.
 """
 
 @inline function _xml_attr(node, key, default="")
@@ -84,6 +85,7 @@ function read_gwa(file; attr_type=Dict, mtg_type=MultiScaleTreeGraph.MutableNode
 
         node = Node(mtg_type(:+, :Mesh, node_id, 1), MultiScaleTreeGraph.init_empty_attr())
         node.geometry = Geometry(ref_mesh=ref_mesh)
+        node.source_topology_id = mesh_id_raw
         addchild!(mtg, node)
     end
 

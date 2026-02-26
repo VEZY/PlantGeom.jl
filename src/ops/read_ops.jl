@@ -13,12 +13,23 @@ function _ops_inclination_linear_map(inclination_azimut::Real, inclination_angle
     LinearMap(RotMatrix(AngleAxis(Float64(inclination_angle), axis_u[1], axis_u[2], axis_u[3])))
 end
 
+function _relabel_node_ids!(root, next_node_id::Base.RefValue{Int})
+    traverse!(root) do node
+        setfield!(node, :id, next_node_id[])
+        next_node_id[] += 1
+    end
+    return nothing
+end
+
 """
     read_ops(file; attr_type=Dict{String,Any}, mtg_type=MutableNodeMTG, attribute_types=Dict(), kwargs...)
 
 Reads an OPS file and returns the content as a `MultiScaleTreeGraph`.
 Per-object OPS transforms (`rotation`, `scale`, `inclinationAzimut`/`inclinationAngle`,
 and `pos`) are applied to geometry during loading.
+Geometry nodes preserve their original object-local topology ids in
+`:source_topology_id` (from OPF/GWA files), while MTG indices remain unique at
+scene scope.
 
 Additional keyword arguments are forwarded to [`read_ops_file`](@ref), e.g.
 `relaxed=true` and `assume_scale_column=false` for legacy OPS rows where the
@@ -38,6 +49,7 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, attribute_types
 
     # MTG columnar attributes are indexed by positive node ids; reserve 1 for scene root.
     node_max_id = Ref(2)
+    next_node_id = Ref(2)
 
     opfs = Node[]
     opf_orig_position = Dict{String,Int}()
@@ -45,10 +57,7 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, attribute_types
         opf_file = row.filePath
         if haskey(opf_orig_position, opf_file)
             opf = deepcopy(opfs[opf_orig_position[opf_file]])
-            traverse!(opf) do node
-                setfield!(node, :id, node_max_id[])
-                node_max_id[] += 1
-            end
+            _relabel_node_ids!(opf, next_node_id)
             push!(opfs, opf)
         else
             object_path = joinpath(dirname(file), opf_file)
@@ -67,6 +76,7 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, attribute_types
             else
                 error("Unsupported OPS object extension: $ext in $file")
             end
+            _relabel_node_ids!(opf, next_node_id)
             haskey(opf, :ref_meshes) && pop!(opf, :ref_meshes)
             push!(opfs, opf)
             opf_orig_position[opf_file] = length(opfs)
@@ -129,6 +139,11 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, attribute_types
         scene_refmesh = RefMesh("Scene", scene_quadrangle, RGBA(159 / 255, 182 / 255, 205 / 255, 0.1))
         scene.geometry = Geometry(ref_mesh=scene_refmesh)
     end
+
+    # OPS scenes are assembled by attaching pre-built OPF/GWA subtrees.
+    # Rebind the final tree to a single columnar store so columnar queries
+    # (e.g. descendants from the scene root) use coherent bucket metadata.
+    MultiScaleTreeGraph.columnarize!(scene)
 
     return scene
 end

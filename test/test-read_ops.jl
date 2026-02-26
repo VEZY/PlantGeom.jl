@@ -21,6 +21,8 @@ file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene
     [@test(p.rotation == 1.57) for p in opfs[[4, 5]]]
     @test ops[1].functional_group == "coffee"
     [@test(p.functional_group == "plant") for p in opfs[2:end]]
+    length_values = @test_nowarn descendants(ops, :Length; ignore_nothing=true)
+    @test !isempty(length_values)
 end
 
 @testset "read_ops applies inclination transforms" begin

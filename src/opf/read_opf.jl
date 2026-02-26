@@ -15,6 +15,8 @@ link, symbol, index, scale). See details section below.
 - `attribute_types::Dict = Dict()`: optional explicit mapping from attribute name (`String` or `Symbol`)
   to Julia type (`Int*`, `Float*`, `Bool`, `String`). When provided, it overrides `attributeBDD`.
 
+Each parsed topology node stores its original OPF id in `:source_topology_id`.
+
 # Details
 
 `attr_type` is ignored with MultiScaleTreeGraph >= v0.15 where the typed
@@ -576,8 +578,9 @@ function parse_opf_topology!(
         link = :<
     end
 
+    source_topology_id = parse(Int, node["id"])
     if read_id
-        id = parse(Int, node["id"])
+        id = source_topology_id
     else
         id = max_id[]
         max_id[] += 1
@@ -603,7 +606,7 @@ function parse_opf_topology!(
     end
 
     # node_i.children
-    attrs = Dict{Symbol,Any}()
+    attrs = Dict{Symbol,Any}(:source_topology_id => source_topology_id)
 
     # Handle the children, can be attributes of children nodes:
     # elem = elements(node)[1]

@@ -156,3 +156,72 @@ end
     @test !isnothing(cache.mesh) && !isnothing(cache.face2node)
     @test length(cache.face2node) == PlantGeom.nelements(cache.mesh)
 end
+
+@testset "Makie recipes: attribute coloring is robust on sparse OPS attributes" begin
+    mktempdir() do tmp
+        opf_path = joinpath(tmp, "dyn_sparse_attr.opf")
+        open(opf_path, "w") do io
+            write(io, """
+<?xml version="1.0" encoding="UTF-8"?>
+<opf version="2.0" editable="true">
+    <meshBDD>
+        <mesh name="Q" shape="" Id="0" enableScale="false">
+            <points>0 0 0 100 0 0 100 100 0</points>
+            <normals>0 0 1 0 0 1 0 0 1</normals>
+            <faces>0 1 2</faces>
+        </mesh>
+    </meshBDD>
+    <materialBDD></materialBDD>
+    <shapeBDD>
+        <shape Id="0">
+            <name>Q</name>
+            <meshIndex>0</meshIndex>
+            <materialIndex>0</materialIndex>
+        </shape>
+    </shapeBDD>
+    <topology class="Plant" scale="1" id="1">
+        <decomp class="Axis" scale="2" id="2">
+            <geometry class="Mesh">
+                <shapeIndex>0</shapeIndex>
+                <mat>1 0 0 0 0 1 0 0 0 0 1 0</mat>
+                <dUp>1.0</dUp>
+                <dDwn>1.0</dDwn>
+            </geometry>
+            <decomp class="Axis" scale="3" id="3">
+                <phyAge>1</phyAge>
+                <geometry class="Mesh">
+                    <shapeIndex>0</shapeIndex>
+                    <mat>1 0 0 0 0 1 0 0 0 0 1 0</mat>
+                    <dUp>1.0</dUp>
+                    <dDwn>1.0</dDwn>
+                </geometry>
+            </decomp>
+            <decomp class="Axis" scale="3" id="4">
+                <phyAge>2</phyAge>
+                <geometry class="Mesh">
+                    <shapeIndex>0</shapeIndex>
+                    <mat>1 0 0 0 0 1 0 0 0 0 1 0</mat>
+                    <dUp>1.0</dUp>
+                    <dDwn>1.0</dDwn>
+                </geometry>
+            </decomp>
+        </decomp>
+    </topology>
+</opf>
+""")
+        end
+
+        ops_path = joinpath(tmp, "scene.ops")
+        open(ops_path, "w") do io
+            println(io, "T 0 0 0 1 1 flat")
+            println(io, "#[Archimed] p")
+            println(io, "1\t1\tdyn_sparse_attr.opf\t0\t0\t0\t1\t0\t0\t0")
+            println(io, "1\t2\tdyn_sparse_attr.opf\t0\t0\t0\t1\t0\t0\t0")
+        end
+
+        scene = read_ops(ops_path)
+        fig, ax, p = plantviz(scene, color=:phyAge)
+        @test_nowarn save(joinpath(tmp, "phyage.png"), fig)
+        @test_nowarn Makie.extract_colormap(p)
+    end
+end
