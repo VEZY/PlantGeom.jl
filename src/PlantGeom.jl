@@ -45,6 +45,7 @@ include("tapering.jl")
 include("opf/refmesh_to_mesh.jl")
 include("opf/write_opf.jl")
 include("gwa/read_gwa.jl")
+include("gwa/write_gwa.jl")
 include("ops/read_ops_file.jl")
 include("ops/read_ops.jl")
 include("ops/write_ops.jl")
@@ -72,8 +73,8 @@ export merge_children_geometry!
 export diagram, diagram!
 
 # export nvertices, nelements
-export read_opf, read_gwa, write_opf
-export read_ops_file, read_ops, write_ops
+export read_opf, read_gwa, write_opf, write_gwa
+export read_ops_file, read_ops, write_ops, write_ops_file
 export taper
 export refmesh_to_mesh, get_ref_meshes_color
 export xmax, ymax, zmax, xmin, ymin, zmin

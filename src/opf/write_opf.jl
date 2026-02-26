@@ -3,6 +3,27 @@
 
 Write an MTG with explicit geometry to disk as an OPF file.
 """
+function _normalized_ref_meshes_dict(mtg)
+    ref_meshes_attr = mtg[:ref_meshes]
+    if ref_meshes_attr === nothing
+        meshes_vec = get_ref_meshes(mtg)
+        return Dict(i - 1 => mesh_ for (i, mesh_) in enumerate(meshes_vec))
+    elseif ref_meshes_attr isa AbstractVector
+        return Dict(i - 1 => mesh_ for (i, mesh_) in enumerate(ref_meshes_attr))
+    elseif ref_meshes_attr isa AbstractDict
+        return Dict{Int,RefMesh}(Int(k) => v for (k, v) in ref_meshes_attr)
+    end
+    error("Unsupported `:ref_meshes` container type $(typeof(ref_meshes_attr)) in OPF writer.")
+end
+
+function _ref_mesh_id_lookup(ref_meshes::AbstractDict{Int,<:RefMesh})
+    lookup = IdDict{Any,Int}()
+    for (id, mesh_) in ref_meshes
+        lookup[mesh_] = id
+    end
+    return lookup
+end
+
 function write_opf(file, mtg)
     clean_cache!(mtg)
 
@@ -14,11 +35,11 @@ function write_opf(file, mtg)
 
     meshBDD = addelement!(opf_elm, "meshBDD")
 
-    if mtg[:ref_meshes] === nothing
-        mtg[:ref_meshes] = get_ref_meshes(mtg)
-    end
+    ref_meshes = _normalized_ref_meshes_dict(mtg)
+    mtg[:ref_meshes] = ref_meshes
+    ref_meshes_lookup = _ref_mesh_id_lookup(ref_meshes)
 
-    for (id, mesh_) in mtg[:ref_meshes]
+    for (id, mesh_) in ref_meshes
         mesh_elm = addelement!(meshBDD, "mesh")
         mesh_elm["name"] = mesh_.name
         mesh_elm["shape"] = ""
@@ -52,7 +73,7 @@ function write_opf(file, mtg)
     end
 
     materialBDD = addelement!(opf_elm, "materialBDD")
-    for (id, mesh_) in mtg[:ref_meshes]
+    for (id, mesh_) in ref_meshes
         mat_elm = addelement!(materialBDD, "material")
         mat_elm["Id"] = id
 
@@ -65,7 +86,7 @@ function write_opf(file, mtg)
     end
 
     shapeBDD = addelement!(opf_elm, "shapeBDD")
-    for (id, mesh_) in mtg[:ref_meshes]
+    for (id, mesh_) in ref_meshes
         shape_elm = addelement!(shapeBDD, "shape")
         shape_elm["Id"] = id
 
@@ -79,7 +100,7 @@ function write_opf(file, mtg)
     for i in eachindex(attrs.NAME)
         attr_name = attrs.NAME[i]
         attr_type = attrs.TYPE[i]
-        (attr_name == :ref_meshes || attr_name == :geometry) && continue
+        (attr_name == :ref_meshes || attr_name == :geometry || attr_name == :source_topology_id) && continue
 
         shape_elm = addelement!(attrBDD, "attribute")
         shape_elm["name"] = string(attr_name)
@@ -99,7 +120,7 @@ function write_opf(file, mtg)
         shape_elm["class"] = attr_type_opf
     end
 
-    mtg_topology_to_xml!(mtg, opf_elm)
+    mtg_topology_to_xml!(mtg, opf_elm, nothing, ref_meshes_lookup)
 
     write(file, doc)
 
@@ -127,7 +148,7 @@ end
 
 Write the MTG topology, attributes and geometry into XML format.
 """
-function mtg_topology_to_xml!(node, xml_parent, xml_gtparent=nothing, ref_meshes=get_ref_meshes(node))
+function mtg_topology_to_xml!(node, xml_parent, xml_gtparent=nothing, ref_meshes=_ref_mesh_id_lookup(_normalized_ref_meshes_dict(get_root(node))))
     if isroot(node)
         xml_parent = attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
     end
@@ -152,15 +173,16 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
 
     xml_node["class"] = string(symbol(node))
     xml_node["scale"] = scale(node)
-    xml_node["id"] = node_id(node)
+    xml_node["id"] = hasproperty(node, :source_topology_id) ? node.source_topology_id : node_id(node)
 
     for key in keys(node)
         if key == :geometry
             geom = addelement!(xml_node, string(key))
             geom["class"] = "Mesh"
 
-            ref_mesh_index = findfirst(x -> x === node[key].ref_mesh, ref_meshes)
-            addelement!(geom, "shapeIndex", string(ref_mesh_index - 1))
+            ref_mesh_index = get(ref_meshes, node[key].ref_mesh, nothing)
+            isnothing(ref_mesh_index) && error("Reference mesh not found in OPF writer lookup: $(node[key].ref_mesh.name)")
+            addelement!(geom, "shapeIndex", string(ref_mesh_index))
 
             mat4x4 = get_transformation_matrix(node[key].transformation)
 
@@ -179,7 +201,7 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
             )
             addelement!(geom, "dUp", string(node[key].dUp))
             addelement!(geom, "dDwn", string(node[key].dDwn))
-        elseif key == :ref_meshes
+        elseif key == :ref_meshes || key == :source_topology_id
             continue
         else
             val = node[key]
