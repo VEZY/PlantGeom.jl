@@ -3,7 +3,7 @@ mtg = read_opf("files/simple_plant.opf", attr_type=Dict)
 @testset "read_opf: simple_plant.opf -> attributes" begin
     @test length(mtg) == 7
     @test haskey(mtg, :ref_meshes)
-    @test sort(names(mtg)) == [:FileName, :Length, :Width, :XEuler, :geometry, :ref_meshes]
+    @test sort(names(mtg)) == [:FileName, :Length, :Width, :XEuler, :geometry, :ref_meshes, :source_topology_id]
     @test descendants(mtg, :Length) == Any[nothing, nothing, 0.1f0, 0.2f0, 0.1f0, 0.2f0]
     @test descendants(mtg, :Width) == Any[nothing, nothing, 0.02f0, 0.1f0, 0.02f0, 0.1f0]
     @test descendants(mtg, :FileName) == Any["ArchiTree", nothing, nothing, nothing, nothing, nothing]
@@ -30,8 +30,8 @@ end
 @testset "read_opf: simple_plant.opf -> meshes" begin
     Internode = get_node(mtg, 4)
 
-    @test sort(collect(keys(Internode))) == [:Length, :Width, :XEuler, :geometry]
-    @test sort(names(Internode)) == [:Length, :Width, :XEuler, :geometry]
+    @test sort(collect(keys(Internode))) == [:Length, :Width, :XEuler, :geometry, :source_topology_id]
+    @test sort(names(Internode)) == [:Length, :Width, :XEuler, :geometry, :source_topology_id]
     @test isa(Internode[:geometry], PlantGeom.Geometry)
 
     geom = Internode[:geometry]
@@ -48,7 +48,7 @@ end
           [
         :Area, :File, :FileName, :Length, :Name, :Phyllotaxy, :Plagiotropy, :Plot, :StiffnessAngle,
         :Stifness, :Treatment, :Variety, :Width, :XEuler, :XInsertionAngle, :YInsertionAngle,
-        :geometry, :ref_meshes]
+        :geometry, :ref_meshes, :source_topology_id]
 
     @test Float64(sum(descendants(mtg, :Area, ignore_nothing=true))) ≈ 77961.421 atol = 1e-3
 end
@@ -67,7 +67,9 @@ end
     mktempdir() do tmp
         opf_path = joinpath(tmp, "dynamic_missing_attrbdd.opf")
         open(opf_path, "w") do io
-            write(io, """
+            write(
+                io,
+                """
 <?xml version="1.0" encoding="UTF-8"?>
 <opf version="2.0" editable="true">
     <meshBDD>
@@ -116,7 +118,8 @@ end
         </branch>
     </topology>
 </opf>
-""")
+"""
+            )
         end
 
         mtg_dyn = @test_nowarn read_opf(opf_path, attr_type=Dict)

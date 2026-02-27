@@ -20,3 +20,45 @@ tmp_file = tempname()
     @test ops_object_table_cols.inclinationAzimut == fill(0.0, 3)
     @test ops_object_table_cols.scale == fill(1, 3)
 end
+
+@testset "write_ops(scene): round-trip emits OPF/GWA objects" begin
+    files_dir = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files")
+    source_ops = joinpath(files_dir, "scene_mix.ops")
+    scene = read_ops(source_ops)
+
+    mktempdir() do tmp
+        out_ops = joinpath(tmp, "scene_roundtrip.ops")
+        @test_nowarn write_ops(out_ops, scene)
+        @test isfile(out_ops)
+
+        parsed = read_ops_file(out_ops)
+        parsed_rows = collect(Tables.rows(parsed.object_table))
+        @test length(parsed_rows) == length(children(scene))
+        @test parsed.scene_dimensions == scene.scene_dimensions
+
+        emitted_paths = [row.filePath for row in parsed_rows]
+        @test all(p -> isfile(joinpath(tmp, p)), emitted_paths)
+
+        emitted_exts = sort(map(p -> lowercase(splitext(p)[2]), emitted_paths))
+        source_exts = sort(map(c -> lowercase(splitext(c.filePath)[2]), children(scene)))
+        @test emitted_exts == source_exts
+
+        @test [row.sceneID for row in parsed_rows] == [c.sceneID for c in children(scene)]
+        @test [row.plantID for row in parsed_rows] == [c.plantID for c in children(scene)]
+        @test [row.functional_group for row in parsed_rows] == [c.functional_group for c in children(scene)]
+        @test [row.pos for row in parsed_rows] == [c.pos for c in children(scene)]
+        @test [row.scale for row in parsed_rows] == [c.scale for c in children(scene)]
+        @test [row.rotation for row in parsed_rows] == [c.rotation for c in children(scene)]
+        @test [row.inclinationAzimut for row in parsed_rows] == [c.inclinationAzimut for c in children(scene)]
+        @test [row.inclinationAngle for row in parsed_rows] == [c.inclinationAngle for c in children(scene)]
+
+        reloaded = read_ops(out_ops)
+        ids_source = [
+            descendants(c, :source_topology_id; ignore_nothing=true, self=true) for c in children(scene)
+        ]
+        ids_reloaded = [
+            descendants(c, :source_topology_id; ignore_nothing=true, self=true) for c in children(reloaded)
+        ]
+        @test ids_reloaded == ids_source
+    end
+end

@@ -132,22 +132,28 @@ mtg_topology = read_mtg(mtg_file)
 ```@example io
 tmp_opf = tempname() * ".opf"
 tmp_ops = tempname() * ".ops"
+tmp_ops_rows = tempname() * ".ops"
 
 write_opf(tmp_opf, opf)
-write_ops(tmp_ops, scene_dimensions, object_table)
+write_ops(tmp_ops, scene) # default: writes OPS + emitted OPF/GWA object files
+write_ops_file(tmp_ops_rows, scene_dimensions, object_table) # rows only
 
 opf_roundtrip = read_opf(tmp_opf)
 ops_roundtrip = read_ops_file(tmp_ops)
+ops_rows_roundtrip = read_ops_file(tmp_ops_rows)
 
 summary = (
     opf_written=isfile(tmp_opf),
     ops_written=isfile(tmp_ops),
+    ops_rows_written=isfile(tmp_ops_rows),
     opf_roundtrip_nodes=length(descendants(opf_roundtrip, :geometry; ignore_nothing=true, self=true)),
     ops_roundtrip_rows=length(ops_roundtrip.object_table),
+    ops_rows_roundtrip_rows=length(ops_rows_roundtrip.object_table),
 )
 
 rm(tmp_opf; force=true)
 rm(tmp_ops; force=true)
+rm(tmp_ops_rows; force=true)
 
 summary
 ```
@@ -183,8 +189,10 @@ If you only need a list for plotting, use `get_ref_meshes(opf)` (or
 ## Practical Notes
 
 - `read_ops` resolves object file paths relative to the OPS file directory.
-- `write_ops` writes scene rows; referenced OPF/GWA files must exist where the
-  scene expects them.
+- `write_ops(file, scene)` writes the OPS scene table and, by default, emits one
+  OPF/GWA object file per scene child.
+- `write_ops_file(file, scene_dimensions, object_table)` writes only the OPS
+  scene table rows (no object files emitted).
 - You can override OPF attribute typing explicitly with
   `read_opf(file; attribute_types=Dict("Length" => Float64))` (same keyword is
   available in `read_ops` and forwarded to embedded OPFs).
