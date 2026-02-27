@@ -177,14 +177,17 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
 
     for key in keys(node)
         if key == :geometry
+            geom_val = node[key]
+            (geom_val === nothing || ismissing(geom_val)) && continue
+
             geom = addelement!(xml_node, string(key))
             geom["class"] = "Mesh"
 
-            ref_mesh_index = get(ref_meshes, node[key].ref_mesh, nothing)
-            isnothing(ref_mesh_index) && error("Reference mesh not found in OPF writer lookup: $(node[key].ref_mesh.name)")
+            ref_mesh_index = get(ref_meshes, geom_val.ref_mesh, nothing)
+            isnothing(ref_mesh_index) && error("Reference mesh not found in OPF writer lookup: $(geom_val.ref_mesh.name)")
             addelement!(geom, "shapeIndex", string(ref_mesh_index))
 
-            mat4x4 = get_transformation_matrix(node[key].transformation)
+            mat4x4 = get_transformation_matrix(geom_val.transformation)
 
             addelement!(
                 geom,
@@ -199,8 +202,8 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
                     "\n"
                 )
             )
-            addelement!(geom, "dUp", string(node[key].dUp))
-            addelement!(geom, "dDwn", string(node[key].dDwn))
+            addelement!(geom, "dUp", string(geom_val.dUp))
+            addelement!(geom, "dDwn", string(geom_val.dDwn))
         elseif key == :ref_meshes || key == :source_topology_id
             continue
         else
