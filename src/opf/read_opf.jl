@@ -638,35 +638,33 @@ function _parse_dynamic_attribute_value!(
     strip(raw_content)
 end
 
-
-"""
-Parse the geometry element of the OPF.
-
-# Note
-The transformation matrix is 3*4.
-elem = elem.content
-"""
-function parse_geometry(elem)
-    shape_index = nothing
-    mat = nothing
-    d_up = 1.0
-    d_dwn = 1.0
-
-    for i in eachelement(elem)
-        if i.name == "shapeIndex"
-            shape_index = parse(Int, i.content)
-        elseif i.name == "mat"
-            mat = SMatrix{3,4}(reshape(_parse_opf_numeric_vector(i.content, Float64), 4, 3)')
-        elseif i.name == "dUp"
-            d_up = parse(Float64, i.content)
-        elseif i.name == "dDwn"
-            d_dwn = parse(Float64, i.content)
-        end
+@inline function _cached_attr_symbol(attr_symbols::Dict{String,Symbol}, attr_name::String)
+    get!(attr_symbols, attr_name) do
+        Symbol(attr_name)
     end
-
-    return (; shapeIndex=shape_index, mat=mat, dUp=d_up, dDwn=d_dwn)
 end
 
+function _parse_opf_matrix3x4(raw_content::AbstractString)
+    values = StaticArrays.MVector{12,Float64}(undef)
+    i = 1
+    _opf_for_each_token(raw_content) do token
+        i > 12 && error("Invalid OPF matrix length in geometry; expected 12 values.")
+        parsed = tryparse(Float64, token)
+        isnothing(parsed) && error("Could not parse OPF matrix token '$token' as Float64.")
+        values[i] = parsed
+        i += 1
+        return true
+    end
+
+    i == 13 || error("Invalid OPF matrix length in geometry; expected 12 values.")
+
+    return SMatrix{3,4,Float64,12}(
+        values[1], values[5], values[9],
+        values[2], values[6], values[10],
+        values[3], values[7], values[11],
+        values[4], values[8], values[12],
+    )
+end
 
 """
 
@@ -703,7 +701,8 @@ function parse_opf_topology!(
     max_id=Ref(1),
     attributeBDD=Dict{String,String}(),
     attribute_types=Dict{String,DataType}(),
-    dynamic_attributes=Set{String}()
+    dynamic_attributes=Set{String}(),
+    attr_symbols=Dict{String,Symbol}()
 )
     link = :/ # default, for "topology" and "decomp"
     if node.name == "branch"
@@ -745,10 +744,25 @@ function parse_opf_topology!(
     # elem = elements(node)[1]
     for elem in eachelement(node)
         if elem.name == "geometry"
-            geom = parse_geometry(elem)
+            shape_index = nothing
+            mat = nothing
+            d_up = 1.0
+            d_dwn = 1.0
+
+            for geom_elem in eachelement(elem)
+                if geom_elem.name == "shapeIndex"
+                    shape_index = parse(Int, geom_elem.content)
+                elseif geom_elem.name == "mat"
+                    mat = _parse_opf_matrix3x4(geom_elem.content)
+                elseif geom_elem.name == "dUp"
+                    d_up = parse(Float64, geom_elem.content)
+                elseif geom_elem.name == "dDwn"
+                    d_dwn = parse(Float64, geom_elem.content)
+                end
+            end
 
             # Parse the geometry (transformation, reference mesh + index and dUp and dDwn):
-            if !isnothing(geom.shapeIndex)
+            if !isnothing(shape_index)
                 # Rotation + Scaling. No need to decouple them here, but in case we need to
                 # in the future, see: https://stackoverflow.com/a/29618569/6947799
                 # See also this for decomposition: https://colab.research.google.com/drive/1ImBB-N6P9zlNMCBH9evHD6tjk0dzvy1_
@@ -756,9 +770,9 @@ function parse_opf_topology!(
                 #! OK what I could do is use my own transformation function that adds w (=1)
                 #! to the Point when transforming it with the 4x4 matrix?
 
-                isnothing(geom.mat) && error("Missing transformation matrix in OPF geometry for node id $(source_topology_id).")
-                A = SMatrix{3,3,Float64}(@view(geom.mat[1:3, 1:3]))
-                t = SVector{3,Float64}((@view(geom.mat[1:3, 4])) ./ 100)
+                isnothing(mat) && error("Missing transformation matrix in OPF geometry for node id $(source_topology_id).")
+                A = SMatrix{3,3,Float64}(@view(mat[1:3, 1:3]))
+                t = SVector{3,Float64}((@view(mat[1:3, 4])) ./ 100)
                 transformation = AffineMap(A, t)
                 # NB: We read an homogeneous transformation matrix from the OPF, but we work
                 # with cartesian coordinates in PlantGeom by design. So we deconstruct our
@@ -766,13 +780,13 @@ function parse_opf_topology!(
                 # matrices and create a single affine transform.
 
                 node_i.geometry = Geometry(
-                    ref_meshes[geom.shapeIndex],
+                    ref_meshes[shape_index],
                     transformation,
-                    geom.dUp,
-                    geom.dDwn,
+                    d_up,
+                    d_dwn,
                 )
             end
-        elseif elem.name in ["decomp", "branch", "follow"]
+        elseif elem.name == "decomp" || elem.name == "branch" || elem.name == "follow"
             parse_opf_topology!(
                 elem,
                 node_i,
@@ -784,7 +798,8 @@ function parse_opf_topology!(
                 max_id,
                 attributeBDD,
                 attribute_types,
-                dynamic_attributes
+                dynamic_attributes,
+                attr_symbols
             )
         else
             attr_name = elem.name
@@ -809,7 +824,7 @@ function parse_opf_topology!(
                 else
                     parse_opf_array(elem.content, features[attr_name])
                 end
-                node_i[Symbol(attr_name)] = parsed_attr
+                node_i[_cached_attr_symbol(attr_symbols, attr_name)] = parsed_attr
             else
                 error("Attribute $(attr_name) not found in attributeBDD (or badly written?)")
             end
