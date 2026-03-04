@@ -296,29 +296,6 @@ function extrusion_make_curve(z_keys::AbstractVector, r_keys::AbstractVector, n:
     z_samples, r_samples
 end
 
-function get_ref_mesh_name(::ExtrudedTubeGeometry)
-    return "ExtrudedTube"
-end
-
-@inline function geometry_display_color(geom::ExtrudedTubeGeometry)
-    material_single_color(geom.material)
-end
-
-function geometry_to_mesh(geom::ExtrudedTubeGeometry)
-    local_mesh = extrude_tube_mesh(
-        geom.path;
-        n_sides=geom.n_sides,
-        radius=geom.radius,
-        radii=geom.radii,
-        widths=geom.widths,
-        heights=geom.heights,
-        path_normals=geom.path_normals,
-        torsion=geom.torsion,
-        cap_ends=geom.cap_ends,
-    )
-    apply_transformation_to_mesh(geom.transformation, local_mesh)
-end
-
 """
     extrude_tube_mesh(path;
         n_sides=8,

@@ -1,21 +1,17 @@
 """
     refmesh_to_mesh(node)
 
-Compute a node mesh based on the reference mesh, the transformation matrix and the tapering.
+Compute a node mesh based on its geometry source.
 
 # Examples
 
 ```julia
 using PlantGeom
-file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf")
+file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "simple_plant.opf")
 opf = read_opf(file)
 
 node = opf[1][1][1]
-
 new_mesh = refmesh_to_mesh(node)
-
-using GLMakie
-plantviz(new_mesh)
 ```
 """
 refmesh_to_mesh
@@ -25,9 +21,9 @@ refmesh_to_mesh
 
 Materialize a geometry object into a concrete mesh.
 
-This is an internal extension point used by scene merging and rendering. The
-default PlantGeom method supports [`Geometry`](@ref). Additional geometry
-sources can provide their own method without changing the rendering API.
+This is an internal extension point used by scene merging and rendering.
+Additional geometry sources can provide their own method without changing the
+rendering API.
 """
 function geometry_to_mesh(geom)
     error("No `geometry_to_mesh` method is defined for geometry type $(typeof(geom)).")
@@ -46,6 +42,21 @@ end
 function geometry_to_mesh(geom::PointMappedGeometry)
     local_mesh = apply_point_map_to_mesh(geom.point_map, geom.params, geom.ref_mesh.mesh)
     apply_transformation(geom.transformation, local_mesh)
+end
+
+function geometry_to_mesh(geom::ExtrudedTubeGeometry)
+    local_mesh = extrude_tube_mesh(
+        geom.path;
+        n_sides=geom.n_sides,
+        radius=geom.radius,
+        radii=geom.radii,
+        widths=geom.widths,
+        heights=geom.heights,
+        path_normals=geom.path_normals,
+        torsion=geom.torsion,
+        cap_ends=geom.cap_ends,
+    )
+    apply_transformation_to_mesh(geom.transformation, local_mesh)
 end
 
 function refmesh_to_mesh(node)
