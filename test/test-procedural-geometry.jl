@@ -109,3 +109,48 @@ end
     @test PlantGeom.get_ref_mesh_name(geom) == "DeformedLeaf"
     @test PlantGeom.geometry_display_color(geom) == RGB(0.3, 0.7, 0.4)
 end
+
+@testset "rational bezier cereal leaf helpers" begin
+    curve = PlantGeom.cereal_leaf_midrib(length=1.2, base_angle_deg=30.0, bend=0.25, tip_drop=0.08)
+    @test curve(0.0) ≈ SVector{3,Float64}(0.0, 0.0, 0.0)
+    @test isapprox(curve(1.0)[1], 1.2; atol=1e-8)
+    @test curve(0.5)[3] > 0.0
+
+    mesh = PlantGeom.cereal_leaf_mesh(1.1, 0.18; n_long=4, n_half=2)
+    @test PlantGeom.nvertices(mesh) == 25
+    @test PlantGeom.nelements(mesh) == 32
+    xs = [p[1] for p in GeometryBasics.coordinates(mesh)]
+    ys = [p[2] for p in GeometryBasics.coordinates(mesh)]
+    @test minimum(xs) ≈ 0.0
+    @test maximum(xs) ≈ 1.1
+    @test maximum(abs, ys) > 0.05
+
+    ref = PlantGeom.cereal_leaf_refmesh("CerealLeaf"; length=1.1, max_width=0.18, n_long=6, n_half=2)
+    @test ref isa RefMesh
+    @test ref.name == "CerealLeaf"
+end
+
+@testset "cereal leaf point mapping responds to base angle and bend" begin
+    mild_map = PlantGeom.CerealLeafMap(length=1.0, base_angle_deg=20.0, bend=0.20, tip_drop=0.04)
+    steep_map = PlantGeom.CerealLeafMap(length=1.0, base_angle_deg=48.0, bend=0.70, tip_drop=0.22)
+
+    base_tangent_mild = mild_map.curve(0.02) - mild_map.curve(0.0)
+    base_tangent_steep = steep_map.curve(0.02) - steep_map.curve(0.0)
+    mild_angle = atan(base_tangent_mild[3], base_tangent_mild[1])
+    steep_angle = atan(base_tangent_steep[3], base_tangent_steep[1])
+    @test steep_angle > mild_angle + deg2rad(10.0)
+
+    mild_tip = mild_map(Point(1.0, 0.0, 0.0))
+    steep_tip = steep_map(Point(1.0, 0.0, 0.0))
+    mild_mid = mild_map(Point(0.55, 0.0, 0.0))
+    steep_mid = steep_map(Point(0.55, 0.0, 0.0))
+    @test steep_tip[3] < mild_tip[3]
+    @test steep_mid[3] > mild_mid[3]
+
+    ref = PlantGeom.cereal_leaf_refmesh("Blade"; length=1.0, max_width=0.12, n_long=10, n_half=2)
+    geom = PointMappedGeometry(ref, steep_map; transformation=PlantGeom.Translation(0.0, 0.5, 0.0))
+    mesh = PlantGeom.geometry_to_mesh(geom)
+    pts = collect(GeometryBasics.coordinates(mesh))
+    @test minimum(p[2] for p in pts) > 0.3
+    @test maximum(p[3] for p in pts) > 0.1
+end

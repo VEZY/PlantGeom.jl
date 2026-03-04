@@ -3,6 +3,7 @@
 PlantGeom supports two complementary geometry workflows:
 
 - shared geometry with `RefMesh` + `Geometry(ref_mesh=..., transformation=...)`
+- shared geometry with per-node shape deformation via `PointMappedGeometry`
 - per-node procedural geometry with `ExtrudedTubeGeometry` and extrusion helpers
 
 If you already know the `RefMesh` workflow, this page is the extrusion counterpart.
@@ -12,6 +13,7 @@ using PlantGeom
 using CairoMakie
 using GeometryBasics
 using Colors
+using MultiScaleTreeGraph
 
 CairoMakie.activate!()
 ```
@@ -24,11 +26,116 @@ Use `RefMesh` + `Geometry` when:
 - only node transform differs (scale/rotation/translation)
 - you want the classic OPF-style "instantiate once, transform many" pattern
 
+Use `PointMappedGeometry` when:
+
+- many nodes share the same base organ topology, but each organ bends differently
+- you want to keep a reusable `RefMesh` while warping it with a concrete point map
+- organ shape is easier to describe from a midrib/guide curve than from rigid transforms alone
+
 Use procedural extrusion when:
 
 - each axis/organ needs its own path or profile
 - geometry is easier to define from centerlines and section evolution
 - you want to build geometry directly from node parameters
+
+## Point-Mapped Geometry
+
+`PointMappedGeometry` fills the gap between rigid instancing (`Geometry`) and
+fully procedural mesh generation (`ExtrudedTubeGeometry`): the base organ mesh
+is still reusable, but each node can carry its own deformation map.
+
+PlantGeom now includes a small cereal-leaf toolkit for that workflow:
+
+- `RationalBezierCurve`: NURBS-like weighted Bezier midrib
+- `cereal_leaf_midrib`: convenience weighted curve builder
+- `CerealLeafMap`: point map that wraps a flat cereal blade around that midrib
+- `cereal_leaf_mesh` / `cereal_leaf_refmesh`: reusable flat blade reference mesh
+
+```@example procgeom
+leaf_ref = cereal_leaf_refmesh(
+    "CerealBlade";
+    length=1.0,
+    max_width=0.12,
+    n_long=28,
+    n_half=4,
+    material=RGB(0.22, 0.62, 0.24),
+)
+
+base_leaf = PointMappedGeometry(
+    leaf_ref,
+    CerealLeafMap(length=1.0, base_angle_deg=22.0, bend=0.18, tip_drop=0.04),
+)
+steeper_leaf = PointMappedGeometry(
+    leaf_ref,
+    CerealLeafMap(length=1.0, base_angle_deg=42.0, bend=0.65, tip_drop=0.22);
+    transformation=PlantGeom.Translation(0.0, 0.22, 0.0),
+)
+
+fig = Figure(size=(920, 360))
+ax = Axis3(fig[1, 1], title="PointMappedGeometry: cereal leaf angle + bend")
+mesh!(ax, PlantGeom.geometry_to_mesh(base_leaf), color=RGBA(0.30, 0.70, 0.28, 0.95))
+mesh!(ax, PlantGeom.geometry_to_mesh(steeper_leaf), color=RGBA(0.12, 0.50, 0.18, 0.95))
+fig
+```
+
+The same pattern scales to a small cereal plant:
+
+```@example procgeom
+mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+stem = Node(mtg, NodeMTG(:/, :Stem, 1, 2))
+stem[:geometry] = ExtrudedTubeGeometry(
+    [
+        Point(0.0, 0.0, 0.0),
+        Point(0.0, 0.0, 0.45),
+        Point(0.0, 0.0, 0.95),
+        Point(0.0, 0.0, 1.30),
+    ];
+    n_sides=14,
+    radius=0.022,
+    radii=[1.0, 0.92, 0.74, 0.52],
+    torsion=false,
+    cap_ends=true,
+    material=RGB(0.54, 0.76, 0.38),
+)
+
+leaf_specs = [
+    (z=0.20, azimuth_deg=-35.0, base_angle_deg=18.0, bend=0.15, tip_drop=0.04, length=0.82),
+    (z=0.54, azimuth_deg=85.0, base_angle_deg=30.0, bend=0.35, tip_drop=0.10, length=0.94),
+    (z=0.88, azimuth_deg=205.0, base_angle_deg=44.0, bend=0.72, tip_drop=0.22, length=1.02),
+]
+
+for (i, spec) in enumerate(leaf_specs)
+    leaf = Node(stem, NodeMTG(:+, :Leaf, i, 2))
+    blade_map = CerealLeafMap(
+        length=spec.length,
+        base_angle_deg=spec.base_angle_deg,
+        bend=spec.bend,
+        tip_drop=spec.tip_drop,
+    )
+    blade_ref = cereal_leaf_refmesh(
+        "CerealBlade";
+        length=spec.length,
+        max_width=0.10 + 0.01 * i,
+        n_long=26,
+        n_half=4,
+        material=RGB(0.20, 0.60, 0.22),
+    )
+    leaf[:geometry] = PointMappedGeometry(
+        blade_ref,
+        blade_map;
+        transformation=PlantGeom.compose(
+            PlantGeom.Translation(0.0, 0.0, spec.z),
+            PlantGeom.LinearMap(PlantGeom.RotZ(deg2rad(spec.azimuth_deg))),
+        ),
+    )
+end
+
+plantviz(mtg, color=Dict("CerealBlade" => RGB(0.20, 0.60, 0.22), "ExtrudedTube" => RGB(0.54, 0.76, 0.38)))
+```
+
+This deforms the blade itself. If you instead want topology-driven component
+bending across segmented organs, use the AMAP stiffness/orthotropy pipeline from
+[`Conventions Reference`](amap_conventions_reference.md).
 
 ## Node-Level Procedural Geometry
 
