@@ -13,28 +13,12 @@ function get_ref_meshes(mtg)
 
     ref_meshes = OrderedCollections.OrderedSet{RefMesh}()
     traverse!(x) do node
-        if has_geometry(node) && isa(node[:geometry], Geometry)
-            push!(ref_meshes, node[:geometry].ref_mesh)
+        if has_geometry(node)
+            ref_mesh = geometry_ref_mesh(node[:geometry])
+            !isnothing(ref_mesh) && push!(ref_meshes, ref_mesh)
         end
     end
     return collect(ref_meshes)
-end
-
-"""
-    get_ref_mesh_name(node)
-
-Get the name of the reference mesh used for the current node.
-"""
-function get_ref_mesh_name(node::MultiScaleTreeGraph.Node)
-    return get_ref_mesh_name(node[:geometry])
-end
-
-function get_ref_mesh_name(geom::Geometry)
-    return geom.ref_mesh.name
-end
-
-function get_ref_mesh_name(geom)
-    return string(nameof(typeof(geom)))
 end
 
 """
@@ -173,16 +157,4 @@ end
 
 function material_single_color(x::Colorant)
     x
-end
-
-@inline function geometry_display_color(node::MultiScaleTreeGraph.Node)
-    geometry_display_color(node[:geometry])
-end
-
-@inline function geometry_display_color(geom::Geometry)
-    material_single_color(geom.ref_mesh.material)
-end
-
-@inline function geometry_display_color(::Any)
-    RGB(220 / 255, 220 / 255, 220 / 255)
 end

@@ -8,7 +8,22 @@ The transformation is composed with the previous transformation if any.
 """
 function transform_mesh!(node::MultiScaleTreeGraph.Node, transformation::Transformation)
     if has_geometry(node)
-        node[:geometry].transformation = transformation ∘ node[:geometry].transformation
+        geom = node[:geometry]
+        if geom isa Geometry
+            node[:geometry] = Geometry(
+                ref_mesh=geom.ref_mesh,
+                transformation=transformation ∘ geom.transformation,
+                dUp=geom.dUp,
+                dDwn=geom.dDwn,
+            )
+        elseif geom isa PointMappedGeometry
+            node[:geometry] = PointMappedGeometry(
+                geom.ref_mesh,
+                geom.point_map;
+                params=geom.params,
+                transformation=transformation ∘ geom.transformation,
+            )
+        end
     end
 end
 

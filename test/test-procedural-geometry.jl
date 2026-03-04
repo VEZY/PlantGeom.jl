@@ -53,3 +53,59 @@
     @test nelements(merged_mesh) == length(face2node)
     @test Set(face2node) == expected_ids
 end
+
+struct ParabolicLift
+    factor::Float64
+end
+
+@inline function (lift::ParabolicLift)(p)
+    SVector{3,Float64}(Float64(p[1]), Float64(p[2]), Float64(p[3]) + lift.factor * Float64(p[1])^2)
+end
+
+@testset "geometry transform replacement stays concrete" begin
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+    node = Node(mtg, NodeMTG(:/, :Leaf, 1, 2))
+    ref = RefMesh(
+        "Triangle",
+        GeometryBasics.Mesh(
+            [Point(0.0, 0.0, 0.0), Point(1.0, 0.0, 0.0), Point(0.0, 1.0, 0.0)],
+            [GeometryBasics.TriangleFace(1, 2, 3)],
+        ),
+    )
+
+    node[:geometry] = PlantGeom.Geometry(ref_mesh=ref, transformation=PlantGeom.Translation(1.0, 0.0, 0.0))
+    @test typeof(node[:geometry]).parameters[2] === typeof(PlantGeom.Translation(1.0, 0.0, 0.0))
+
+    PlantGeom.transform_mesh!(node, PlantGeom.LinearMap(Diagonal(SVector(2.0, 1.0, 1.0))))
+    @test typeof(node[:geometry]).parameters[2] <: PlantGeom.Transformation
+
+    mesh = PlantGeom.geometry_to_mesh(node[:geometry])
+    pts = collect(GeometryBasics.coordinates(mesh))
+    @test pts[1] ≈ Point(2.0, 0.0, 0.0)
+    @test pts[2] ≈ Point(4.0, 0.0, 0.0)
+    @test pts[3] ≈ Point(2.0, 1.0, 0.0)
+end
+
+@testset "point mapped geometry source" begin
+    ref = RefMesh(
+        "DeformedLeaf",
+        GeometryBasics.Mesh(
+            [Point(0.0, 0.0, 0.0), Point(0.5, 0.0, 0.0), Point(1.0, 0.0, 0.0)],
+            [GeometryBasics.TriangleFace(1, 2, 3)],
+        ),
+        RGB(0.3, 0.7, 0.4),
+    )
+    geom = PointMappedGeometry(
+        ref,
+        ParabolicLift(0.25);
+        transformation=PlantGeom.Translation(0.0, 1.0, 0.0),
+    )
+
+    mesh = PlantGeom.geometry_to_mesh(geom)
+    pts = collect(GeometryBasics.coordinates(mesh))
+    @test pts[1] ≈ Point(0.0, 1.0, 0.0)
+    @test pts[2] ≈ Point(0.5, 1.0, 0.0625)
+    @test pts[3] ≈ Point(1.0, 1.0, 0.25)
+    @test PlantGeom.get_ref_mesh_name(geom) == "DeformedLeaf"
+    @test PlantGeom.geometry_display_color(geom) == RGB(0.3, 0.7, 0.4)
+end

@@ -56,6 +56,16 @@ function apply_transformation_to_mesh(transformation::Transformation, mesh)
     _mesh(transformed_vertices, _faces(mesh))
 end
 
+@inline function _apply_point_map(point_map, p, params)
+    applicable(point_map, p, params) && return point_map(p, params)
+    return point_map(p)
+end
+
+function apply_point_map_to_mesh(point_map, params, mesh)
+    transformed_vertices = [point3(_apply_point_map(point_map, p, params)) for p in _vertices(mesh)]
+    _mesh(transformed_vertices, _faces(mesh))
+end
+
 function transformation_matrix4(transformation::Transformation)
     origin = SVector{3,Float64}(0.0, 0.0, 0.0)
     p0 = _svec3(transformation(origin))
