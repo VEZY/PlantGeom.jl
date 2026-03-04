@@ -54,28 +54,27 @@ Parse the reference meshes from OPF attributes into a dictionary.
 - Shape IDs, mesh indices, and material indices are used as-is from the OPF file (0-based)
 """
 function parse_ref_meshes(x)
+    shapeBDD = x[:shapeBDD]
     meshes = Dict{Int,RefMesh}()
+    sizehint!(meshes, length(shapeBDD))
     meshBDD = x[:meshBDD]
     materialBDD = x[:materialBDD]
     fallback_material = if isempty(materialBDD)
         _default_phong_material()
     else
-        materialBDD[first(sort(collect(keys(materialBDD))))]
+        first(values(materialBDD))
     end
 
-    for (id, value) in x[:shapeBDD]
-        material_index = value["materialIndex"]
-        material = get(materialBDD, material_index, fallback_material)
-        push!(
-            meshes,
-            id => RefMesh(
-                string(value["name"]),
-                meshBDD[value["meshIndex"]].mesh,
-                meshBDD[value["meshIndex"]].normals,
-                meshBDD[value["meshIndex"]].textureCoords,
-                material,
-                meshBDD[value["meshIndex"]].enableScale
-            )
+    for (id, shape) in shapeBDD
+        mesh_entry = meshBDD[shape.mesh_index]
+        material = get(materialBDD, shape.material_index, fallback_material)
+        meshes[id] = RefMesh(
+            shape.name,
+            mesh_entry.mesh,
+            mesh_entry.normals,
+            mesh_entry.textureCoords,
+            material,
+            mesh_entry.enableScale,
         )
     end
 
