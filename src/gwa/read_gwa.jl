@@ -30,7 +30,8 @@ function read_gwa(file; attr_type=Dict, mtg_type=MultiScaleTreeGraph.MutableNode
         max_id[] += 1
         id
     end
-    mtg = Node(mtg_type(:/, :GWA, root_id, 0), MultiScaleTreeGraph.init_empty_attr())
+    root_mtg = mtg_type(:/, :GWA, root_id, 0)
+    mtg = Node(root_id, root_mtg, MultiScaleTreeGraph.init_empty_attr())
 
     ref_meshes = RefMesh[]
     for mesh_node in eachelement(xroot)
@@ -83,10 +84,10 @@ function read_gwa(file; attr_type=Dict, mtg_type=MultiScaleTreeGraph.MutableNode
             id
         end
 
-        node = Node(mtg_type(:+, :Mesh, node_id, 1), MultiScaleTreeGraph.init_empty_attr())
+        mesh_mtg = mtg_type(:+, :Mesh, node_id, 1)
+        node = Node(node_id, mtg, mesh_mtg, MultiScaleTreeGraph.init_empty_attr())
         node.geometry = Geometry(ref_mesh=ref_mesh)
         node.source_topology_id = mesh_id_raw
-        addchild!(mtg, node)
     end
 
     isempty(ref_meshes) && error("No <mesh> element found in GWA file $file")

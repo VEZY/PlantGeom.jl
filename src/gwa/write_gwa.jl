@@ -20,7 +20,7 @@ function write_gwa(file, mtg)
     mesh_nodes = MultiScaleTreeGraph.traverse(
         root,
         node -> node,
-        filter_fun=node -> !isroot(node) && has_geometry(node),
+        filter_fun=has_geometry,
         type=typeof(root)
     )
 

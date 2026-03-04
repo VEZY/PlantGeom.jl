@@ -17,6 +17,7 @@ end
 @testset "OPF files" begin
     include("test-read_opf.jl")
     include("test-read_gwa.jl")
+    include("test-write_gwa.jl")
     include("test-write_opf.jl")
 end
 
