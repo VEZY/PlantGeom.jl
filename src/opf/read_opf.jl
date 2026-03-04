@@ -84,13 +84,7 @@ function read_opf(
         end
 
         if node.name == "shapeBDD"
-            shapeBDD = parse_opf_elements!(
-                node,
-                [String, Int64, Int64]
-            )
-
-
-
+            shapeBDD = parse_shapeBDD!(node)
             push!(opf_attr, :shapeBDD => shapeBDD)
         end
 
@@ -155,6 +149,76 @@ function parse_opf_array(elem, type=Float64)
     end
 end
 
+function _parse_opf_numeric_vector(raw_content::AbstractString, ::Type{T}) where {T<:Number}
+    tokens = split(strip(raw_content))
+    values = Vector{T}(undef, length(tokens))
+    @inbounds for i in eachindex(tokens)
+        parsed = tryparse(T, tokens[i])
+        isnothing(parsed) && error("Could not parse OPF numeric token '$(tokens[i])' as $T.")
+        values[i] = parsed
+    end
+    return values
+end
+
+@inline function _opf_points3_from_flat(values::AbstractVector{<:Real}, scale_factor::Real=1.0)
+    length(values) % 3 == 0 || error("Invalid OPF point array length $(length(values)); expected a multiple of 3.")
+    out = Vector{GeometryBasics.Point{3,Float64}}(undef, length(values) ÷ 3)
+    j = 1
+    @inbounds for i in 1:3:length(values)
+        out[j] = point3(values[i] * scale_factor, values[i + 1] * scale_factor, values[i + 2] * scale_factor)
+        j += 1
+    end
+    return out
+end
+
+@inline function _opf_vec3_from_flat(values::AbstractVector{<:Real})
+    length(values) % 3 == 0 || error("Invalid OPF vec3 array length $(length(values)); expected a multiple of 3.")
+    out = Vector{GeometryBasics.Vec{3,Float64}}(undef, length(values) ÷ 3)
+    j = 1
+    @inbounds for i in 1:3:length(values)
+        out[j] = vec3(values[i], values[i + 1], values[i + 2])
+        j += 1
+    end
+    return out
+end
+
+@inline function _opf_points2_from_flat(values::AbstractVector{<:Real}, scale_factor::Real=1.0)
+    length(values) % 2 == 0 || error("Invalid OPF uv array length $(length(values)); expected a multiple of 2.")
+    out = Vector{GeometryBasics.Point{2,Float64}}(undef, length(values) ÷ 2)
+    j = 1
+    @inbounds for i in 1:2:length(values)
+        out[j] = GeometryBasics.Point{2,Float64}(values[i] * scale_factor, values[i + 1] * scale_factor)
+        j += 1
+    end
+    return out
+end
+
+function parse_shapeBDD!(node)
+    shapeBDD = Dict{Int,Dict{String,Any}}()
+    for shape_node in eachelement(node)
+        shape_node.name == "shape" || continue
+        shape_id = parse(Int, shape_node["Id"])
+        name = ""
+        mesh_index = 0
+        material_index = 0
+        for child in eachelement(shape_node)
+            if child.name == "name"
+                name = strip(child.content)
+            elseif child.name == "meshIndex"
+                mesh_index = parse(Int, child.content)
+            elseif child.name == "materialIndex"
+                material_index = parse(Int, child.content)
+            end
+        end
+        shapeBDD[shape_id] = Dict(
+            "name" => name,
+            "meshIndex" => mesh_index,
+            "materialIndex" => material_index,
+        )
+    end
+    return shapeBDD
+end
+
 @inline function _opf_triangulate_face_indices(ids::AbstractVector{Int})
     out = Face3[]
     length(ids) < 3 && return out
@@ -173,8 +237,7 @@ function _opf_parse_faces(elem, file::AbstractString, mesh_name::AbstractString)
     face_nodes = [face_node for face_node in eachelement(elem) if face_node.name == "face"]
 
     if isempty(face_nodes)
-        content = parse_opf_array(elem.content, Int)
-        flat_ids = content isa Integer ? Int[content] : Int[content...]
+        flat_ids = _parse_opf_numeric_vector(elem.content, Int)
         length(flat_ids) % 3 == 0 || error("Invalid flat face list in OPF mesh '$mesh_name' from file $file")
         for p in 1:3:length(flat_ids)
             push!(faces3d, face3(flat_ids[p] + 1, flat_ids[p+1] + 1, flat_ids[p+2] + 1))
@@ -231,32 +294,25 @@ function parse_meshBDD!(node; file="")
     # content = parse_opf_array(elements(m)[3].content)
     for m in eachelement(node)
         m.name != "mesh" ? @warn("Unknown node element in meshBDD: $(m.name)") : nothing
-        mesh = Dict{String,Any}()
-        mesh["name"] = m["name"]
-        mesh["enableScale"] = haskey(m, "enableScale") ? parse(Bool, m["enableScale"]) : true
+        mesh_name = m["name"]
+        enable_scale = haskey(m, "enableScale") ? parse(Bool, m["enableScale"]) : true
+        mesh_points = GeometryBasics.Point{3,Float64}[]
+        mesh_faces = Face3[]
+        mesh_normals = nothing
+        mesh_texture_coords = nothing
 
         for i in eachelement(m)
             if i.name == "faces"
-                faces3d = _opf_parse_faces(i, file, mesh["name"])
-                push!(mesh, "faces" => faces3d)
+                mesh_faces = _opf_parse_faces(i, file, mesh_name)
             elseif i.name == "textureCoords"
-                content = parse_opf_array(i.content) ./ 100
-                content = [
-                    GeometryBasics.Point{2,Float64}(content[p], content[p+1]) for p in 1:2:length(content)
-                ]
-                push!(mesh, "textureCoords" => content)
+                content = _parse_opf_numeric_vector(i.content, Float64)
+                mesh_texture_coords = _opf_points2_from_flat(content, 0.01)
             elseif i.name == "normals"
-                content = parse_opf_array(i.content)
-                content = [
-                    vec3(content[p], content[p+1], content[p+2]) for p in 1:3:length(content)
-                ]
-                push!(mesh, "normals" => content)
+                content = _parse_opf_numeric_vector(i.content, Float64)
+                mesh_normals = _opf_vec3_from_flat(content)
             elseif i.name == "points"
-                content = parse_opf_array(i.content) ./ 100
-                content = [
-                    point3(content[p], content[p+1], content[p+2]) for p in 1:3:length(content)
-                ]
-                push!(mesh, i.name => content)
+                content = _parse_opf_numeric_vector(i.content, Float64)
+                mesh_points = _opf_points3_from_flat(content, 0.01)
             else
                 error("Unknown node element for mesh$(i.Id) in mesh BDD: $(i.name)")
             end
@@ -266,11 +322,11 @@ function parse_meshBDD!(node; file="")
             meshes,
             parse(Int, m["Id"]) =>
                 OPFmesh(
-                    mesh["name"],
-                    mesh["enableScale"],
-                    _mesh(mesh["points"], mesh["faces"]),
-                    get(mesh, "normals", nothing),
-                    get(mesh, "textureCoords", nothing), # using get because sometimes missing
+                    mesh_name,
+                    enable_scale,
+                    _mesh(mesh_points, mesh_faces),
+                    mesh_normals,
+                    mesh_texture_coords,
                 )
         )
     end
@@ -287,19 +343,23 @@ When the section is present but empty, a neutral default material is inserted so
 files without explicit materials remain readable.
 """
 function parse_materialBDD!(node; file=nothing)
-    metBDDraw = parse_opf_elements!(
-        node,
-        [Float64, Float64, Float64, Float64, Float64]
-    )
-    if isempty(metBDDraw)
+    if isempty(collect(eachelement(node)))
         return Dict(1 => _default_phong_material())
     end
 
     metBDD = Dict{Int,Phong}()
-    for (key, value) in metBDDraw
-        # key = 1
-        # value = metBDDraw[key]
-        push!(metBDD, key => materialBDD_to_material(value))
+    for material_node in eachelement(node)
+        material_node.name == "material" || continue
+        material_id = parse(Int, material_node["Id"])
+        raw = Dict{String,Any}()
+        for child in eachelement(material_node)
+            if child.name == "shininess"
+                raw["shininess"] = parse(Float64, child.content)
+            else
+                raw[child.name] = _parse_opf_numeric_vector(child.content, Float64)
+            end
+        end
+        metBDD[material_id] = materialBDD_to_material(raw)
     end
 
     return metBDD
@@ -527,7 +587,7 @@ function parse_geometry(elem)
         if i.name == "shapeIndex"
             shape_index = parse(Int, i.content)
         elseif i.name == "mat"
-            mat = SMatrix{3,4}(reshape(parse_opf_array(i.content), 4, 3)')
+            mat = SMatrix{3,4}(reshape(_parse_opf_numeric_vector(i.content, Float64), 4, 3)')
         elseif i.name == "dUp"
             d_up = parse(Float64, i.content)
         elseif i.name == "dDwn"
