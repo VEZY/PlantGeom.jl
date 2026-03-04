@@ -130,27 +130,78 @@ end
 Parse an array of values from the OPF into a Julia array (Arrays in OPFs
 are not following XML recommendations)
 """
-function parse_opf_array(elem, type=Float64)
-    if type == String
-        strip(elem)
-    else
-        tokens = split(elem)
-        parsed = Vector{Union{Nothing,type}}(undef, length(tokens))
-        @inbounds for i in eachindex(tokens)
-            e = tokens[i]
-            if e == "NA" || isempty(e)
-                parsed[i] = nothing
-                continue
+@inline _opf_is_space(c::Char) = c == ' ' || c == '\n' || c == '\t' || c == '\r'
+
+function _count_opf_tokens(s::AbstractString)
+    count = 0
+    i = firstindex(s)
+    last = lastindex(s)
+
+    while i <= last
+        while i <= last && _opf_is_space(s[i])
+            i = nextind(s, i)
+        end
+        i > last && break
+
+        count += 1
+        while i <= last && !_opf_is_space(s[i])
+            i = nextind(s, i)
+        end
+    end
+
+    return count
+end
+
+function _opf_for_each_token(f, s::AbstractString)
+    i = firstindex(s)
+    last = lastindex(s)
+
+    while i <= last
+        while i <= last && _opf_is_space(s[i])
+            i = nextind(s, i)
+        end
+        i > last && break
+
+        j = i
+        while true
+            next_j = nextind(s, j)
+            if next_j > last || _opf_is_space(s[next_j])
+                f(SubString(s, i, j)) === false && return false
+                i = next_j
+                break
             end
-            parsed_e = _parse_opf_scalar(e, type)
-            isnothing(parsed_e) && @warn "Could not parse attribute value '$e' in OPF as type $type (type defined in `attributeBDD`)."
-            parsed[i] = parsed_e
+            j = next_j
         end
-        if length(parsed) == 1
-            return parsed[1]
-        else
-            return parsed
+    end
+
+    return true
+end
+
+function parse_opf_array(elem, ::Type{String})
+    return strip(elem)
+end
+
+function parse_opf_array(elem, ::Type{T}=Float64) where {T}
+    n_tokens = _count_opf_tokens(elem)
+    parsed = Vector{Union{Nothing,T}}(undef, n_tokens)
+    i = 1
+    _opf_for_each_token(elem) do token
+        if token == "NA"
+            parsed[i] = nothing
+            i += 1
+            return true
         end
+
+        parsed_e = _parse_opf_scalar(token, T)
+        isnothing(parsed_e) && @warn "Could not parse attribute value '$token' in OPF as type $T (type defined in `attributeBDD`)."
+        parsed[i] = parsed_e
+        i += 1
+        return true
+    end
+    if length(parsed) == 1
+        return parsed[1]
+    else
+        return parsed
     end
 end
 
@@ -162,12 +213,15 @@ end
 @inline _parse_opf_scalar(token::AbstractString, ::Type{T}) where {T} = tryparse(T, token)
 
 function _parse_opf_numeric_vector(raw_content::AbstractString, ::Type{T}) where {T<:Number}
-    tokens = split(strip(raw_content))
-    values = Vector{T}(undef, length(tokens))
-    @inbounds for i in eachindex(tokens)
-        parsed = tryparse(T, tokens[i])
-        isnothing(parsed) && error("Could not parse OPF numeric token '$(tokens[i])' as $T.")
+    n_tokens = _count_opf_tokens(raw_content)
+    values = Vector{T}(undef, n_tokens)
+    i = 1
+    _opf_for_each_token(raw_content) do token
+        parsed = tryparse(T, token)
+        isnothing(parsed) && error("Could not parse OPF numeric token '$token' as $T.")
         values[i] = parsed
+        i += 1
+        return true
     end
     return values
 end
@@ -246,9 +300,16 @@ end
 
 function _opf_parse_faces(elem, file::AbstractString, mesh_name::AbstractString)
     faces3d = Face3[]
-    face_nodes = [face_node for face_node in eachelement(elem) if face_node.name == "face"]
+    has_face_nodes = false
+    for face_node in eachelement(elem)
+        face_node.name == "face" || continue
+        has_face_nodes = true
+        ids = Int[parse(Int, m.match) + 1 for m in eachmatch(r"-?\d+", face_node.content)]
+        length(ids) >= 3 || error("Invalid face in OPF mesh '$mesh_name' from file $file")
+        append!(faces3d, _opf_triangulate_face_indices(ids))
+    end
 
-    if isempty(face_nodes)
+    if !has_face_nodes
         flat_ids = _parse_opf_numeric_vector(elem.content, Int)
         length(flat_ids) % 3 == 0 || error("Invalid flat face list in OPF mesh '$mesh_name' from file $file")
         for p in 1:3:length(flat_ids)
@@ -257,11 +318,6 @@ function _opf_parse_faces(elem, file::AbstractString, mesh_name::AbstractString)
         return faces3d
     end
 
-    for face_node in face_nodes
-        ids = Int[parse(Int, m.match) + 1 for m in eachmatch(r"-?\d+", face_node.content)]
-        length(ids) >= 3 || error("Invalid face in OPF mesh '$mesh_name' from file $file")
-        append!(faces3d, _opf_triangulate_face_indices(ids))
-    end
     return faces3d
 end
 
@@ -355,10 +411,6 @@ When the section is present but empty, a neutral default material is inserted so
 files without explicit materials remain readable.
 """
 function parse_materialBDD!(node; file=nothing)
-    if isempty(collect(eachelement(node)))
-        return Dict(1 => _default_phong_material())
-    end
-
     metBDD = Dict{Int,Phong}()
     for material_node in eachelement(node)
         material_node.name == "material" || continue
@@ -374,6 +426,7 @@ function parse_materialBDD!(node; file=nothing)
         metBDD[material_id] = materialBDD_to_material(raw)
     end
 
+    isempty(metBDD) && return Dict(1 => _default_phong_material())
     return metBDD
 end
 
@@ -487,23 +540,21 @@ function _normalize_attribute_types(attribute_types)
 end
 
 @inline function _infer_dynamic_attribute_type(raw_content::AbstractString)
-    tokens = split(strip(raw_content))
-    isempty(tokens) && return String
-
     saw_value = false
     all_int = true
     all_float = true
     all_bool = true
 
-    @inbounds for token in tokens
-        if token == "NA" || isempty(token)
-            continue
+    _opf_for_each_token(raw_content) do token
+        if token == "NA"
+            return true
         end
         saw_value = true
         all_int &= !isnothing(tryparse(Int64, token))
         all_float &= !isnothing(tryparse(Float64, token))
         lower = lowercase(token)
         all_bool &= (lower == "true" || lower == "false")
+        return true
     end
 
     !saw_value && return String
@@ -511,6 +562,40 @@ end
     all_float && return Float64
     all_bool && return Bool
     return String
+end
+
+function _try_parse_opf_array(raw_content::AbstractString, ::Type{String})
+    return strip(raw_content), true
+end
+
+function _try_parse_opf_array(raw_content::AbstractString, ::Type{T}) where {T}
+    n_tokens = _count_opf_tokens(raw_content)
+    parsed = Vector{Union{Nothing,T}}(undef, n_tokens)
+    i = 1
+    ok = _opf_for_each_token(raw_content) do token
+        if token == "NA"
+            parsed[i] = nothing
+            i += 1
+            return true
+        end
+
+        parsed_value = _parse_opf_scalar(token, T)
+        if isnothing(parsed_value)
+            return false
+        end
+        parsed[i] = parsed_value
+        i += 1
+        return true
+    end
+
+    if !ok
+        return nothing, false
+    end
+
+    if length(parsed) == 1
+        return parsed[1], true
+    end
+    parsed, true
 end
 
 @inline function _next_dynamic_attribute_type(type_::DataType)
@@ -523,35 +608,6 @@ end
     else
         return nothing
     end
-end
-
-function _try_parse_opf_array(raw_content::AbstractString, type_::DataType)
-    if type_ <: AbstractString
-        return strip(raw_content), true
-    end
-
-    tokens = split(raw_content)
-    parsed = Vector{Union{Nothing,type_}}(undef, length(tokens))
-
-    @inbounds for i in eachindex(tokens)
-        token = tokens[i]
-        if token == "NA" || isempty(token)
-            parsed[i] = nothing
-            continue
-        end
-
-        parsed_value = _parse_opf_scalar(token, type_)
-
-        if isnothing(parsed_value)
-            return nothing, false
-        end
-        parsed[i] = parsed_value
-    end
-
-    if length(parsed) == 1
-        return parsed[1], true
-    end
-    parsed, true
 end
 
 function _parse_dynamic_attribute_value!(
