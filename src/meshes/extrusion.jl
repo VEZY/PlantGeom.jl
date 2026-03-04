@@ -296,67 +296,6 @@ function extrusion_make_curve(z_keys::AbstractVector, r_keys::AbstractVector, n:
     z_samples, r_samples
 end
 
-"""
-    ExtrudedTubeGeometry(path;
-        n_sides=8,
-        radius=0.5,
-        radii=nothing,
-        widths=nothing,
-        heights=nothing,
-        path_normals=nothing,
-        torsion=true,
-        cap_ends=false,
-        material=RGB(220 / 255, 220 / 255, 220 / 255),
-        transformation=IdentityTransformation())
-
-Procedural geometry source backed by [`extrude_tube_mesh`](@ref).
-
-Unlike [`Geometry`](@ref), this source does not reference a pre-existing
-`RefMesh`; the mesh is rebuilt from its path/section parameters whenever
-materialized (for example by scene merging).
-"""
-struct ExtrudedTubeGeometry{P,R,RV,WV,HV,NV,M,T}
-    path::P
-    n_sides::Int
-    radius::R
-    radii::RV
-    widths::WV
-    heights::HV
-    path_normals::NV
-    torsion::Bool
-    cap_ends::Bool
-    material::M
-    transformation::T
-end
-
-function ExtrudedTubeGeometry(
-    path::AbstractVector;
-    n_sides::Integer=8,
-    radius::Real=0.5,
-    radii=nothing,
-    widths=nothing,
-    heights=nothing,
-    path_normals=nothing,
-    torsion::Bool=true,
-    cap_ends::Bool=false,
-    material::Union{Material,Colorant}=RGB(220 / 255, 220 / 255, 220 / 255),
-    transformation::Transformation=IdentityTransformation(),
-)
-    ExtrudedTubeGeometry(
-        path,
-        Int(n_sides),
-        Float64(radius),
-        radii,
-        widths,
-        heights,
-        path_normals,
-        torsion,
-        cap_ends,
-        material,
-        transformation,
-    )
-end
-
 function get_ref_mesh_name(::ExtrudedTubeGeometry)
     return "ExtrudedTube"
 end

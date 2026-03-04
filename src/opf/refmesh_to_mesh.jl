@@ -43,6 +43,11 @@ function geometry_to_mesh(geom::Geometry)
     apply_transformation(geom.transformation, ref_mesh)
 end
 
+function geometry_to_mesh(geom::PointMappedGeometry)
+    local_mesh = apply_point_map_to_mesh(geom.point_map, geom.params, geom.ref_mesh.mesh)
+    apply_transformation(geom.transformation, local_mesh)
+end
+
 function refmesh_to_mesh(node)
     if has_geometry(node)
         return geometry_to_mesh(node[:geometry])

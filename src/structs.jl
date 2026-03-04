@@ -106,29 +106,3 @@ end
 # have several copies of the same refmesh for different organs.
 Base.deepcopy_internal(x::RefMesh, dict::IdDict) = x
 # see: https://github.com/JuliaLang/julia/blob/9acf1129c91cddd9194f529ad9cc82afd2694190/base/deepcopy.jl
-
-"""
-    Geometry(; ref_mesh<:RefMesh, transformation=IdentityTransformation(), dUp=1.0, dDwn=1.0)
-
-A Node geometry with the reference mesh, its transformation (as a function) and the resulting
-mesh (optional, may be lazily computed).
-
-The `transformation` field should be a `CoordinateTransformations.Transformation`,
-such as `IdentityTransformation`, `Translation`, `LinearMap` or `AffineMap`.
-"""
-mutable struct Geometry{M<:RefMesh,S}
-    ref_mesh::M
-    transformation::Transformation
-    dUp::S
-    dDwn::S
-end
-
-function Geometry(; ref_mesh, transformation=IdentityTransformation(), dUp=1.0, dDwn=1.0, mesh=nothing)
-    mesh !== nothing && @warn "The `mesh` argument is deprecated and will be removed in future versions. The mesh is now computed on-the-fly using `refmesh_to_mesh(node)`."
-    Geometry(
-        ref_mesh,
-        transformation,
-        dUp,
-        dDwn
-    )
-end

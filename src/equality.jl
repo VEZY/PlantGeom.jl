@@ -17,7 +17,7 @@ end
 
 Test RefMesh equality.
 """
-function Base.:(==)(a::T, b::T) where {T<:Geometry}
+function Base.:(==)(a::Geometry, b::Geometry)
     ta = a.transformation(SVector{3,Float64}(1, 2, 3))
     tb = b.transformation(SVector{3,Float64}(1, 2, 3))
 

@@ -13,12 +13,17 @@ function get_ref_meshes(mtg)
 
     ref_meshes = OrderedCollections.OrderedSet{RefMesh}()
     traverse!(x) do node
-        if has_geometry(node) && isa(node[:geometry], Geometry)
-            push!(ref_meshes, node[:geometry].ref_mesh)
+        if has_geometry(node)
+            ref_mesh = geometry_ref_mesh(node[:geometry])
+            !isnothing(ref_mesh) && push!(ref_meshes, ref_mesh)
         end
     end
     return collect(ref_meshes)
 end
+
+@inline geometry_ref_mesh(geom::Geometry) = geom.ref_mesh
+@inline geometry_ref_mesh(geom::PointMappedGeometry) = geom.ref_mesh
+@inline geometry_ref_mesh(::Any) = nothing
 
 """
     get_ref_mesh_name(node)
@@ -30,6 +35,10 @@ function get_ref_mesh_name(node::MultiScaleTreeGraph.Node)
 end
 
 function get_ref_mesh_name(geom::Geometry)
+    return geom.ref_mesh.name
+end
+
+function get_ref_mesh_name(geom::PointMappedGeometry)
     return geom.ref_mesh.name
 end
 
@@ -180,6 +189,10 @@ end
 end
 
 @inline function geometry_display_color(geom::Geometry)
+    material_single_color(geom.ref_mesh.material)
+end
+
+@inline function geometry_display_color(geom::PointMappedGeometry)
     material_single_color(geom.ref_mesh.material)
 end
 
