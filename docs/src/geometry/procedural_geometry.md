@@ -15,7 +15,6 @@ using GeometryBasics
 using Colors
 using MultiScaleTreeGraph
 using LinearAlgebra
-using StaticArrays
 
 CairoMakie.activate!()
 ```
@@ -187,7 +186,7 @@ for (i, spec) in enumerate(leaf_specs)
         transformation=PlantGeom.compose(
             PlantGeom.Translation(0.0, 0.0, spec.z),
             PlantGeom.LinearMap(PlantGeom.RotZ(deg2rad(spec.azimuth_deg))),
-            PlantGeom.LinearMap(Diagonal(SVector(spec.length, spec.length, spec.length))),
+            PlantGeom.LinearMap(Diagonal([spec.length, spec.length, spec.length])),
         ),
     )
 end
@@ -244,9 +243,9 @@ fig = Figure(size=(920, 420))
 ax = Axis3(fig[1, 1], title="Margin wave: top wavy, bottom smooth", azimuth=1.45, elevation=0.36)
 mesh!(ax, PlantGeom.geometry_to_mesh(smooth_leaf), color=RGBA(0.18, 0.58, 0.22, 0.95))
 mesh!(ax, PlantGeom.geometry_to_mesh(wavy_leaf), color=RGBA(0.14, 0.50, 0.18, 0.95))
-xlims!(ax, -0.03, 1.05)
-ylims!(ax, -0.33, 0.33)
-zlims!(ax, -0.26, 0.56)
+Makie.xlims!(ax, -0.03, 1.05)
+Makie.ylims!(ax, -0.33, 0.33)
+Makie.zlims!(ax, -0.26, 0.56)
 fig
 ```
 

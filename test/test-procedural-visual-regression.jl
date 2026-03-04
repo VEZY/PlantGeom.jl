@@ -229,9 +229,9 @@
     )
     mesh!(ax, PlantGeom.geometry_to_mesh(smooth_leaf), color=RGBA(0.18, 0.58, 0.22, 0.95))
     mesh!(ax, PlantGeom.geometry_to_mesh(wavy_leaf), color=RGBA(0.14, 0.50, 0.18, 0.95))
-    xlims!(ax, -0.03, 1.05)
-    ylims!(ax, -0.33, 0.33)
-    zlims!(ax, -0.26, 0.56)
+    Makie.xlims!(ax, -0.03, 1.05)
+    Makie.ylims!(ax, -0.33, 0.33)
+    Makie.zlims!(ax, -0.26, 0.56)
 
     @test_reference "reference_images/procedural_cereal_margin_wave.png" fig
 end
