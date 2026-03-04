@@ -260,7 +260,7 @@ end
 end
 
 function parse_shapeBDD!(node)
-    shapeBDD = Dict{Int,Dict{String,Any}}()
+    shapeBDD = Dict{Int,OPFShape}()
     for shape_node in eachelement(node)
         shape_node.name == "shape" || continue
         shape_id = parse(Int, shape_node["Id"])
@@ -276,10 +276,10 @@ function parse_shapeBDD!(node)
                 material_index = parse(Int, child.content)
             end
         end
-        shapeBDD[shape_id] = Dict(
-            "name" => name,
-            "meshIndex" => mesh_index,
-            "materialIndex" => material_index,
+        shapeBDD[shape_id] = OPFShape(
+            String(name),
+            mesh_index,
+            material_index,
         )
     end
     return shapeBDD
@@ -346,10 +346,16 @@ struct OPFmesh{M<:GeometryBasics.AbstractMesh{3},N<:AbstractVector,T<:Union{Abst
     textureCoords::T # texture coordinates (length = length(points) * 2/3, or Nothing)
 end
 
+struct OPFShape
+    name::String
+    mesh_index::Int
+    material_index::Int
+end
+
 """
     parse_meshBDD!(node; file=\"\")
 
-Parse the meshBDD using [`parse_opf_array`](@ref).
+Parse the `meshBDD` section using `parse_opf_array`.
 
 Supports both flat `<faces>` arrays and nested `<face>` elements. Polygon faces with
 more than three vertices are triangulated with a fan strategy.
@@ -405,7 +411,7 @@ end
 """
     parse_materialBDD!(node; file=nothing)
 
-Parse the materialBDD using [`parse_opf_elements!`](@ref).
+Parse the `materialBDD` section directly from XML child elements.
 
 When the section is present but empty, a neutral default material is inserted so OPF
 files without explicit materials remain readable.
@@ -702,7 +708,8 @@ function parse_opf_topology!(
     attributeBDD=Dict{String,String}(),
     attribute_types=Dict{String,DataType}(),
     dynamic_attributes=Set{String}(),
-    attr_symbols=Dict{String,Symbol}()
+    attr_symbols=Dict{String,Symbol}(),
+    class_symbols=Dict{String,Symbol}()
 )
     link = :/ # default, for "topology" and "decomp"
     if node.name == "branch"
@@ -721,24 +728,20 @@ function parse_opf_topology!(
 
     MTG = mtg_type(
         link,
-        node["class"],
+        _cached_attr_symbol(class_symbols, node["class"]),
         id,
         parse(Int, node["scale"])
     )
 
     if mtg !== nothing
-        node_i = Node(
-            id,
-            mtg,
-            MTG,
-            MultiScaleTreeGraph.init_empty_attr()
-        )
+        node_i = Node(id, mtg, MTG)
     else
         # First node:
-        node_i = Node(id, MTG, MultiScaleTreeGraph.init_empty_attr())
+        node_i = Node(id, MTG)
     end
+    attrs_i = node_attributes(node_i)
 
-    node_i.source_topology_id = source_topology_id
+    attrs_i[:source_topology_id] = source_topology_id
 
     # Handle the children, can be attributes of children nodes:
     # elem = elements(node)[1]
@@ -779,12 +782,10 @@ function parse_opf_topology!(
                 # homogeneous matrix into the two corresponding rotation and translation
                 # matrices and create a single affine transform.
 
-                node_i.geometry = Geometry(
-                    ref_meshes[shape_index],
-                    transformation,
-                    d_up,
-                    d_dwn,
+                geom_value = Geometry(
+                    ref_meshes[shape_index], transformation, d_up, d_dwn,
                 )
+                attrs_i[:geometry] = geom_value
             end
         elseif elem.name == "decomp" || elem.name == "branch" || elem.name == "follow"
             parse_opf_topology!(
@@ -799,7 +800,8 @@ function parse_opf_topology!(
                 attributeBDD,
                 attribute_types,
                 dynamic_attributes,
-                attr_symbols
+                attr_symbols,
+                class_symbols
             )
         else
             attr_name = elem.name
@@ -824,7 +826,7 @@ function parse_opf_topology!(
                 else
                     parse_opf_array(elem.content, features[attr_name])
                 end
-                node_i[_cached_attr_symbol(attr_symbols, attr_name)] = parsed_attr
+                attrs_i[_cached_attr_symbol(attr_symbols, attr_name)] = parsed_attr
             else
                 error("Attribute $(attr_name) not found in attributeBDD (or badly written?)")
             end
