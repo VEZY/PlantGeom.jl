@@ -1,8 +1,16 @@
+using Printf: @sprintf
+
 """
     write_opf(file, opf)
 
 Write an MTG with explicit geometry to disk as an OPF file.
 """
+@inline _opf_scalar_string(x::AbstractFloat) = @sprintf("%.17g", Float64(x))
+@inline _opf_scalar_string(x) = string(x)
+@inline _opf_join_values(values) = join((_opf_scalar_string(v) for v in values), "\t")
+@inline _opf_attr_string(val::AbstractArray) = _opf_join_values(val)
+@inline _opf_attr_string(val) = _opf_scalar_string(val)
+
 function _normalized_ref_meshes_dict(mtg)
     ref_meshes_attr = mtg[:ref_meshes]
     if ref_meshes_attr === nothing
@@ -47,7 +55,7 @@ function write_opf(file, mtg)
         mesh_elm["enableScale"] = mesh_.taper
 
         points_cm = Iterators.flatten((p[1] * 100, p[2] * 100, p[3] * 100) for p in _vertices(mesh_.mesh))
-        addelement!(mesh_elm, "points", string("\n", join(points_cm, "\t"), "\n"))
+        addelement!(mesh_elm, "points", string("\n", _opf_join_values(points_cm), "\n"))
 
         if length(mesh_.normals) == nelements(mesh_) && length(mesh_.normals) != nvertices(mesh_)
             vertex_normals = normals_vertex(mesh_)
@@ -56,17 +64,17 @@ function write_opf(file, mtg)
         end
 
         normals_flat = Iterators.flatten((n[1], n[2], n[3]) for n in vertex_normals)
-        addelement!(mesh_elm, "normals", string("\n", join(normals_flat, "\t"), "\n"))
+        addelement!(mesh_elm, "normals", string("\n", _opf_join_values(normals_flat), "\n"))
 
         if mesh_.texture_coords !== nothing && length(mesh_.texture_coords) > 0
             uv_flat = Iterators.flatten((uv[1] * 100, uv[2] * 100) for uv in mesh_.texture_coords)
-            addelement!(mesh_elm, "textureCoords", string("\n", join(uv_flat, "\t"), "\n"))
+            addelement!(mesh_elm, "textureCoords", string("\n", _opf_join_values(uv_flat), "\n"))
         end
 
         faces_elm = addelement!(mesh_elm, "faces")
         face_id = 0
         for tri in _faces(mesh_.mesh)
-            face_elm = addelement!(faces_elm, "face", string("\n", join((tri[1] - 1, tri[2] - 1, tri[3] - 1), "\t"), "\n"))
+            face_elm = addelement!(faces_elm, "face", string("\n", _opf_join_values((tri[1] - 1, tri[2] - 1, tri[3] - 1)), "\n"))
             face_elm["Id"] = face_id
             face_id += 1
         end
@@ -194,22 +202,22 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
                 "mat",
                 string(
                     "\n",
-                    join(mat4x4[1, :], "\t"),
+                    _opf_join_values(mat4x4[1, :]),
                     "\n",
-                    join(mat4x4[2, :], "\t"),
+                    _opf_join_values(mat4x4[2, :]),
                     "\n",
-                    join(mat4x4[3, :], "\t"),
+                    _opf_join_values(mat4x4[3, :]),
                     "\n"
                 )
             )
-            addelement!(geom, "dUp", string(geom_val.dUp))
-            addelement!(geom, "dDwn", string(geom_val.dDwn))
+            addelement!(geom, "dUp", _opf_scalar_string(geom_val.dUp))
+            addelement!(geom, "dDwn", _opf_scalar_string(geom_val.dDwn))
         elseif key == :ref_meshes || key == :source_topology_id
             continue
         else
             val = node[key]
             val === nothing && continue
-            addelement!(xml_node, string(key), string(val))
+            addelement!(xml_node, string(key), _opf_attr_string(val))
         end
     end
 

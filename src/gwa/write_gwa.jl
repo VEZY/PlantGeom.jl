@@ -1,8 +1,14 @@
+using Printf: @sprintf
+
 """
     write_gwa(file, mtg)
 
 Write an MTG object to disk as a GWA mesh file.
 """
+@inline _gwa_scalar_string(x::AbstractFloat) = @sprintf("%.17g", Float64(x))
+@inline _gwa_scalar_string(x) = string(x)
+@inline _gwa_join_values(values) = join((_gwa_scalar_string(v) for v in values), "\t")
+
 function write_gwa(file, mtg)
     root = isroot(mtg) ? mtg : get_root(mtg)
     clean_cache!(root)
@@ -31,10 +37,10 @@ function write_gwa(file, mtg)
 
         mesh = refmesh_to_mesh(node)
         points_flat = Iterators.flatten((p[1], p[2], p[3]) for p in _vertices(mesh))
-        addelement!(mesh_elm, "points", string("\n\t\t\t", join(points_flat, "\t"), "\n\t\t"))
+        addelement!(mesh_elm, "points", string("\n\t\t\t", _gwa_join_values(points_flat), "\n\t\t"))
 
         normals_flat = Iterators.flatten((n[1], n[2], n[3]) for n in normals_vertex(mesh))
-        addelement!(mesh_elm, "normals", string("\n\t\t\t", join(normals_flat, "\t"), "\n\t\t"))
+        addelement!(mesh_elm, "normals", string("\n\t\t\t", _gwa_join_values(normals_flat), "\n\t\t"))
 
         faces_elm = addelement!(mesh_elm, "faces")
         face_id = 0

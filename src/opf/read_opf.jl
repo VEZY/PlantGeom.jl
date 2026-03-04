@@ -134,12 +134,17 @@ function parse_opf_array(elem, type=Float64)
     if type == String
         strip(elem)
     else
-        parsed = map(split(elem)) do e
-            e == "NA" && return nothing
-            isempty(e) && return nothing
-            parsed_e = tryparse(type, e)
+        tokens = split(elem)
+        parsed = Vector{Union{Nothing,type}}(undef, length(tokens))
+        @inbounds for i in eachindex(tokens)
+            e = tokens[i]
+            if e == "NA" || isempty(e)
+                parsed[i] = nothing
+                continue
+            end
+            parsed_e = _parse_opf_scalar(e, type)
             isnothing(parsed_e) && @warn "Could not parse attribute value '$e' in OPF as type $type (type defined in `attributeBDD`)."
-            return parsed_e
+            parsed[i] = parsed_e
         end
         if length(parsed) == 1
             return parsed[1]
@@ -148,6 +153,13 @@ function parse_opf_array(elem, type=Float64)
         end
     end
 end
+
+@inline _parse_opf_scalar(token::AbstractString, ::Type{Bool}) = begin
+    lower = lowercase(token)
+    lower == "true" ? true : (lower == "false" ? false : nothing)
+end
+
+@inline _parse_opf_scalar(token::AbstractString, ::Type{T}) where {T} = tryparse(T, token)
 
 function _parse_opf_numeric_vector(raw_content::AbstractString, ::Type{T}) where {T<:Number}
     tokens = split(strip(raw_content))
@@ -422,7 +434,7 @@ end
     elseif class_name == "Integer"
         return Int32
     elseif class_name in ["Double", "Metre", "Centimetre", "Millimetre", "10E-5 Metre", "Metre_100"]
-        return Float32
+        return Float64
     elseif class_name == "Boolean"
         return Bool
     else
@@ -478,27 +490,32 @@ end
     tokens = split(strip(raw_content))
     isempty(tokens) && return String
 
-    non_na_tokens = filter(t -> t != "NA" && !isempty(t), tokens)
-    isempty(non_na_tokens) && return String
+    saw_value = false
+    all_int = true
+    all_float = true
+    all_bool = true
 
-    if all(t -> !isnothing(tryparse(Int64, t)), non_na_tokens)
-        return Int32
+    @inbounds for token in tokens
+        if token == "NA" || isempty(token)
+            continue
+        end
+        saw_value = true
+        all_int &= !isnothing(tryparse(Int64, token))
+        all_float &= !isnothing(tryparse(Float64, token))
+        lower = lowercase(token)
+        all_bool &= (lower == "true" || lower == "false")
     end
 
-    if all(t -> !isnothing(tryparse(Float64, t)), non_na_tokens)
-        return Float32
-    end
-
-    if all(t -> lowercase(t) in ("true", "false"), non_na_tokens)
-        return Bool
-    end
-
-    String
+    !saw_value && return String
+    all_int && return Int32
+    all_float && return Float64
+    all_bool && return Bool
+    return String
 end
 
 @inline function _next_dynamic_attribute_type(type_::DataType)
     if type_ <: Integer
-        return Float32
+        return Float64
     elseif type_ <: AbstractFloat
         return String
     elseif type_ == Bool
@@ -514,20 +531,16 @@ function _try_parse_opf_array(raw_content::AbstractString, type_::DataType)
     end
 
     tokens = split(raw_content)
-    parsed = Vector{Any}(undef, length(tokens))
+    parsed = Vector{Union{Nothing,type_}}(undef, length(tokens))
 
-    for (i, token) in enumerate(tokens)
+    @inbounds for i in eachindex(tokens)
+        token = tokens[i]
         if token == "NA" || isempty(token)
             parsed[i] = nothing
             continue
         end
 
-        parsed_value = if type_ == Bool
-            lower = lowercase(token)
-            lower == "true" ? true : (lower == "false" ? false : nothing)
-        else
-            tryparse(type_, token)
-        end
+        parsed_value = _parse_opf_scalar(token, type_)
 
         if isnothing(parsed_value)
             return nothing, false

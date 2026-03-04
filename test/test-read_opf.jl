@@ -4,10 +4,10 @@ mtg = read_opf("files/simple_plant.opf", attr_type=Dict)
     @test length(mtg) == 7
     @test haskey(mtg, :ref_meshes)
     @test sort(names(mtg)) == [:FileName, :Length, :Width, :XEuler, :geometry, :ref_meshes, :source_topology_id]
-    @test descendants(mtg, :Length) == Any[nothing, nothing, 0.1f0, 0.2f0, 0.1f0, 0.2f0]
-    @test descendants(mtg, :Width) == Any[nothing, nothing, 0.02f0, 0.1f0, 0.02f0, 0.1f0]
+    @test descendants(mtg, :Length) == Any[nothing, nothing, 0.1, 0.2, 0.1, 0.2]
+    @test descendants(mtg, :Width) == Any[nothing, nothing, 0.02, 0.1, 0.02, 0.1]
     @test descendants(mtg, :FileName) == Any["ArchiTree", nothing, nothing, nothing, nothing, nothing]
-    @test descendants(mtg, :XEuler) == Any[nothing, nothing, nothing, nothing, 180.0f0, nothing]
+    @test descendants(mtg, :XEuler) == Any[nothing, nothing, nothing, nothing, 180.0, nothing]
 end
 
 @testset "read_opf: simple_plant.opf -> ref. meshes" begin
@@ -50,7 +50,7 @@ end
         :Stifness, :Treatment, :Variety, :Width, :XEuler, :XInsertionAngle, :YInsertionAngle,
         :geometry, :ref_meshes, :source_topology_id]
 
-    @test Float64(sum(descendants(mtg, :Area, ignore_nothing=true))) ≈ 77961.421 atol = 1e-3
+    @test sum(descendants(mtg, :Area, ignore_nothing=true)) ≈ 77961.477327 atol = 1e-6
 end
 
 @testset "read_opf: triangulate polygon faces and fallback material" begin
@@ -124,7 +124,7 @@ end
 
         mtg_dyn = @test_nowarn read_opf(opf_path, attr_type=Dict)
         vals = descendants(mtg_dyn, :DynamicValue, ignore_nothing=true)
-        @test vals == Any[1, 2.5f0, "hello"]
+        @test vals == Any[1, 2.5, "hello"]
     end
 end
 
