@@ -154,3 +154,90 @@ end
     @test minimum(p[2] for p in pts) > 0.3
     @test maximum(p[3] for p in pts) > 0.1
 end
+
+@testset "lamina twist roll map and composition" begin
+    twist_only = PlantGeom.LaminaTwistRollMap(length=1.0, tip_twist_deg=90.0, roll_strength=0.0)
+    p_tip = twist_only(Point(1.0, 0.1, 0.0))
+    @test abs(p_tip[2]) < 1e-6
+    @test p_tip[3] > 0.09
+
+    roll_only = PlantGeom.LaminaTwistRollMap(length=1.0, tip_twist_deg=0.0, roll_strength=0.8, roll_exponent=1.0)
+    p_roll = roll_only(Point(1.0, 0.1, 0.0))
+    @test p_roll[3] > 0.007
+
+    margin_wave = PlantGeom.LaminaMarginWaveMap(
+        length=1.0,
+        max_half_width=0.10,
+        amplitude=0.02,
+        wavelength=0.40,
+        edge_exponent=1.0,
+        progression_exponent=1.0,
+        base_damping=0.0,
+    )
+    p_wave_center = margin_wave(Point(0.5, 0.0, 0.0))
+    p_wave_margin = margin_wave(Point(0.5, 0.1, 0.0))
+    @test abs(p_wave_center[3]) < 1e-10
+    @test p_wave_margin[3] > 0.009
+
+    outline_wave = PlantGeom.LaminaMarginWaveMap(
+        length=1.0,
+        max_half_width=0.10,
+        amplitude=0.02,
+        wavelength=0.40,
+        edge_exponent=1.0,
+        progression_exponent=1.0,
+        base_damping=0.0,
+        lateral_strength=1.0,
+        vertical_strength=0.0,
+    )
+    p_outline_pos = outline_wave(Point(0.5, 0.1, 0.0))
+    p_outline_neg = outline_wave(Point(0.5, -0.1, 0.0))
+    @test p_outline_pos[2] > 0.109
+    @test p_outline_neg[2] < -0.109
+
+    damped_wave = PlantGeom.LaminaMarginWaveMap(
+        length=1.0,
+        max_half_width=0.10,
+        amplitude=0.03,
+        wavelength=0.20,
+        edge_exponent=1.0,
+        progression_exponent=1.0,
+        base_damping=8.0,
+    )
+    p_undamped_near_base = PlantGeom.LaminaMarginWaveMap(
+        length=1.0,
+        max_half_width=0.10,
+        amplitude=0.03,
+        wavelength=0.20,
+        edge_exponent=1.0,
+        progression_exponent=1.0,
+        base_damping=0.0,
+    )(Point(0.05, 0.1, 0.0))
+    p_damped_near_base = damped_wave(Point(0.05, 0.1, 0.0))
+    @test p_undamped_near_base[3] > p_damped_near_base[3]
+
+    asym_wave = PlantGeom.LaminaMarginWaveMap(
+        length=1.0,
+        max_half_width=0.10,
+        amplitude=0.02,
+        wavelength=0.40,
+        edge_exponent=1.0,
+        progression_exponent=1.0,
+        base_damping=0.0,
+        asymmetry=0.5,
+    )
+    p_pos = asym_wave(Point(0.5, 0.1, 0.0))
+    p_neg = asym_wave(Point(0.5, -0.1, 0.0))
+    @test p_pos[3] > p_neg[3] + 0.008
+
+    composed = PlantGeom.compose_point_maps(
+        PlantGeom.LaminaMarginWaveMap(length=1.0, max_half_width=0.10, amplitude=0.01, wavelength=0.20),
+        PlantGeom.LaminaTwistRollMap(length=1.0, tip_twist_deg=30.0, roll_strength=0.6),
+        PlantGeom.CerealLeafMap(length=1.0, base_angle_deg=30.0, bend=0.45, tip_drop=0.12),
+    )
+    ref = PlantGeom.cereal_leaf_refmesh("BladeCompose"; length=1.0, max_width=0.10, n_long=8, n_half=2)
+    geom = PointMappedGeometry(ref, composed)
+    mesh = PlantGeom.geometry_to_mesh(geom)
+    @test PlantGeom.nelements(mesh) > 0
+    @test maximum(p[3] for p in GeometryBasics.coordinates(mesh)) > 0.1
+end

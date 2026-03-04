@@ -12,10 +12,12 @@ struct RationalBezierCurve{P<:AbstractVector{SVector{3,Float64}},W<:AbstractVect
     weights::W
 end
 
+@inline _pointmap_to_svec3(v) = SVector{3,Float64}(Float64(v[1]), Float64(v[2]), Float64(v[3]))
+
 function RationalBezierCurve(control_points::AbstractVector, weights::AbstractVector=ones(length(control_points)))
     length(control_points) >= 2 || error("`control_points` must contain at least 2 points.")
     length(control_points) == length(weights) || error("`weights` must have the same length as `control_points`.")
-    cps = SVector{3,Float64}[_to_svec3(p) for p in control_points]
+    cps = SVector{3,Float64}[_pointmap_to_svec3(p) for p in control_points]
     ws = Float64.(collect(weights))
     RationalBezierCurve(cps, ws)
 end
@@ -86,7 +88,7 @@ struct CerealLeafMap{C,U}
 end
 
 function CerealLeafMap(curve; length::Real=1.0, up=(0.0, 0.0, 1.0))
-    CerealLeafMap(curve, Float64(length), _to_svec3(up))
+    CerealLeafMap(curve, Float64(length), _pointmap_to_svec3(up))
 end
 
 function CerealLeafMap(;
@@ -116,8 +118,8 @@ function _curve_tangent(curve, u::Float64)
     du = 1e-4
     u0 = clamp(u - du, 0.0, 1.0)
     u1 = clamp(u + du, 0.0, 1.0)
-    p0 = _to_svec3(curve(u0))
-    p1 = _to_svec3(curve(u1))
+    p0 = _pointmap_to_svec3(curve(u0))
+    p1 = _pointmap_to_svec3(curve(u1))
     fallback = SVector{3,Float64}(1.0, 0.0, 0.0)
     _pointmap_safe_normalize(p1 - p0, fallback)
 end
@@ -135,11 +137,161 @@ function _curve_frame(curve, u::Float64, up::SVector{3,Float64})
 end
 
 function (map::CerealLeafMap)(p)
-    p_local = _to_svec3(p)
+    p_local = _pointmap_to_svec3(p)
     u = map.length == 0.0 ? 0.0 : clamp(p_local[1] / map.length, 0.0, 1.0)
-    center = _to_svec3(map.curve(u))
+    center = _pointmap_to_svec3(map.curve(u))
     _, side, normal = _curve_frame(map.curve, u, map.up)
     center + p_local[2] * side + p_local[3] * normal
+end
+
+"""
+    LaminaTwistRollMap(; length=1.0, tip_twist_deg=0.0, roll_strength=0.0, roll_exponent=1.0)
+
+Point map for lamina torsion and cross-blade rolling on a flat leaf mesh
+following the AMAP axis convention (`+X` length, `+Y` width, `+Z` thickness).
+
+- `tip_twist_deg`: progressive twist (rotation around local `+X`) from base to tip.
+- `roll_strength`: quadratic edge curl contribution toward local `+Z`.
+- `roll_exponent`: progression exponent along the blade (`u^roll_exponent`).
+"""
+struct LaminaTwistRollMap
+    length::Float64
+    tip_twist_rad::Float64
+    roll_strength::Float64
+    roll_exponent::Float64
+end
+
+function LaminaTwistRollMap(;
+    length::Real=1.0,
+    tip_twist_deg::Real=0.0,
+    roll_strength::Real=0.0,
+    roll_exponent::Real=1.0,
+)
+    LaminaTwistRollMap(
+        Float64(length),
+        deg2rad(Float64(tip_twist_deg)),
+        Float64(roll_strength),
+        max(Float64(roll_exponent), 0.0),
+    )
+end
+
+function (map::LaminaTwistRollMap)(p)
+    q = _pointmap_to_svec3(p)
+    u = map.length == 0.0 ? 0.0 : clamp(q[1] / map.length, 0.0, 1.0)
+    twist = map.tip_twist_rad * u
+    c = cos(twist)
+    s = sin(twist)
+    y_tw = c * q[2] - s * q[3]
+    z_tw = s * q[2] + c * q[3]
+    roll_prog = u^map.roll_exponent
+    z_roll = z_tw + map.roll_strength * roll_prog * y_tw^2 / max(map.length, 1e-9)
+    SVector{3,Float64}(q[1], y_tw, z_roll)
+end
+
+"""
+    LaminaMarginWaveMap(; length=1.0, max_half_width=0.06, amplitude=0.004,
+        wavelength=0.20, edge_exponent=1.5, progression_exponent=1.0,
+        base_damping=4.0, phase_deg=0.0, asymmetry=0.0, lateral_strength=0.0,
+        vertical_strength=1.0)
+
+Point map for cereal-like margin undulation. It displaces points along local
+`+Z` with a sinusoid along blade length (`+X`) and scales amplitude toward
+the margins (higher `|Y|`), leaving the midrib stable (`Y = 0`).
+
+- `amplitude`: peak local `+Z` displacement at margins.
+- `wavelength`: sinusoid wavelength along local `+X`.
+- `edge_exponent`: controls how sharply ripple grows from midrib to margins.
+- `progression_exponent`: controls wave growth from base to tip (`u^p`).
+- `base_damping`: additional base damping (`1 - exp(-base_damping*u)`).
+- `asymmetry`: side gain imbalance in `[-1, 1]` (`+Y` vs `-Y`).
+- `lateral_strength`: share of ripple applied to local `+/-Y` (edge outline).
+- `vertical_strength`: share of ripple applied to local `+Z`.
+"""
+struct LaminaMarginWaveMap
+    length::Float64
+    max_half_width::Float64
+    amplitude::Float64
+    wavelength::Float64
+    edge_exponent::Float64
+    progression_exponent::Float64
+    base_damping::Float64
+    phase_rad::Float64
+    asymmetry::Float64
+    lateral_strength::Float64
+    vertical_strength::Float64
+end
+
+function LaminaMarginWaveMap(;
+    length::Real=1.0,
+    max_half_width::Real=0.06,
+    amplitude::Real=0.004,
+    wavelength::Real=0.20,
+    edge_exponent::Real=1.5,
+    progression_exponent::Real=1.0,
+    base_damping::Real=4.0,
+    phase_deg::Real=0.0,
+    asymmetry::Real=0.0,
+    lateral_strength::Real=0.0,
+    vertical_strength::Real=1.0,
+)
+    LaminaMarginWaveMap(
+        Float64(length),
+        max(Float64(max_half_width), 0.0),
+        Float64(amplitude),
+        max(Float64(wavelength), 0.0),
+        max(Float64(edge_exponent), 0.0),
+        max(Float64(progression_exponent), 0.0),
+        max(Float64(base_damping), 0.0),
+        deg2rad(Float64(phase_deg)),
+        clamp(Float64(asymmetry), -1.0, 1.0),
+        Float64(lateral_strength),
+        Float64(vertical_strength),
+    )
+end
+
+function (map::LaminaMarginWaveMap)(p)
+    q = _pointmap_to_svec3(p)
+    if map.wavelength <= 1e-12 || map.max_half_width <= 1e-12 || map.amplitude == 0.0
+        return q
+    end
+
+    u = map.length == 0.0 ? 0.0 : clamp(q[1] / map.length, 0.0, 1.0)
+    edge01 = clamp(abs(q[2]) / map.max_half_width, 0.0, 1.0)
+    edge_gain = edge01^map.edge_exponent
+    base_gate = map.base_damping == 0.0 ? 1.0 : 1.0 - exp(-map.base_damping * u)
+    along_gain = (u^map.progression_exponent) * base_gate
+    side_gain = q[2] == 0.0 ? 1.0 : max(0.0, 1.0 + map.asymmetry * sign(q[2]))
+    phase = 2π * q[1] / map.wavelength + map.phase_rad
+    ripple = map.amplitude * edge_gain * along_gain * side_gain * sin(phase)
+    dy = map.lateral_strength * ripple * sign(q[2])
+    dz = map.vertical_strength * ripple
+    SVector{3,Float64}(q[1], q[2] + dy, q[3] + dz)
+end
+
+"""
+    ComposedPointMap(maps...)
+    compose_point_maps(maps...)
+
+Compose multiple point maps into a single callable map, applied from left to
+right (`maps[1]` then `maps[2]`, ...).
+"""
+struct ComposedPointMap{M<:Tuple}
+    maps::M
+end
+
+function ComposedPointMap(maps...)
+    length(maps) >= 1 || error("Provide at least one point map.")
+    ComposedPointMap(tuple(maps...))
+end
+
+compose_point_maps(maps...) = ComposedPointMap(maps...)
+
+function (map::ComposedPointMap)(p)
+    q = _pointmap_to_svec3(p)
+    @inbounds for m in map.maps
+        q = _pointmap_to_svec3(m(q))
+    end
+    q
 end
 
 @inline _cereal_half_width(u::Float64, max_width::Float64, width_power::Float64) =
