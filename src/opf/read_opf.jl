@@ -518,19 +518,24 @@ The transformation matrix is 3*4.
 elem = elem.content
 """
 function parse_geometry(elem)
-    geom = Dict{Symbol,Union{Int,Float64,SMatrix{3,4}}}()
+    shape_index = nothing
+    mat = nothing
+    d_up = 1.0
+    d_dwn = 1.0
+
     for i in eachelement(elem)
         if i.name == "shapeIndex"
-            push!(geom, :shapeIndex => parse(Int, i.content))
+            shape_index = parse(Int, i.content)
         elseif i.name == "mat"
-            push!(geom, :mat => SMatrix{3,4}(reshape(parse_opf_array(i.content), 4, 3)'))
+            mat = SMatrix{3,4}(reshape(parse_opf_array(i.content), 4, 3)')
         elseif i.name == "dUp"
-            push!(geom, :dUp => parse(Float64, i.content))
+            d_up = parse(Float64, i.content)
         elseif i.name == "dDwn"
-            push!(geom, :dDwn => parse(Float64, i.content))
+            d_dwn = parse(Float64, i.content)
         end
     end
-    return geom
+
+    return (; shapeIndex=shape_index, mat=mat, dUp=d_up, dDwn=d_dwn)
 end
 
 
@@ -605,18 +610,16 @@ function parse_opf_topology!(
         node_i = Node(id, MTG, MultiScaleTreeGraph.init_empty_attr())
     end
 
-    # node_i.children
-    attrs = Dict{Symbol,Any}(:source_topology_id => source_topology_id)
+    node_i.source_topology_id = source_topology_id
 
     # Handle the children, can be attributes of children nodes:
     # elem = elements(node)[1]
     for elem in eachelement(node)
         if elem.name == "geometry"
-
             geom = parse_geometry(elem)
 
             # Parse the geometry (transformation, reference mesh + index and dUp and dDwn):
-            if haskey(geom, :shapeIndex)
+            if !isnothing(geom.shapeIndex)
                 # Rotation + Scaling. No need to decouple them here, but in case we need to
                 # in the future, see: https://stackoverflow.com/a/29618569/6947799
                 # See also this for decomposition: https://colab.research.google.com/drive/1ImBB-N6P9zlNMCBH9evHD6tjk0dzvy1_
@@ -624,22 +627,20 @@ function parse_opf_topology!(
                 #! OK what I could do is use my own transformation function that adds w (=1)
                 #! to the Point when transforming it with the 4x4 matrix?
 
-                A = SMatrix{3,3,Float64}(@view(geom[:mat][1:3, 1:3]))
-                t = SVector{3,Float64}((@view(geom[:mat][1:3, 4])) ./ 100)
+                isnothing(geom.mat) && error("Missing transformation matrix in OPF geometry for node id $(source_topology_id).")
+                A = SMatrix{3,3,Float64}(@view(geom.mat[1:3, 1:3]))
+                t = SVector{3,Float64}((@view(geom.mat[1:3, 4])) ./ 100)
                 transformation = AffineMap(A, t)
                 # NB: We read an homogeneous transformation matrix from the OPF, but we work
                 # with cartesian coordinates in PlantGeom by design. So we deconstruct our
                 # homogeneous matrix into the two corresponding rotation and translation
                 # matrices and create a single affine transform.
 
-                push!(
-                    attrs,
-                    Symbol(elem.name) => Geometry(
-                        ref_meshes[geom[:shapeIndex]],
-                        transformation,
-                        geom[:dUp],
-                        geom[:dDwn],
-                    )
+                node_i.geometry = Geometry(
+                    ref_meshes[geom.shapeIndex],
+                    transformation,
+                    geom.dUp,
+                    geom.dDwn,
                 )
             end
         elseif elem.name in ["decomp", "branch", "follow"]
@@ -679,15 +680,11 @@ function parse_opf_topology!(
                 else
                     parse_opf_array(elem.content, features[attr_name])
                 end
-                push!(attrs, Symbol(attr_name) => parsed_attr)
+                node_i[Symbol(attr_name)] = parsed_attr
             else
                 error("Attribute $(attr_name) not found in attributeBDD (or badly written?)")
             end
         end
-    end
-
-    for (k, v) in attrs
-        node_i[k] = v
     end
 
     return node_i
