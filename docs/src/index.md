@@ -101,7 +101,6 @@ function leaf_mesh_with_petiole()
     tri = GeometryBasics.TriangleFace{Int}
     blade_faces = tri[
         tri(1, 2, 3), tri(1, 3, 4), tri(1, 4, 5), tri(1, 5, 6),
-        tri(3, 2, 1), tri(4, 3, 1), tri(5, 4, 1), tri(6, 5, 1),
     ]
     blade = GeometryBasics.Mesh(p, blade_faces)
 
@@ -399,7 +398,6 @@ plantviz(tree_demo, figure=(size=(980, 980),))
         tri = GeometryBasics.TriangleFace{Int}
         blade_faces = tri[
             tri(1, 2, 3), tri(1, 3, 4), tri(1, 4, 5), tri(1, 5, 6),
-            tri(3, 2, 1), tri(4, 3, 1), tri(5, 4, 1), tri(6, 5, 1),
         ]
         blade = GeometryBasics.Mesh(p, blade_faces)
 

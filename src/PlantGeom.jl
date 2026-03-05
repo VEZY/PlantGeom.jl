@@ -36,6 +36,7 @@ import UUIDs
 include("geometry_backend.jl")
 include("structs.jl")
 include("geometry/types.jl")
+include("geometry/pointmaps.jl")
 include("geometry/materialize.jl")
 include("geometry/metadata.jl")
 include("reconstruction/amap_reconstruction.jl")
@@ -84,6 +85,8 @@ export transform_mesh!
 export extrude_profile_mesh, extrude_profile_refmesh, extrude_tube_mesh
 export ExtrudedTubeGeometry
 export PointMappedGeometry
+export RationalBezierCurve, CerealLeafMap, cereal_leaf_midrib, cereal_leaf_mesh, cereal_leaf_refmesh
+export LaminaTwistRollMap, LaminaMarginWaveMap, ComposedPointMap, compose_point_maps
 export extrusion_make_path, extrusion_make_spline, extrusion_make_interpolation, extrusion_make_curve
 export lathe_gen_mesh, lathe_gen_refmesh, lathe_mesh, lathe_refmesh
 export circle_section_profile, leaflet_midrib_profile
