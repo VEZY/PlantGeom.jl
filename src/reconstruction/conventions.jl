@@ -818,6 +818,7 @@ function _apply_coordinate_delegate2_previous!(
     default_convention::GeometryConvention,
     conventions::AbstractDict,
     ref_meshes::AbstractDict,
+    ref_mesh_selector::Union{Nothing,Function},
     base_pos::IdDict{Any,SVector{3,Float64}},
     top_pos::IdDict{Any,SVector{3,Float64}},
     direction::IdDict{Any,SVector{3,Float64}},
@@ -856,7 +857,7 @@ function _apply_coordinate_delegate2_previous!(
     direction[previous_node] = d0
     base_rot[previous_node] = r0
 
-    ref_mesh = _resolve_ref_mesh(previous_node, ref_meshes)
+    ref_mesh = _resolve_ref_mesh(previous_node, ref_meshes, ref_mesh_selector)
     if ref_mesh !== nothing
         previous_node[:geometry] = Geometry(
             ref_mesh=ref_mesh,
@@ -884,7 +885,15 @@ function _rotation_from_direction_with_hint(
     return _build_rotation_from_local_axes(length_axis, dir, secondary, normal)
 end
 
-function _resolve_ref_mesh(node, ref_meshes::AbstractDict)
+function _resolve_ref_mesh(node, ref_meshes::AbstractDict, ref_mesh_selector::Union{Nothing,Function}=nothing)
+    if ref_mesh_selector !== nothing
+        selected = ref_mesh_selector(node)
+        if selected !== nothing
+            selected isa RefMesh || error("`ref_mesh_selector` must return `RefMesh` or `nothing`, got $(typeof(selected)).")
+            return selected
+        end
+    end
+
     name = symbol(node)
     haskey(ref_meshes, name) && return ref_meshes[name]
     name_str = String(name)
@@ -1910,6 +1919,7 @@ end
         phyllotaxy_aliases=[:Phyllotaxy, :phyllotaxy, :PHYLLOTAXY],
         verticil_mode=:rotation360,
         amap_options=default_amap_reconstruction_options(),
+        ref_mesh_selector=nothing,
         dUp=1.0,
         dDwn=1.0,
         warn_missing=false,
@@ -1940,6 +1950,7 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
     phyllotaxy_aliases=[:Phyllotaxy, :phyllotaxy, :PHYLLOTAXY],
     verticil_mode=:rotation360,
     amap_options=default_amap_reconstruction_options(),
+    ref_mesh_selector::Union{Nothing,Function}=nothing,
     dUp=1.0,
     dDwn=1.0,
     warn_missing=false,
@@ -2064,6 +2075,7 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
                         convention,
                         conventions,
                         ref_meshes,
+                        ref_mesh_selector,
                         base_pos,
                         top_pos,
                         direction,
@@ -2262,7 +2274,7 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
             amap_cfg,
         )
 
-        ref_mesh = _resolve_ref_mesh(node, ref_meshes)
+        ref_mesh = _resolve_ref_mesh(node, ref_meshes, ref_mesh_selector)
         if ref_mesh !== nothing
             node[:geometry] = Geometry(ref_mesh=ref_mesh, transformation=world_t, dUp=dUp, dDwn=dDwn)
         end
@@ -2280,6 +2292,7 @@ function set_geometry_from_attributes!(mtg::MultiScaleTreeGraph.Node, ref_meshes
     phyllotaxy_aliases=[:Phyllotaxy, :phyllotaxy, :PHYLLOTAXY],
     verticil_mode=:rotation360,
     amap_options=default_amap_reconstruction_options(),
+    ref_mesh_selector::Union{Nothing,Function}=nothing,
     dUp=1.0,
     dDwn=1.0,
     warn_missing=false,
@@ -2296,6 +2309,7 @@ function set_geometry_from_attributes!(mtg::MultiScaleTreeGraph.Node, ref_meshes
         phyllotaxy_aliases=phyllotaxy_aliases,
         verticil_mode=verticil_mode,
         amap_options=amap_options,
+        ref_mesh_selector=ref_mesh_selector,
         dUp=dUp,
         dDwn=dDwn,
         warn_missing=warn_missing,

@@ -38,25 +38,25 @@ end
 end
 
 """
-    cereal_leaf_midrib(; length=1.0, base_angle_deg=35.0, bend=0.35, tip_drop=0.12,
+    cereal_leaf_midrib(; base_angle_deg=35.0, bend=0.35, tip_drop=0.12,
         side_sway=0.0, weights=(1.0, 0.8, 0.9, 1.0))
 
 Build a cereal-like leaf midrib as a weighted cubic Bezier curve.
 
+- The curve is normalized in a unit frame: length in `[0, 1]`, half-width near `0.5`.
 - `base_angle_deg`: launch angle of the leaf at the sheath.
 - `bend`: curvature intensity (higher bends more).
-- `tip_drop`: additional downward displacement at the tip.
-- `side_sway`: lateral displacement of the distal blade.
+- `tip_drop`: additional downward displacement at the tip (relative to unit length).
+- `side_sway`: lateral displacement of the distal blade (relative to unit length).
 """
 function cereal_leaf_midrib(;
-    length::Real=1.0,
     base_angle_deg::Real=35.0,
     bend::Real=0.35,
     tip_drop::Real=0.12,
     side_sway::Real=0.0,
     weights=(1.0, 0.8, 0.9, 1.0),
 )
-    len = Float64(length)
+    len = 1.0
     bend01 = clamp(Float64(bend), 0.0, 1.0)
     base_rad = deg2rad(Float64(base_angle_deg))
     tip_drop_abs = len * Float64(tip_drop)
@@ -71,28 +71,27 @@ function cereal_leaf_midrib(;
 end
 
 """
-    CerealLeafMap(curve; length=1.0, up=(0, 0, 1))
-    CerealLeafMap(; length=1.0, base_angle_deg=35.0, bend=0.35, tip_drop=0.12,
+    CerealLeafMap(curve; up=(0, 0, 1))
+    CerealLeafMap(; base_angle_deg=35.0, bend=0.35, tip_drop=0.12,
         side_sway=0.0, weights=(1.0, 0.8, 0.9, 1.0), up=(0, 0, 1))
 
 Point-map for cereal leaves. The base reference mesh is expected to use the AMAP
 convention: leaf length along local `+X`, width along `+Y`, thickness along `+Z`.
+Coordinates are interpreted in a normalized unit frame (`x ∈ [0, 1]`, `|y| ≤ 0.5`).
 
 The map bends the leaf by wrapping each local point around a midrib curve while
 preserving lateral width and thickness offsets in the local moving frame.
 """
 struct CerealLeafMap{C,U}
     curve::C
-    length::Float64
     up::U
 end
 
-function CerealLeafMap(curve; length::Real=1.0, up=(0.0, 0.0, 1.0))
-    CerealLeafMap(curve, Float64(length), _pointmap_to_svec3(up))
+function CerealLeafMap(curve; up=(0.0, 0.0, 1.0))
+    CerealLeafMap(curve, _pointmap_to_svec3(up))
 end
 
 function CerealLeafMap(;
-    length::Real=1.0,
     base_angle_deg::Real=35.0,
     bend::Real=0.35,
     tip_drop::Real=0.12,
@@ -102,14 +101,13 @@ function CerealLeafMap(;
 )
     curve = cereal_leaf_midrib(
         ;
-        length=length,
         base_angle_deg=base_angle_deg,
         bend=bend,
         tip_drop=tip_drop,
         side_sway=side_sway,
         weights=weights,
     )
-    CerealLeafMap(curve; length=length, up=up)
+    CerealLeafMap(curve; up=up)
 end
 
 @inline _pointmap_safe_normalize(v::SVector{3,Float64}, fallback::SVector{3,Float64}) = norm(v) > 1e-12 ? v / norm(v) : fallback
@@ -138,14 +136,14 @@ end
 
 function (map::CerealLeafMap)(p)
     p_local = _pointmap_to_svec3(p)
-    u = map.length == 0.0 ? 0.0 : clamp(p_local[1] / map.length, 0.0, 1.0)
+    u = clamp(p_local[1], 0.0, 1.0)
     center = _pointmap_to_svec3(map.curve(u))
     _, side, normal = _curve_frame(map.curve, u, map.up)
     center + p_local[2] * side + p_local[3] * normal
 end
 
 """
-    LaminaTwistRollMap(; length=1.0, tip_twist_deg=0.0, roll_strength=0.0, roll_exponent=1.0)
+    LaminaTwistRollMap(; tip_twist_deg=0.0, roll_strength=0.0, roll_exponent=1.0)
 
 Point map for lamina torsion and cross-blade rolling on a flat leaf mesh
 following the AMAP axis convention (`+X` length, `+Y` width, `+Z` thickness).
@@ -155,20 +153,17 @@ following the AMAP axis convention (`+X` length, `+Y` width, `+Z` thickness).
 - `roll_exponent`: progression exponent along the blade (`u^roll_exponent`).
 """
 struct LaminaTwistRollMap
-    length::Float64
     tip_twist_rad::Float64
     roll_strength::Float64
     roll_exponent::Float64
 end
 
 function LaminaTwistRollMap(;
-    length::Real=1.0,
     tip_twist_deg::Real=0.0,
     roll_strength::Real=0.0,
     roll_exponent::Real=1.0,
 )
     LaminaTwistRollMap(
-        Float64(length),
         deg2rad(Float64(tip_twist_deg)),
         Float64(roll_strength),
         max(Float64(roll_exponent), 0.0),
@@ -177,39 +172,40 @@ end
 
 function (map::LaminaTwistRollMap)(p)
     q = _pointmap_to_svec3(p)
-    u = map.length == 0.0 ? 0.0 : clamp(q[1] / map.length, 0.0, 1.0)
+    u = clamp(q[1], 0.0, 1.0)
     twist = map.tip_twist_rad * u
     c = cos(twist)
     s = sin(twist)
     y_tw = c * q[2] - s * q[3]
     z_tw = s * q[2] + c * q[3]
     roll_prog = u^map.roll_exponent
-    z_roll = z_tw + map.roll_strength * roll_prog * y_tw^2 / max(map.length, 1e-9)
+    z_roll = z_tw + map.roll_strength * roll_prog * y_tw^2
     SVector{3,Float64}(q[1], y_tw, z_roll)
 end
 
 """
-    LaminaMarginWaveMap(; length=1.0, max_half_width=0.06, amplitude=0.004,
+    LaminaAnticlasticWaveMap(; amplitude=0.06,
         wavelength=0.20, edge_exponent=1.5, progression_exponent=1.0,
         base_damping=4.0, phase_deg=0.0, asymmetry=0.0, lateral_strength=0.0,
         vertical_strength=1.0)
 
-Point map for cereal-like margin undulation. It displaces points along local
-`+Z` with a sinusoid along blade length (`+X`) and scales amplitude toward
-the margins (higher `|Y|`), leaving the midrib stable (`Y = 0`).
+Point map for cereal-like anticlastic undulation. It applies opposite-signed
+deformation on the two sides of the lamina (for a given `x`, one margin goes
+up while the other goes down), with sinusoidal variation along blade length
+(`+X`) and amplitude growth toward margins (`|Y|`), while keeping the midrib
+stable (`Y = 0`).
+Coordinates are interpreted in a normalized unit frame (`x ∈ [0, 1]`, `|y| ≤ 0.5`).
 
-- `amplitude`: peak local `+Z` displacement at margins.
+- `amplitude`: peak local `+Z` displacement magnitude at margins.
 - `wavelength`: sinusoid wavelength along local `+X`.
 - `edge_exponent`: controls how sharply ripple grows from midrib to margins.
 - `progression_exponent`: controls wave growth from base to tip (`u^p`).
 - `base_damping`: additional base damping (`1 - exp(-base_damping*u)`).
 - `asymmetry`: side gain imbalance in `[-1, 1]` (`+Y` vs `-Y`).
 - `lateral_strength`: share of ripple applied to local `+/-Y` (edge outline).
-- `vertical_strength`: share of ripple applied to local `+Z`.
+- `vertical_strength`: share of ripple applied to local `+/-Z` (opposite by side).
 """
-struct LaminaMarginWaveMap
-    length::Float64
-    max_half_width::Float64
+struct LaminaAnticlasticWaveMap
     amplitude::Float64
     wavelength::Float64
     edge_exponent::Float64
@@ -221,10 +217,8 @@ struct LaminaMarginWaveMap
     vertical_strength::Float64
 end
 
-function LaminaMarginWaveMap(;
-    length::Real=1.0,
-    max_half_width::Real=0.06,
-    amplitude::Real=0.004,
+function LaminaAnticlasticWaveMap(;
+    amplitude::Real=0.06,
     wavelength::Real=0.20,
     edge_exponent::Real=1.5,
     progression_exponent::Real=1.0,
@@ -234,9 +228,7 @@ function LaminaMarginWaveMap(;
     lateral_strength::Real=0.0,
     vertical_strength::Real=1.0,
 )
-    LaminaMarginWaveMap(
-        Float64(length),
-        max(Float64(max_half_width), 0.0),
+    LaminaAnticlasticWaveMap(
         Float64(amplitude),
         max(Float64(wavelength), 0.0),
         max(Float64(edge_exponent), 0.0),
@@ -249,22 +241,24 @@ function LaminaMarginWaveMap(;
     )
 end
 
-function (map::LaminaMarginWaveMap)(p)
+function (map::LaminaAnticlasticWaveMap)(p)
     q = _pointmap_to_svec3(p)
-    if map.wavelength <= 1e-12 || map.max_half_width <= 1e-12 || map.amplitude == 0.0
+    if map.wavelength <= 1e-12 || map.amplitude == 0.0
         return q
     end
 
-    u = map.length == 0.0 ? 0.0 : clamp(q[1] / map.length, 0.0, 1.0)
-    edge01 = clamp(abs(q[2]) / map.max_half_width, 0.0, 1.0)
+    u = clamp(q[1], 0.0, 1.0)
+    edge01 = clamp(abs(q[2]) / 0.5, 0.0, 1.0)
     edge_gain = edge01^map.edge_exponent
     base_gate = map.base_damping == 0.0 ? 1.0 : 1.0 - exp(-map.base_damping * u)
     along_gain = (u^map.progression_exponent) * base_gate
-    side_gain = q[2] == 0.0 ? 1.0 : max(0.0, 1.0 + map.asymmetry * sign(q[2]))
+    side_sign = sign(q[2])
+    side_gain = q[2] == 0.0 ? 1.0 : max(0.0, 1.0 + map.asymmetry * side_sign)
     phase = 2π * q[1] / map.wavelength + map.phase_rad
-    ripple = map.amplitude * edge_gain * along_gain * side_gain * sin(phase)
-    dy = map.lateral_strength * ripple * sign(q[2])
-    dz = map.vertical_strength * ripple
+    ripple_mag = map.amplitude * edge_gain * along_gain * side_gain * sin(phase)
+    ripple_signed = ripple_mag * side_sign
+    dy = map.lateral_strength * ripple_signed
+    dz = map.vertical_strength * ripple_signed
     SVector{3,Float64}(q[1], q[2] + dy, q[3] + dz)
 end
 
@@ -298,7 +292,7 @@ end
     0.5 * max_width * sinpi(u)^width_power
 
 """
-    cereal_leaf_mesh(length=1.0, max_width=0.08; n_long=24, n_half=4, width_power=0.85)
+    cereal_leaf_mesh(length=1.0, max_width=1.0; n_long=24, n_half=4, width_power=0.85)
 
 Build a flat cereal-like leaf mesh aligned with the AMAP convention:
 length along local `+X`, width along `+Y`, thickness along `+Z`.
@@ -308,7 +302,7 @@ with [`CerealLeafMap`](@ref).
 """
 function cereal_leaf_mesh(
     length::Real=1.0,
-    max_width::Real=0.08;
+    max_width::Real=1.0;
     n_long::Integer=24,
     n_half::Integer=4,
     width_power::Real=0.85,
@@ -353,7 +347,7 @@ function cereal_leaf_mesh(
 end
 
 """
-    cereal_leaf_refmesh(name; length=1.0, max_width=0.08, n_long=24, n_half=4,
+    cereal_leaf_refmesh(name; length=1.0, max_width=1.0, n_long=24, n_half=4,
         width_power=0.85, material=RGB(0.16, 0.55, 0.22))
 
 Convenience wrapper around [`cereal_leaf_mesh`](@ref) returning a reusable
@@ -362,7 +356,7 @@ Convenience wrapper around [`cereal_leaf_mesh`](@ref) returning a reusable
 function cereal_leaf_refmesh(
     name;
     length::Real=1.0,
-    max_width::Real=0.08,
+    max_width::Real=1.0,
     n_long::Integer=24,
     n_half::Integer=4,
     width_power::Real=0.85,

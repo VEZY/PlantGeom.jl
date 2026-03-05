@@ -13,11 +13,13 @@ PlantGeom provides a framework for representing, manipulating, and visualizing 3
 - Define a reference mesh for an organ, and efficiently reuse it with `RefMesh` (one canonical mesh, many transformed instances)
 - Attach geometry per node with `Geometry(ref_mesh=..., transformation=...)`
 - Generate procedural meshes like `ExtrudedTubeGeometry` for axes, stems, and roots
+- Build and grow MTG structure with `emit_internode!`, `emit_leaf!`, `emit_phytomer!`
 - Compose transforms (`Translation`, `LinearMap`, `Rotate`, `Scale`, `Affine`) in MTG workflows
 
 See:
 - [`Reference Meshes`](geometry/refmesh.md)
 - [`Procedural / Extrusion Geometry`](geometry/procedural_geometry.md)
+- [`Growth API`](geometry/growth_api.md)
 
 ### Plotting
 

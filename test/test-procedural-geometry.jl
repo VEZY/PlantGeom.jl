@@ -111,9 +111,9 @@ end
 end
 
 @testset "rational bezier cereal leaf helpers" begin
-    curve = PlantGeom.cereal_leaf_midrib(length=1.2, base_angle_deg=30.0, bend=0.25, tip_drop=0.08)
+    curve = PlantGeom.cereal_leaf_midrib(base_angle_deg=30.0, bend=0.25, tip_drop=0.08)
     @test curve(0.0) ≈ SVector{3,Float64}(0.0, 0.0, 0.0)
-    @test isapprox(curve(1.0)[1], 1.2; atol=1e-8)
+    @test isapprox(curve(1.0)[1], 1.0; atol=1e-8)
     @test curve(0.5)[3] > 0.0
 
     mesh = PlantGeom.cereal_leaf_mesh(1.1, 0.18; n_long=4, n_half=2)
@@ -131,8 +131,8 @@ end
 end
 
 @testset "cereal leaf point mapping responds to base angle and bend" begin
-    mild_map = PlantGeom.CerealLeafMap(length=1.0, base_angle_deg=20.0, bend=0.20, tip_drop=0.04)
-    steep_map = PlantGeom.CerealLeafMap(length=1.0, base_angle_deg=48.0, bend=0.70, tip_drop=0.22)
+    mild_map = PlantGeom.CerealLeafMap(base_angle_deg=20.0, bend=0.20, tip_drop=0.04)
+    steep_map = PlantGeom.CerealLeafMap(base_angle_deg=48.0, bend=0.70, tip_drop=0.22)
 
     base_tangent_mild = mild_map.curve(0.02) - mild_map.curve(0.0)
     base_tangent_steep = steep_map.curve(0.02) - steep_map.curve(0.0)
@@ -156,32 +156,30 @@ end
 end
 
 @testset "lamina twist roll map and composition" begin
-    twist_only = PlantGeom.LaminaTwistRollMap(length=1.0, tip_twist_deg=90.0, roll_strength=0.0)
+    twist_only = PlantGeom.LaminaTwistRollMap(tip_twist_deg=90.0, roll_strength=0.0)
     p_tip = twist_only(Point(1.0, 0.1, 0.0))
     @test abs(p_tip[2]) < 1e-6
     @test p_tip[3] > 0.09
 
-    roll_only = PlantGeom.LaminaTwistRollMap(length=1.0, tip_twist_deg=0.0, roll_strength=0.8, roll_exponent=1.0)
+    roll_only = PlantGeom.LaminaTwistRollMap(tip_twist_deg=0.0, roll_strength=0.8, roll_exponent=1.0)
     p_roll = roll_only(Point(1.0, 0.1, 0.0))
     @test p_roll[3] > 0.007
 
-    margin_wave = PlantGeom.LaminaMarginWaveMap(
-        length=1.0,
-        max_half_width=0.10,
+    anticlastic_wave = PlantGeom.LaminaAnticlasticWaveMap(
         amplitude=0.02,
         wavelength=0.40,
         edge_exponent=1.0,
         progression_exponent=1.0,
         base_damping=0.0,
     )
-    p_wave_center = margin_wave(Point(0.5, 0.0, 0.0))
-    p_wave_margin = margin_wave(Point(0.5, 0.1, 0.0))
+    p_wave_center = anticlastic_wave(Point(0.5, 0.0, 0.0))
+    p_wave_pos = anticlastic_wave(Point(0.5, 0.5, 0.0))
+    p_wave_neg = anticlastic_wave(Point(0.5, -0.5, 0.0))
     @test abs(p_wave_center[3]) < 1e-10
-    @test p_wave_margin[3] > 0.009
+    @test p_wave_pos[3] > 0.009
+    @test p_wave_neg[3] < -0.009
 
-    outline_wave = PlantGeom.LaminaMarginWaveMap(
-        length=1.0,
-        max_half_width=0.10,
+    outline_wave = PlantGeom.LaminaAnticlasticWaveMap(
         amplitude=0.02,
         wavelength=0.40,
         edge_exponent=1.0,
@@ -190,35 +188,29 @@ end
         lateral_strength=1.0,
         vertical_strength=0.0,
     )
-    p_outline_pos = outline_wave(Point(0.5, 0.1, 0.0))
-    p_outline_neg = outline_wave(Point(0.5, -0.1, 0.0))
-    @test p_outline_pos[2] > 0.109
-    @test p_outline_neg[2] < -0.109
+    p_outline_pos = outline_wave(Point(0.5, 0.5, 0.0))
+    p_outline_neg = outline_wave(Point(0.5, -0.5, 0.0))
+    @test p_outline_pos[2] > 0.509
+    @test p_outline_neg[2] < -0.509
 
-    damped_wave = PlantGeom.LaminaMarginWaveMap(
-        length=1.0,
-        max_half_width=0.10,
+    damped_wave = PlantGeom.LaminaAnticlasticWaveMap(
         amplitude=0.03,
         wavelength=0.20,
         edge_exponent=1.0,
         progression_exponent=1.0,
         base_damping=8.0,
     )
-    p_undamped_near_base = PlantGeom.LaminaMarginWaveMap(
-        length=1.0,
-        max_half_width=0.10,
+    p_undamped_near_base = PlantGeom.LaminaAnticlasticWaveMap(
         amplitude=0.03,
         wavelength=0.20,
         edge_exponent=1.0,
         progression_exponent=1.0,
         base_damping=0.0,
-    )(Point(0.05, 0.1, 0.0))
-    p_damped_near_base = damped_wave(Point(0.05, 0.1, 0.0))
+    )(Point(0.05, 0.5, 0.0))
+    p_damped_near_base = damped_wave(Point(0.05, 0.5, 0.0))
     @test p_undamped_near_base[3] > p_damped_near_base[3]
 
-    asym_wave = PlantGeom.LaminaMarginWaveMap(
-        length=1.0,
-        max_half_width=0.10,
+    asym_wave = PlantGeom.LaminaAnticlasticWaveMap(
         amplitude=0.02,
         wavelength=0.40,
         edge_exponent=1.0,
@@ -226,16 +218,16 @@ end
         base_damping=0.0,
         asymmetry=0.5,
     )
-    p_pos = asym_wave(Point(0.5, 0.1, 0.0))
-    p_neg = asym_wave(Point(0.5, -0.1, 0.0))
-    @test p_pos[3] > p_neg[3] + 0.008
+    p_pos = asym_wave(Point(0.5, 0.5, 0.0))
+    p_neg = asym_wave(Point(0.5, -0.5, 0.0))
+    @test abs(p_pos[3]) > abs(p_neg[3]) + 0.008
 
     composed = PlantGeom.compose_point_maps(
-        PlantGeom.LaminaMarginWaveMap(length=1.0, max_half_width=0.10, amplitude=0.01, wavelength=0.20),
-        PlantGeom.LaminaTwistRollMap(length=1.0, tip_twist_deg=30.0, roll_strength=0.6),
-        PlantGeom.CerealLeafMap(length=1.0, base_angle_deg=30.0, bend=0.45, tip_drop=0.12),
+        PlantGeom.LaminaAnticlasticWaveMap(amplitude=0.08, wavelength=0.20),
+        PlantGeom.LaminaTwistRollMap(tip_twist_deg=30.0, roll_strength=0.6),
+        PlantGeom.CerealLeafMap(base_angle_deg=30.0, bend=0.45, tip_drop=0.12),
     )
-    ref = PlantGeom.cereal_leaf_refmesh("BladeCompose"; length=1.0, max_width=0.10, n_long=8, n_half=2)
+    ref = PlantGeom.cereal_leaf_refmesh("BladeCompose"; length=1.0, max_width=1.0, n_long=8, n_half=2)
     geom = PointMappedGeometry(ref, composed)
     mesh = PlantGeom.geometry_to_mesh(geom)
     @test PlantGeom.nelements(mesh) > 0

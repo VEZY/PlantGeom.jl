@@ -51,23 +51,27 @@ PlantGeom now includes a small cereal-leaf toolkit for that workflow:
 - `cereal_leaf_midrib`: convenience weighted curve builder
 - `CerealLeafMap`: point map that wraps a flat cereal blade around that midrib
 - `LaminaTwistRollMap`: local lamina torsion and edge-roll map
-- `LaminaMarginWaveMap`: margin undulation map (wavy leaf borders)
+- `LaminaAnticlasticWaveMap`: anticlastic margin map (one side up, the other down)
 - `compose_point_maps`: compose multiple point maps into one
 - `cereal_leaf_mesh` / `cereal_leaf_refmesh`: reusable flat blade reference mesh
 
-For cereal-like ruffled margins, use `LaminaMarginWaveMap` with:
+For these cereal point maps, parameters are normalized for a unit blade frame
+(`x ∈ [0, 1]`, `|y| ≤ 0.5`). Use `cereal_leaf_refmesh(...; max_width=1.0)` and
+apply physical width later via node transforms or reconstruction attributes.
+
+For cereal-like anticlastic ripples (opposite side displacement), use `LaminaAnticlasticWaveMap` with:
 
 - `lateral_strength=0.0`
 - `vertical_strength=1.0`
 
-This creates normal-direction margin waves (as in typical cereal lamina), not a
-side-to-side zig-zag outline.
+This creates opposite-sign side displacement in the normal direction (`+Y` and
+`-Y` move in opposite `Z` directions), not a side-to-side zig-zag outline.
 
 ```@example procgeom
 leaf_ref = cereal_leaf_refmesh(
     "CerealBlade";
     length=1.0,
-    max_width=0.12,
+    max_width=1.0,
     n_long=28,
     n_half=4,
     material=RGB(0.22, 0.62, 0.24),
@@ -76,40 +80,39 @@ leaf_ref = cereal_leaf_refmesh(
 base_leaf = PointMappedGeometry(
     leaf_ref,
     compose_point_maps(
-        LaminaMarginWaveMap(
-            length=1.0,
-            max_half_width=0.06,
-            amplitude=0.0035,
-            wavelength=0.20,
+        LaminaAnticlasticWaveMap(
+            amplitude=0.0035 / 0.12,
+            wavelength=0.25,
             edge_exponent=1.6,
             lateral_strength=0.0,
             vertical_strength=1.0,
         ),
-        LaminaTwistRollMap(length=1.0, tip_twist_deg=6.0, roll_strength=0.12),
-        CerealLeafMap(length=1.0, base_angle_deg=22.0, bend=0.18, tip_drop=0.04),
+        LaminaTwistRollMap(tip_twist_deg=3.0, roll_strength=0.05),
+        CerealLeafMap(base_angle_deg=46.0, bend=0.02, tip_drop=0.00),
     ),
+    transformation=PlantGeom.LinearMap(Diagonal([1.0, 0.12, 0.12])),
 )
 steeper_leaf = PointMappedGeometry(
     leaf_ref,
     compose_point_maps(
-        LaminaMarginWaveMap(
-            length=1.0,
-            max_half_width=0.06,
-            amplitude=0.0065,
-            wavelength=0.16,
+        LaminaAnticlasticWaveMap(
+            amplitude=0.0065 / 0.12,
+            wavelength=0.20,
             edge_exponent=1.8,
             lateral_strength=0.0,
             vertical_strength=1.0,
         ),
         LaminaTwistRollMap(
-            length=1.0,
-            tip_twist_deg=28.0,
-            roll_strength=0.34,
+            tip_twist_deg=26.0,
+            roll_strength=0.32,
             roll_exponent=1.2,
         ),
-        CerealLeafMap(length=1.0, base_angle_deg=42.0, bend=0.65, tip_drop=0.22),
+        CerealLeafMap(base_angle_deg=22.0, bend=0.95, tip_drop=0.36),
     );
-    transformation=PlantGeom.Translation(0.0, 0.22, 0.0),
+    transformation=PlantGeom.compose(
+        PlantGeom.Translation(0.0, 0.22, 0.0),
+        PlantGeom.LinearMap(Diagonal([1.0, 0.12, 0.12])),
+    ),
 )
 
 fig = Figure(size=(920, 360))
@@ -143,25 +146,23 @@ stem[:geometry] = ExtrudedTubeGeometry(
 blade_ref = cereal_leaf_refmesh(
     "CerealBlade";
     length=1.0,
-    max_width=0.12,
+    max_width=1.0,
     n_long=40,
     n_half=8,
     material=RGB(0.20, 0.60, 0.22),
 )
 
 leaf_specs = [
-    (z=0.20, azimuth_deg=-35.0, base_angle_deg=18.0, bend=0.18, tip_drop=0.05, twist=8.0, roll=0.18, wave_amp=0.008, wave_len=0.18, scale=0.82),
-    (z=0.56, azimuth_deg=84.0, base_angle_deg=30.0, bend=0.40, tip_drop=0.11, twist=18.0, roll=0.30, wave_amp=0.010, wave_len=0.15, scale=0.96),
-    (z=0.90, azimuth_deg=208.0, base_angle_deg=44.0, bend=0.74, tip_drop=0.24, twist=34.0, roll=0.44, wave_amp=0.012, wave_len=0.12, scale=1.05),
+    (z=0.20, azimuth_deg=-35.0, insertion_tilt_deg=42.0, base_angle_deg=34.0, bend=0.16, tip_drop=0.04, twist=8.0, roll=0.18, wave_amp=0.008, wave_len=0.23, scale=0.82),
+    (z=0.56, azimuth_deg=84.0, insertion_tilt_deg=48.0, base_angle_deg=44.0, bend=0.30, tip_drop=0.08, twist=18.0, roll=0.30, wave_amp=0.010, wave_len=0.19, scale=0.96),
+    (z=0.90, azimuth_deg=208.0, insertion_tilt_deg=54.0, base_angle_deg=54.0, bend=0.46, tip_drop=0.14, twist=34.0, roll=0.44, wave_amp=0.012, wave_len=0.15, scale=1.05),
 ]
 
 for (i, spec) in enumerate(leaf_specs)
     leaf = Node(stem, NodeMTG(:+, :Leaf, i, 2))
     point_map = compose_point_maps(
-        LaminaMarginWaveMap(
-            length=1.0,
-            max_half_width=0.06,
-            amplitude=spec.wave_amp,
+        LaminaAnticlasticWaveMap(
+            amplitude=spec.wave_amp / 0.12,
             wavelength=spec.wave_len,
             edge_exponent=1.6,
             progression_exponent=1.1,
@@ -172,13 +173,11 @@ for (i, spec) in enumerate(leaf_specs)
             vertical_strength=1.0,
         ),
         LaminaTwistRollMap(
-            length=1.0,
             tip_twist_deg=spec.twist,
             roll_strength=spec.roll,
             roll_exponent=1.2,
         ),
         CerealLeafMap(
-            length=1.0,
             base_angle_deg=spec.base_angle_deg,
             bend=spec.bend,
             tip_drop=spec.tip_drop,
@@ -190,7 +189,8 @@ for (i, spec) in enumerate(leaf_specs)
         transformation=PlantGeom.compose(
             PlantGeom.Translation(0.0, 0.0, spec.z),
             PlantGeom.LinearMap(PlantGeom.RotZ(deg2rad(spec.azimuth_deg))),
-            PlantGeom.LinearMap(Diagonal([spec.scale, spec.scale, spec.scale])),
+            PlantGeom.LinearMap(PlantGeom.RotMatrix(PlantGeom.AngleAxis(deg2rad(-spec.insertion_tilt_deg), 0.0, 1.0, 0.0))),
+            PlantGeom.LinearMap(Diagonal([spec.scale, 0.12 * spec.scale, 0.12 * spec.scale])),
         ),
     )
 end
@@ -200,11 +200,9 @@ stem_top_z = stem_path[end][3]
 terminal_leaf[:geometry] = PointMappedGeometry(
     blade_ref,
     compose_point_maps(
-        LaminaMarginWaveMap(
-            length=1.0,
-            max_half_width=0.06,
-            amplitude=0.008,
-            wavelength=0.16,
+        LaminaAnticlasticWaveMap(
+            amplitude=0.008 / 0.12,
+            wavelength=0.20,
             edge_exponent=1.6,
             progression_exponent=1.1,
             base_damping=5.0,
@@ -214,38 +212,37 @@ terminal_leaf[:geometry] = PointMappedGeometry(
             vertical_strength=1.0,
         ),
         LaminaTwistRollMap(
-            length=1.0,
             tip_twist_deg=10.0,
             roll_strength=0.20,
             roll_exponent=1.1,
         ),
         CerealLeafMap(
-            length=1.0,
-            base_angle_deg=72.0,
-            bend=0.28,
-            tip_drop=0.06,
+            base_angle_deg=62.0,
+            bend=0.22,
+            tip_drop=0.05,
         ),
     );
     transformation=PlantGeom.compose(
         PlantGeom.Translation(0.0, 0.0, stem_top_z),
         PlantGeom.LinearMap(PlantGeom.RotZ(deg2rad(6.0))),
-        PlantGeom.LinearMap(Diagonal([0.76, 0.76, 0.76])),
+        PlantGeom.LinearMap(PlantGeom.RotMatrix(PlantGeom.AngleAxis(deg2rad(-48.0), 0.0, 1.0, 0.0))),
+        PlantGeom.LinearMap(Diagonal([0.76, 0.12 * 0.76, 0.12 * 0.76])),
     ),
 )
 
 plantviz(mtg, color=Dict("CerealBlade" => RGB(0.20, 0.60, 0.22), "ExtrudedTube" => RGB(0.54, 0.76, 0.38)))
 ```
 
-### Cereal Margin Wave (Normal Direction)
+### Cereal Anticlastic Wave (Normal Direction)
 
-This focused comparison isolates the margin effect only: same base blade and
-bending, with or without `LaminaMarginWaveMap`.
+This focused comparison isolates the anticlastic effect only: same base blade and
+bending, with or without `LaminaAnticlasticWaveMap`.
 
 ```@example procgeom
 compare_ref = cereal_leaf_refmesh(
     "CerealBladeCompare";
     length=1.0,
-    max_width=0.14,
+    max_width=1.0,
     n_long=72,
     n_half=14,
     material=RGB(0.20, 0.60, 0.22),
@@ -254,20 +251,21 @@ compare_ref = cereal_leaf_refmesh(
 smooth_leaf = PointMappedGeometry(
     compare_ref,
     compose_point_maps(
-        LaminaTwistRollMap(length=1.0, tip_twist_deg=20.0, roll_strength=0.32, roll_exponent=1.15),
-        CerealLeafMap(length=1.0, base_angle_deg=34.0, bend=0.56, tip_drop=0.16),
+        LaminaTwistRollMap(tip_twist_deg=20.0, roll_strength=0.32, roll_exponent=1.15),
+        CerealLeafMap(base_angle_deg=34.0, bend=0.56, tip_drop=0.16),
     );
-    transformation=PlantGeom.Translation(0.0, -0.20, 0.0),
+    transformation=PlantGeom.compose(
+        PlantGeom.Translation(0.0, -0.20, 0.0),
+        PlantGeom.LinearMap(Diagonal([1.0, 0.14, 0.14])),
+    ),
 )
 
 wavy_leaf = PointMappedGeometry(
     compare_ref,
     compose_point_maps(
-        LaminaMarginWaveMap(
-            length=1.0,
-            max_half_width=0.07,
-            amplitude=0.022,
-            wavelength=0.115,
+        LaminaAnticlasticWaveMap(
+            amplitude=0.022 / 0.14,
+            wavelength=0.145,
             edge_exponent=1.7,
             progression_exponent=1.1,
             base_damping=4.5,
@@ -275,16 +273,19 @@ wavy_leaf = PointMappedGeometry(
             lateral_strength=0.0,
             vertical_strength=1.0,
         ),
-        LaminaTwistRollMap(length=1.0, tip_twist_deg=20.0, roll_strength=0.32, roll_exponent=1.15),
-        CerealLeafMap(length=1.0, base_angle_deg=34.0, bend=0.56, tip_drop=0.16),
+        LaminaTwistRollMap(tip_twist_deg=20.0, roll_strength=0.32, roll_exponent=1.15),
+        CerealLeafMap(base_angle_deg=34.0, bend=0.56, tip_drop=0.16),
     );
-    transformation=PlantGeom.Translation(0.0, 0.20, 0.0),
+    transformation=PlantGeom.compose(
+        PlantGeom.Translation(0.0, 0.20, 0.0),
+        PlantGeom.LinearMap(Diagonal([1.0, 0.14, 0.14])),
+    ),
 )
 
 fig = Figure(size=(1200, 520))
 ax = Axis3(
     fig[1, 1];
-    title="Cereal leaf margin wave (top: wavy, bottom: smooth)",
+    title="Cereal leaf anticlastic wave (top: wavy, bottom: smooth)",
     azimuth=1.45,
     elevation=0.36,
     perspectiveness=0.7,

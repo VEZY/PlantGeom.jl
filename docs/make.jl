@@ -27,6 +27,7 @@ makedocs(;
         "Geometry Concepts" => [
             "Reference Meshes" => "geometry/refmesh.md",
             "Procedural / Extrusion Geometry" => "geometry/procedural_geometry.md",
+            "Growth API" => "geometry/growth_api.md",
             "Merging Meshes" => "geometry/merging_geometry.md",
         ],
         "Building a 3D plant" => "geometry/building_plant_models.md",
