@@ -124,72 +124,114 @@ The same pattern scales to a small cereal plant:
 ```@example procgeom
 mtg = Node(NodeMTG(:/, :Plant, 1, 1))
 stem = Node(mtg, NodeMTG(:/, :Stem, 1, 2))
+stem_path = [
+    Point(0.0, 0.0, 0.0),
+    Point(0.0, 0.0, 0.44),
+    Point(0.0, 0.0, 0.92),
+    Point(0.0, 0.0, 1.26),
+]
 stem[:geometry] = ExtrudedTubeGeometry(
-    [
-        Point(0.0, 0.0, 0.0),
-        Point(0.0, 0.0, 0.45),
-        Point(0.0, 0.0, 0.95),
-        Point(0.0, 0.0, 1.30),
-    ];
+    stem_path;
     n_sides=14,
     radius=0.022,
-    radii=[1.0, 0.92, 0.74, 0.52],
+    radii=[1.0, 0.90, 0.74, 0.50],
     torsion=false,
     cap_ends=true,
     material=RGB(0.54, 0.76, 0.38),
 )
 
+blade_ref = cereal_leaf_refmesh(
+    "CerealBlade";
+    length=1.0,
+    max_width=0.12,
+    n_long=40,
+    n_half=8,
+    material=RGB(0.20, 0.60, 0.22),
+)
+
 leaf_specs = [
-    (z=0.20, azimuth_deg=-35.0, base_angle_deg=18.0, bend=0.15, tip_drop=0.04, length=0.82),
-    (z=0.54, azimuth_deg=85.0, base_angle_deg=30.0, bend=0.35, tip_drop=0.10, length=0.94),
-    (z=0.88, azimuth_deg=205.0, base_angle_deg=44.0, bend=0.72, tip_drop=0.22, length=1.02),
+    (z=0.20, azimuth_deg=-35.0, base_angle_deg=18.0, bend=0.18, tip_drop=0.05, twist=8.0, roll=0.18, wave_amp=0.008, wave_len=0.18, scale=0.82),
+    (z=0.56, azimuth_deg=84.0, base_angle_deg=30.0, bend=0.40, tip_drop=0.11, twist=18.0, roll=0.30, wave_amp=0.010, wave_len=0.15, scale=0.96),
+    (z=0.90, azimuth_deg=208.0, base_angle_deg=44.0, bend=0.74, tip_drop=0.24, twist=34.0, roll=0.44, wave_amp=0.012, wave_len=0.12, scale=1.05),
 ]
 
 for (i, spec) in enumerate(leaf_specs)
     leaf = Node(stem, NodeMTG(:+, :Leaf, i, 2))
-    blade_map = CerealLeafMap(
-        length=1.0,
-        base_angle_deg=spec.base_angle_deg,
-        bend=spec.bend,
-        tip_drop=spec.tip_drop,
-    )
-    blade_ref = cereal_leaf_refmesh(
-        "CerealBlade";
-        length=1.0,
-        max_width=0.10 + 0.01 * i,
-        n_long=26,
-        n_half=4,
-        material=RGB(0.20, 0.60, 0.22),
+    point_map = compose_point_maps(
+        LaminaMarginWaveMap(
+            length=1.0,
+            max_half_width=0.06,
+            amplitude=spec.wave_amp,
+            wavelength=spec.wave_len,
+            edge_exponent=1.6,
+            progression_exponent=1.1,
+            base_damping=5.0,
+            phase_deg=25.0 * i,
+            asymmetry=0.10,
+            lateral_strength=0.0,
+            vertical_strength=1.0,
+        ),
+        LaminaTwistRollMap(
+            length=1.0,
+            tip_twist_deg=spec.twist,
+            roll_strength=spec.roll,
+            roll_exponent=1.2,
+        ),
+        CerealLeafMap(
+            length=1.0,
+            base_angle_deg=spec.base_angle_deg,
+            bend=spec.bend,
+            tip_drop=spec.tip_drop,
+        ),
     )
     leaf[:geometry] = PointMappedGeometry(
         blade_ref,
-        compose_point_maps(
-            LaminaMarginWaveMap(
-                length=1.0,
-                max_half_width=0.06,
-                amplitude=0.004 + 0.0015i,
-                wavelength=0.22 - 0.02i,
-                edge_exponent=1.7,
-                progression_exponent=1.1,
-                base_damping=5.0,
-                lateral_strength=0.0,
-                vertical_strength=1.0,
-            ),
-            LaminaTwistRollMap(
-                length=1.0,
-                tip_twist_deg=8 + 10i,
-                roll_strength=0.10 + 0.09i,
-                roll_exponent=1.15,
-            ),
-            blade_map,
-        );
+        point_map;
         transformation=PlantGeom.compose(
             PlantGeom.Translation(0.0, 0.0, spec.z),
             PlantGeom.LinearMap(PlantGeom.RotZ(deg2rad(spec.azimuth_deg))),
-            PlantGeom.LinearMap(Diagonal([spec.length, spec.length, spec.length])),
+            PlantGeom.LinearMap(Diagonal([spec.scale, spec.scale, spec.scale])),
         ),
     )
 end
+
+terminal_leaf = Node(stem, NodeMTG(:+, :Leaf, length(leaf_specs) + 1, 2))
+stem_top_z = stem_path[end][3]
+terminal_leaf[:geometry] = PointMappedGeometry(
+    blade_ref,
+    compose_point_maps(
+        LaminaMarginWaveMap(
+            length=1.0,
+            max_half_width=0.06,
+            amplitude=0.008,
+            wavelength=0.16,
+            edge_exponent=1.6,
+            progression_exponent=1.1,
+            base_damping=5.0,
+            phase_deg=10.0,
+            asymmetry=0.05,
+            lateral_strength=0.0,
+            vertical_strength=1.0,
+        ),
+        LaminaTwistRollMap(
+            length=1.0,
+            tip_twist_deg=10.0,
+            roll_strength=0.20,
+            roll_exponent=1.1,
+        ),
+        CerealLeafMap(
+            length=1.0,
+            base_angle_deg=72.0,
+            bend=0.28,
+            tip_drop=0.06,
+        ),
+    );
+    transformation=PlantGeom.compose(
+        PlantGeom.Translation(0.0, 0.0, stem_top_z),
+        PlantGeom.LinearMap(PlantGeom.RotZ(deg2rad(6.0))),
+        PlantGeom.LinearMap(Diagonal([0.76, 0.76, 0.76])),
+    ),
+)
 
 plantviz(mtg, color=Dict("CerealBlade" => RGB(0.20, 0.60, 0.22), "ExtrudedTube" => RGB(0.54, 0.76, 0.38)))
 ```
@@ -204,8 +246,8 @@ compare_ref = cereal_leaf_refmesh(
     "CerealBladeCompare";
     length=1.0,
     max_width=0.14,
-    n_long=40,
-    n_half=10,
+    n_long=72,
+    n_half=14,
     material=RGB(0.20, 0.60, 0.22),
 )
 
@@ -239,8 +281,14 @@ wavy_leaf = PointMappedGeometry(
     transformation=PlantGeom.Translation(0.0, 0.20, 0.0),
 )
 
-fig = Figure(size=(920, 420))
-ax = Axis3(fig[1, 1], title="Margin wave: top wavy, bottom smooth", azimuth=1.45, elevation=0.36)
+fig = Figure(size=(1200, 520))
+ax = Axis3(
+    fig[1, 1];
+    title="Cereal leaf margin wave (top: wavy, bottom: smooth)",
+    azimuth=1.45,
+    elevation=0.36,
+    perspectiveness=0.7,
+)
 mesh!(ax, PlantGeom.geometry_to_mesh(smooth_leaf), color=RGBA(0.18, 0.58, 0.22, 0.95))
 mesh!(ax, PlantGeom.geometry_to_mesh(wavy_leaf), color=RGBA(0.14, 0.50, 0.18, 0.95))
 Makie.xlims!(ax, -0.03, 1.05)
