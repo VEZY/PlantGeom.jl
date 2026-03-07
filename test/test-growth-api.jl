@@ -81,7 +81,7 @@
     @test phy.leaf[:age] == 4
 end
 
-@testset "Growth API geometry rebuild + ref_mesh_selector" begin
+@testset "Growth API geometry rebuild + prototype_selector" begin
     mtg = Node(NodeMTG(:/, :Plant, 1, 1))
     scene_ver(node) = haskey(node, :_scene_version) ? node[:_scene_version] : 0
     axis = emit_internode!(mtg; index=1, link=:/, length=0.25, width=0.03, y_euler=0.0, bump_scene=false)
@@ -119,15 +119,15 @@ end
         stage == :juvenile ? leaf_juvenile_ref : nothing
     end
 
-    rebuild_geometry!(mtg, ref_meshes; ref_mesh_selector=selector, bump_scene=false)
+    rebuild_geometry!(mtg, ref_meshes; prototype_selector=selector, bump_scene=false)
 
     @test haskey(axis, :geometry)
     @test haskey(leaf_j, :geometry)
     @test haskey(leaf_a, :geometry)
-    @test leaf_j[:geometry].ref_mesh === leaf_juvenile_ref
-    @test leaf_a[:geometry].ref_mesh === leaf_ref
+    @test leaf_j[:geometry].ref_mesh.name == leaf_juvenile_ref.name
+    @test leaf_a[:geometry].ref_mesh.name == leaf_ref.name
 
     v0 = scene_ver(mtg)
-    rebuild_geometry!(mtg, ref_meshes; ref_mesh_selector=selector, bump_scene=true)
+    rebuild_geometry!(mtg, ref_meshes; prototype_selector=selector, bump_scene=true)
     @test scene_ver(mtg) == v0 + 1
 end

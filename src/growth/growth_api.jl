@@ -67,6 +67,8 @@ function _build_internode_attrs(;
     x_euler=nothing,
     y_euler=nothing,
     z_euler=nothing,
+    prototype=nothing,
+    prototype_overrides=nothing,
     attributes=NamedTuple(),
     extra_attrs=NamedTuple(),
 )
@@ -84,6 +86,8 @@ function _build_internode_attrs(;
     _set_if_not_nothing!(attrs, :XEuler, x_euler)
     _set_if_not_nothing!(attrs, :YEuler, y_euler)
     _set_if_not_nothing!(attrs, :ZEuler, z_euler)
+    _set_if_not_nothing!(attrs, :GeometryPrototype, prototype)
+    _set_if_not_nothing!(attrs, :GeometryPrototypeOverrides, prototype_overrides)
     merge!(attrs, _to_attr_dict(extra_attrs))
     merge!(attrs, _to_attr_dict(attributes))
     return attrs
@@ -104,6 +108,8 @@ function _build_leaf_attrs(;
     x_euler=nothing,
     y_euler=nothing,
     z_euler=nothing,
+    prototype=nothing,
+    prototype_overrides=nothing,
     attributes=NamedTuple(),
     extra_attrs=NamedTuple(),
 )
@@ -123,6 +129,8 @@ function _build_leaf_attrs(;
     _set_if_not_nothing!(attrs, :XEuler, x_euler)
     _set_if_not_nothing!(attrs, :YEuler, y_euler)
     _set_if_not_nothing!(attrs, :ZEuler, z_euler)
+    _set_if_not_nothing!(attrs, :GeometryPrototype, prototype)
+    _set_if_not_nothing!(attrs, :GeometryPrototypeOverrides, prototype_overrides)
     merge!(attrs, _to_attr_dict(extra_attrs))
     merge!(attrs, _to_attr_dict(attributes))
     return attrs
@@ -172,6 +180,8 @@ function emit_internode!(parent::MultiScaleTreeGraph.Node;
     x_euler=nothing,
     y_euler=nothing,
     z_euler=nothing,
+    prototype=nothing,
+    prototype_overrides=nothing,
     attributes=NamedTuple(),
     bump_scene::Bool=true,
     kwargs...,
@@ -190,6 +200,8 @@ function emit_internode!(parent::MultiScaleTreeGraph.Node;
         x_euler=x_euler,
         y_euler=y_euler,
         z_euler=z_euler,
+        prototype=prototype,
+        prototype_overrides=prototype_overrides,
         attributes=attributes,
         extra_attrs=kwargs,
     )
@@ -215,6 +227,8 @@ function emit_leaf!(parent::MultiScaleTreeGraph.Node;
     x_euler=nothing,
     y_euler=nothing,
     z_euler=nothing,
+    prototype=nothing,
+    prototype_overrides=nothing,
     attributes=NamedTuple(),
     bump_scene::Bool=true,
     kwargs...,
@@ -235,6 +249,8 @@ function emit_leaf!(parent::MultiScaleTreeGraph.Node;
         x_euler=x_euler,
         y_euler=y_euler,
         z_euler=z_euler,
+        prototype=prototype,
+        prototype_overrides=prototype_overrides,
         attributes=attributes,
         extra_attrs=kwargs,
     )
@@ -334,7 +350,7 @@ end
 
 function rebuild_geometry!(
     mtg::MultiScaleTreeGraph.Node,
-    ref_meshes::AbstractDict;
+    prototypes::AbstractDict;
     convention=default_amap_geometry_convention(),
     conventions=Dict(),
     offset_aliases=[:Offset, :offset],
@@ -343,7 +359,8 @@ function rebuild_geometry!(
     phyllotaxy_aliases=[:Phyllotaxy, :phyllotaxy, :PHYLLOTAXY],
     verticil_mode=:rotation360,
     amap_options=default_amap_reconstruction_options(),
-    ref_mesh_selector::Union{Nothing,Function}=nothing,
+    prototype_selector::Union{Nothing,Function}=nothing,
+    prototype_overrides=nothing,
     dUp=1.0,
     dDwn=1.0,
     warn_missing=false,
@@ -352,7 +369,7 @@ function rebuild_geometry!(
 )
     reconstruct_geometry_from_attributes!(
         mtg,
-        ref_meshes;
+        prototypes;
         convention=convention,
         conventions=conventions,
         offset_aliases=offset_aliases,
@@ -361,7 +378,8 @@ function rebuild_geometry!(
         phyllotaxy_aliases=phyllotaxy_aliases,
         verticil_mode=verticil_mode,
         amap_options=amap_options,
-        ref_mesh_selector=ref_mesh_selector,
+        prototype_selector=prototype_selector,
+        prototype_overrides=prototype_overrides,
         dUp=dUp,
         dDwn=dDwn,
         warn_missing=warn_missing,

@@ -40,6 +40,7 @@ include("geometry/pointmaps.jl")
 include("geometry/materialize.jl")
 include("geometry/metadata.jl")
 include("reconstruction/amap_reconstruction.jl")
+include("reconstruction/prototypes.jl")
 include("reconstruction/conventions.jl")
 include("growth/growth_api.jl")
 include("equality.jl")
@@ -103,6 +104,9 @@ export default_geometry_convention
 export default_amap_geometry_convention
 export AmapReconstructionOptions
 export default_amap_reconstruction_options
+export AbstractMeshPrototype, AbstractParametricPrototype
+export RefMeshPrototype, PointMapPrototype, ExtrusionPrototype, RawMeshPrototype
+export available_parameters, effective_parameters
 export transformation_from_attributes
 export geometry_from_attributes
 export reconstruct_geometry_from_attributes!

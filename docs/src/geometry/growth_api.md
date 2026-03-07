@@ -15,7 +15,7 @@ using CairoMakie
 
 CairoMakie.activate!()
 
-function growth_ref_meshes()
+function growth_prototypes()
     leaf_base = lamina_refmesh(
         "leaf_base";
         length=1.0,
@@ -125,13 +125,13 @@ end
 
 | Function | Purpose |
 |---|---|
-| `emit_internode!(parent; kwargs...) -> Node` | Add an `:Internode` child node and set growth attributes (`Length`, `Width`, insertion/euler attrs, and custom attrs). |
-| `emit_leaf!(parent; kwargs...) -> Node` | Add a `:Leaf` child node and set growth attributes (including stage/age or any custom attrs). |
+| `emit_internode!(parent; kwargs...) -> Node` | Add an `:Internode` child node and set growth attributes (`Length`, `Width`, insertion/euler attrs, custom attrs, optional `prototype`, and `prototype_overrides`). |
+| `emit_leaf!(parent; kwargs...) -> Node` | Add a `:Leaf` child node and set growth attributes (including stage/age, optional `prototype`, and `prototype_overrides`). |
 | `emit_phytomer!(parent; internode=..., leaf=..., ...) -> NamedTuple` | Emit one internode and one leaf in one call; returns `(internode=..., leaf=...)`. |
 | `grow_length!(x; delta, bump_scene=true) -> x` | Increment `:Length` by `delta` on a node-like object. |
 | `grow_width!(x; delta, thickness_policy=:follow_width, bump_scene=true) -> x` | Increment `:Width`, and optionally sync/update `:Thickness`. |
 | `set_growth_attributes!(x; kwargs..., bump_scene=true) -> x` | Set arbitrary attributes on the target node. |
-| `rebuild_geometry!(mtg, ref_meshes; ..., ref_mesh_selector=nothing, bump_scene=true) -> mtg` | Recompute per-node geometry from attributes and reference meshes. |
+| `rebuild_geometry!(mtg, prototypes; ..., prototype_selector=nothing, prototype_overrides=nothing, bump_scene=true) -> mtg` | Recompute per-node geometry from attributes and prototypes. |
 
 Key defaults:
 - `emit_internode!` defaults `link=:<`; use `link=:/` for the first axis node.
@@ -158,7 +158,7 @@ Also, `grow_length!`, `grow_width!`, and `set_growth_attributes!` accept `PlantS
 
 ```@example growth_api
 mtg = Node(NodeMTG(:/, :Plant, 1, 1))
-ref_meshes = growth_ref_meshes()
+prototypes = growth_prototypes()
 
 axis = emit_internode!(
     mtg;
@@ -206,12 +206,12 @@ set_growth_attributes!(leaf; leaf_stage=:expanding, age=1)
 selector = node -> begin
     symbol(node) == :Leaf || return nothing
     stage = haskey(node, :leaf_stage) ? node[:leaf_stage] : :adult
-    stage == :juvenile && return ref_meshes[:LeafJuvenile]
-    stage == :expanding && return ref_meshes[:LeafExpanding]
+    stage == :juvenile && return prototypes[:LeafJuvenile]
+    stage == :expanding && return prototypes[:LeafExpanding]
     nothing
 end
 
-rebuild_geometry!(mtg, ref_meshes; ref_mesh_selector=selector)
+rebuild_geometry!(mtg, prototypes; prototype_selector=selector)
 fig = Figure(size=(760, 520))
 ax = Axis3(
     fig[1, 1],
@@ -257,7 +257,7 @@ stem_mesh = GeometryBasics.mesh(
         0.5,
     ),
 )
-ref_meshes = Dict{Any,RefMesh}(
+prototypes = Dict{Any,RefMesh}(
     :Internode => RefMesh("stem", stem_mesh, RGB(0.54, 0.76, 0.38)),
 )
 
@@ -294,7 +294,7 @@ let
     while step <= length(leaf_specs)
         spec = leaf_specs[step]
         ref_key = Symbol("LeafRef", step)
-        ref_meshes[ref_key] = make_leaf_ref(String(ref_key), spec)
+        prototypes[ref_key] = make_leaf_ref(String(ref_key), spec)
 
         emit_leaf!(
             culm;
@@ -313,10 +313,10 @@ end
 
 selector = node -> begin
     symbol(node) == :Leaf || return nothing
-    haskey(node, :leaf_ref) ? ref_meshes[node[:leaf_ref]] : nothing
+    haskey(node, :leaf_ref) ? prototypes[node[:leaf_ref]] : nothing
 end
 
-rebuild_geometry!(cereal, ref_meshes; ref_mesh_selector=selector)
+rebuild_geometry!(cereal, prototypes; prototype_selector=selector)
 fig = Figure(size=(880, 620))
 ax = Axis3(
     fig[1, 1],

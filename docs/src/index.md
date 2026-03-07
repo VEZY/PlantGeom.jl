@@ -19,6 +19,7 @@ PlantGeom provides a framework for representing, manipulating, and visualizing 3
 See:
 - [`Reference Meshes`](geometry/refmesh.md)
 - [`Procedural / Extrusion Geometry`](geometry/procedural_geometry.md)
+- [`Prototype Mesh API`](geometry/prototype_mesh_api.md)
 - [`Growth API`](geometry/growth_api.md)
 
 ### Plotting
