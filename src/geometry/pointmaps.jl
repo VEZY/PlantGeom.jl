@@ -38,7 +38,7 @@ end
 end
 
 """
-    cereal_leaf_midrib(; base_angle_deg=35.0, bend=0.35, tip_drop=0.12,
+    lamina_midrib(; base_angle_deg=35.0, bend=0.35, tip_drop=0.12,
         side_sway=0.0, weights=(1.0, 0.8, 0.9, 1.0))
 
 Build a cereal-like leaf midrib as a weighted cubic Bezier curve.
@@ -49,7 +49,7 @@ Build a cereal-like leaf midrib as a weighted cubic Bezier curve.
 - `tip_drop`: additional downward displacement at the tip (relative to unit length).
 - `side_sway`: lateral displacement of the distal blade (relative to unit length).
 """
-function cereal_leaf_midrib(;
+function lamina_midrib(;
     base_angle_deg::Real=35.0,
     bend::Real=0.35,
     tip_drop::Real=0.12,
@@ -63,35 +63,49 @@ function cereal_leaf_midrib(;
     sway_abs = len * Float64(side_sway)
 
     p0 = SVector{3,Float64}(0.0, 0.0, 0.0)
-    p1 = len * SVector(cos(base_rad) * 0.28, 0.0, sin(base_rad) * 0.28)
-    p2 = SVector{3,Float64}(len * (0.52 + 0.10 * bend01), sway_abs * 0.45, len * (0.16 + 0.32 * bend01))
-    p3 = SVector{3,Float64}(len, sway_abs, len * (0.05 + 0.10 * sin(base_rad)) - tip_drop_abs)
+    base_dir = SVector{3,Float64}(cos(base_rad), 0.0, sin(base_rad))
+
+    # Increase bend authority by progressively turning the distal tangent downward.
+    end_angle_deg = (6.0 + 0.18 * Float64(base_angle_deg)) - 102.0 * bend01
+    end_rad = deg2rad(end_angle_deg)
+    end_dir = SVector{3,Float64}(cos(end_rad), 0.0, sin(end_rad))
+
+    start_tangent_len = len * (0.34 - 0.10 * bend01)
+    end_tangent_len = len * (0.22 + 0.34 * bend01)
+    gravity_drop_abs = len * (0.02 + 0.24 * bend01^1.35)
+    tip_z = len * (0.04 + 0.08 * sin(base_rad)) - tip_drop_abs - gravity_drop_abs
+
+    p3 = SVector{3,Float64}(len, sway_abs, tip_z)
+    p1 = p0 + start_tangent_len * base_dir
+    p2_seed = p3 - end_tangent_len * end_dir
+    p2 = SVector{3,Float64}(p2_seed[1], sway_abs * 0.45, p2_seed[3] + len * (0.10 * bend01))
 
     RationalBezierCurve([p0, p1, p2, p3], collect(weights))
 end
 
 """
-    CerealLeafMap(curve; up=(0, 0, 1))
-    CerealLeafMap(; base_angle_deg=35.0, bend=0.35, tip_drop=0.12,
+    LaminaMidribMap(curve; up=(0, 0, 1))
+    LaminaMidribMap(; base_angle_deg=35.0, bend=0.35, tip_drop=0.12,
         side_sway=0.0, weights=(1.0, 0.8, 0.9, 1.0), up=(0, 0, 1))
 
-Point-map for cereal leaves. The base reference mesh is expected to use the AMAP
-convention: leaf length along local `+X`, width along `+Y`, thickness along `+Z`.
+Point-map for lamina deformation around a midrib centerline. The base reference
+mesh is expected to use the AMAP convention: leaf length along local `+X`,
+width along `+Y`, thickness along `+Z`.
 Coordinates are interpreted in a normalized unit frame (`x ∈ [0, 1]`, `|y| ≤ 0.5`).
 
-The map bends the leaf by wrapping each local point around a midrib curve while
+The map bends the blade by wrapping each local point around a midrib curve while
 preserving lateral width and thickness offsets in the local moving frame.
 """
-struct CerealLeafMap{C,U}
+struct LaminaMidribMap{C,U}
     curve::C
     up::U
 end
 
-function CerealLeafMap(curve; up=(0.0, 0.0, 1.0))
-    CerealLeafMap(curve, _pointmap_to_svec3(up))
+function LaminaMidribMap(curve; up=(0.0, 0.0, 1.0))
+    LaminaMidribMap(curve, _pointmap_to_svec3(up))
 end
 
-function CerealLeafMap(;
+function LaminaMidribMap(;
     base_angle_deg::Real=35.0,
     bend::Real=0.35,
     tip_drop::Real=0.12,
@@ -99,7 +113,7 @@ function CerealLeafMap(;
     weights=(1.0, 0.8, 0.9, 1.0),
     up=(0.0, 0.0, 1.0),
 )
-    curve = cereal_leaf_midrib(
+    curve = lamina_midrib(
         ;
         base_angle_deg=base_angle_deg,
         bend=bend,
@@ -107,7 +121,7 @@ function CerealLeafMap(;
         side_sway=side_sway,
         weights=weights,
     )
-    CerealLeafMap(curve; up=up)
+    LaminaMidribMap(curve; up=up)
 end
 
 @inline _pointmap_safe_normalize(v::SVector{3,Float64}, fallback::SVector{3,Float64}) = norm(v) > 1e-12 ? v / norm(v) : fallback
@@ -134,7 +148,7 @@ function _curve_frame(curve, u::Float64, up::SVector{3,Float64})
     tangent, side, normal
 end
 
-function (map::CerealLeafMap)(p)
+function (map::LaminaMidribMap)(p)
     p_local = _pointmap_to_svec3(p)
     u = clamp(p_local[1], 0.0, 1.0)
     center = _pointmap_to_svec3(map.curve(u))
@@ -263,6 +277,155 @@ function (map::LaminaAnticlasticWaveMap)(p)
 end
 
 """
+    PointMapFrame(map; length=1.0, width=1.0, z_scale=length)
+    with_point_map_frame(map; length=1.0, width=1.0, z_scale=length)
+
+Apply dimensions before midrib wrapping when using normalized lamina maps.
+
+This wrapper is intended for:
+- `LaminaMidribMap`
+- `ComposedPointMap(..., LaminaMidribMap(...))`
+
+Input coordinates are expected in normalized blade space when calling the map
+directly. When used through `PointMappedGeometry`, source coordinates are
+auto-normalized from the reference mesh bounds before this frame map is
+applied. `length` scales the midrib centerline, while `width` and `z_scale`
+scale lateral and thickness offsets in the local side/normal frame of the
+midrib (instead of anisotropic world-axis scaling after deformation).
+"""
+struct PointMapFrame{M}
+    map::M
+    length::Float64
+    width::Float64
+    z_scale::Float64
+end
+
+function PointMapFrame(map; length::Real=1.0, width::Real=1.0, z_scale::Real=length)
+    len = Float64(length)
+    wid = Float64(width)
+    zsc = Float64(z_scale)
+    len > 0.0 || error("`length` must be > 0.")
+    wid > 0.0 || error("`width` must be > 0.")
+    zsc > 0.0 || error("`z_scale` must be > 0.")
+    PointMapFrame(map, len, wid, zsc)
+end
+
+with_point_map_frame(map; length::Real=1.0, width::Real=1.0, z_scale::Real=length) =
+    PointMapFrame(map; length=length, width=width, z_scale=z_scale)
+
+struct _PointMapInputFrame
+    x_min::Float64
+    inv_x_span::Float64
+    y_mid::Float64
+    inv_y_span::Float64
+    z_mid::Float64
+    inv_z_span::Float64
+end
+
+@inline _safe_inv_span(span::Float64) = span > 1e-12 ? 1.0 / span : 1.0
+
+function _point_map_input_frame(mesh)
+    verts = _vertices(mesh)
+    isempty(verts) && return _PointMapInputFrame(0.0, 1.0, 0.0, 1.0, 0.0, 1.0)
+
+    xmin = Inf
+    xmax = -Inf
+    ymin = Inf
+    ymax = -Inf
+    zmin = Inf
+    zmax = -Inf
+
+    @inbounds for p in verts
+        x = Float64(p[1])
+        y = Float64(p[2])
+        z = Float64(p[3])
+        x < xmin && (xmin = x)
+        x > xmax && (xmax = x)
+        y < ymin && (ymin = y)
+        y > ymax && (ymax = y)
+        z < zmin && (zmin = z)
+        z > zmax && (zmax = z)
+    end
+
+    x_span = xmax - xmin
+    y_span = ymax - ymin
+    z_span = zmax - zmin
+    z_norm_span = x_span > 1e-12 ? x_span : max(y_span, z_span, 1.0)
+
+    _PointMapInputFrame(
+        xmin,
+        _safe_inv_span(x_span),
+        0.5 * (ymin + ymax),
+        _safe_inv_span(y_span),
+        0.5 * (zmin + zmax),
+        _safe_inv_span(z_norm_span),
+    )
+end
+
+@inline function _normalize_point_map_input(frame::_PointMapInputFrame, p)
+    q = _pointmap_to_svec3(p)
+    SVector{3,Float64}(
+        (q[1] - frame.x_min) * frame.inv_x_span,
+        (q[2] - frame.y_mid) * frame.inv_y_span,
+        (q[3] - frame.z_mid) * frame.inv_z_span,
+    )
+end
+
+struct _FramedPointMap{M}
+    map::M
+    input_frame::_PointMapInputFrame
+end
+
+@inline (map::_FramedPointMap)(p) = map.map(_normalize_point_map_input(map.input_frame, p))
+
+function _prepare_point_map_for_ref_mesh(ref_mesh::RefMesh, point_map::PointMapFrame)
+    _FramedPointMap(point_map, _point_map_input_frame(ref_mesh.mesh))
+end
+
+function PointMappedGeometry(
+    ref_mesh::M,
+    point_map::PointMapFrame;
+    params=nothing,
+    transformation=IdentityTransformation(),
+) where {M<:RefMesh}
+    normalized_map = _prepare_point_map_for_ref_mesh(ref_mesh, point_map)
+    PointMappedGeometry(ref_mesh, normalized_map; params=params, transformation=transformation)
+end
+
+@inline function _apply_lamina_midrib_framed(map::LaminaMidribMap, q::SVector{3,Float64}, length::Float64, width::Float64, z_scale::Float64)
+    u = clamp(q[1], 0.0, 1.0)
+    center = _pointmap_to_svec3(map.curve(u))
+    _, side, normal = _curve_frame(map.curve, u, map.up)
+    (length * center) + (q[2] * width) * side + (q[3] * z_scale) * normal
+end
+
+@inline function _apply_tuple_maps(maps::Tuple, q::SVector{3,Float64})
+    r = q
+    @inbounds for m in maps
+        r = _pointmap_to_svec3(m(r))
+    end
+    r
+end
+
+function (frame::PointMapFrame{<:LaminaMidribMap})(p)
+    q = _pointmap_to_svec3(p)
+    _apply_lamina_midrib_framed(frame.map, q, frame.length, frame.width, frame.z_scale)
+end
+
+function (frame::PointMapFrame)(p)
+    map = frame.map
+    if isdefined(@__MODULE__, :ComposedPointMap) && map isa ComposedPointMap
+        maps = map.maps
+        last_map = maps[end]
+        last_map isa LaminaMidribMap || error("`PointMapFrame` expects a `LaminaMidribMap` or a composition ending with one.")
+        q = _pointmap_to_svec3(p)
+        q_prefix = _apply_tuple_maps(Base.front(maps), q)
+        return _apply_lamina_midrib_framed(last_map, q_prefix, frame.length, frame.width, frame.z_scale)
+    end
+    error("`PointMapFrame` currently supports `LaminaMidribMap` and compositions ending with it.")
+end
+
+"""
     ComposedPointMap(maps...)
     compose_point_maps(maps...)
 
@@ -288,19 +451,19 @@ function (map::ComposedPointMap)(p)
     q
 end
 
-@inline _cereal_half_width(u::Float64, max_width::Float64, width_power::Float64) =
+@inline _lamina_half_width(u::Float64, max_width::Float64, width_power::Float64) =
     0.5 * max_width * sinpi(u)^width_power
 
 """
-    cereal_leaf_mesh(length=1.0, max_width=1.0; n_long=24, n_half=4, width_power=0.85)
+    lamina_mesh(length=1.0, max_width=1.0; n_long=24, n_half=4, width_power=0.85)
 
 Build a flat cereal-like leaf mesh aligned with the AMAP convention:
 length along local `+X`, width along `+Y`, thickness along `+Z`.
 
 This mesh is intended to be used with [`PointMappedGeometry`](@ref), especially
-with [`CerealLeafMap`](@ref).
+with [`LaminaMidribMap`](@ref).
 """
-function cereal_leaf_mesh(
+function lamina_mesh(
     length::Real=1.0,
     max_width::Real=1.0;
     n_long::Integer=24,
@@ -322,7 +485,7 @@ function cereal_leaf_mesh(
     for i in 0:n_long_i
         u = i / n_long_i
         x = len * u
-        halfw = _cereal_half_width(u, width, power)
+        halfw = _lamina_half_width(u, width, power)
         for j in (-n_half_i):n_half_i
             y = n_half_i == 0 ? 0.0 : halfw * (j / n_half_i)
             push!(vertices, point3(x, y, 0.0))
@@ -347,13 +510,13 @@ function cereal_leaf_mesh(
 end
 
 """
-    cereal_leaf_refmesh(name; length=1.0, max_width=1.0, n_long=24, n_half=4,
+    lamina_refmesh(name; length=1.0, max_width=1.0, n_long=24, n_half=4,
         width_power=0.85, material=RGB(0.16, 0.55, 0.22))
 
-Convenience wrapper around [`cereal_leaf_mesh`](@ref) returning a reusable
+Convenience wrapper around [`lamina_mesh`](@ref) returning a reusable
 `RefMesh`.
 """
-function cereal_leaf_refmesh(
+function lamina_refmesh(
     name;
     length::Real=1.0,
     max_width::Real=1.0,
@@ -364,7 +527,7 @@ function cereal_leaf_refmesh(
 )
     RefMesh(
         String(name),
-        cereal_leaf_mesh(length, max_width; n_long=n_long, n_half=n_half, width_power=width_power),
+        lamina_mesh(length, max_width; n_long=n_long, n_half=n_half, width_power=width_power),
         material,
     )
 end

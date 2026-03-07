@@ -56,7 +56,7 @@
         material=RGB(0.54, 0.76, 0.38),
     )
 
-    blade_ref = cereal_leaf_refmesh(
+    blade_ref = lamina_refmesh(
         "CerealBlade";
         length=1.0,
         max_width=1.0,
@@ -123,7 +123,7 @@
                 roll_strength=spec.roll,
                 roll_exponent=1.2,
             ),
-            CerealLeafMap(base_angle_deg=spec.base_angle_deg, bend=spec.bend, tip_drop=spec.tip_drop),
+            LaminaMidribMap(base_angle_deg=spec.base_angle_deg, bend=spec.bend, tip_drop=spec.tip_drop),
         )
         leaf[:geometry] = PointMappedGeometry(
             blade_ref,
@@ -157,7 +157,7 @@
                 roll_strength=0.20,
                 roll_exponent=1.1,
             ),
-            CerealLeafMap(
+            LaminaMidribMap(
                 base_angle_deg=72.0,
                 bend=0.28,
                 tip_drop=0.06,
@@ -175,7 +175,7 @@
         color=Dict("CerealBlade" => RGB(0.20, 0.60, 0.22), "ExtrudedTube" => RGB(0.54, 0.76, 0.38)),
     )
 
-    compare_ref = cereal_leaf_refmesh(
+    compare_ref = lamina_refmesh(
         "CerealBladeCompare";
         length=1.0,
         max_width=1.0,
@@ -187,7 +187,7 @@
         compare_ref,
         compose_point_maps(
             LaminaTwistRollMap(tip_twist_deg=20.0, roll_strength=0.32, roll_exponent=1.15),
-            CerealLeafMap(base_angle_deg=34.0, bend=0.56, tip_drop=0.16),
+            LaminaMidribMap(base_angle_deg=34.0, bend=0.56, tip_drop=0.16),
         );
         transformation=PlantGeom.compose(
             PlantGeom.Translation(0.0, -0.20, 0.0),
@@ -208,7 +208,7 @@
                 vertical_strength=1.0,
             ),
             LaminaTwistRollMap(tip_twist_deg=20.0, roll_strength=0.32, roll_exponent=1.15),
-            CerealLeafMap(base_angle_deg=34.0, bend=0.56, tip_drop=0.16),
+            LaminaMidribMap(base_angle_deg=34.0, bend=0.56, tip_drop=0.16),
         );
         transformation=PlantGeom.compose(
             PlantGeom.Translation(0.0, 0.20, 0.0),

@@ -16,7 +16,7 @@ using CairoMakie
 CairoMakie.activate!()
 
 function growth_ref_meshes()
-    leaf_base = cereal_leaf_refmesh(
+    leaf_base = lamina_refmesh(
         "leaf_base";
         length=1.0,
         max_width=1.0,
@@ -55,7 +55,7 @@ function growth_ref_meshes()
                 roll_strength=roll_strength,
                 roll_exponent=1.2,
             ),
-            CerealLeafMap(
+            LaminaMidribMap(
                 base_angle_deg=base_angle_deg,
                 bend=bend,
                 tip_drop=tip_drop,
@@ -242,7 +242,7 @@ leaf_specs = [
     (z=1.26, azimuth_deg=6.0, base_angle_deg=72.0, bend=0.28, tip_drop=0.06, twist=10.0, roll=0.20, wave_amp=0.008, wave_len=0.20, phase_deg=10.0, scale=0.76),
 ]
 
-blade_ref = cereal_leaf_refmesh(
+blade_ref = lamina_refmesh(
     "CerealBlade";
     length=1.0,
     max_width=1.0,
@@ -279,7 +279,7 @@ make_leaf_ref = function (name, spec)
             roll_strength=spec.roll,
             roll_exponent=1.2,
         ),
-        CerealLeafMap(
+        LaminaMidribMap(
             base_angle_deg=spec.base_angle_deg,
             bend=spec.bend,
             tip_drop=spec.tip_drop,

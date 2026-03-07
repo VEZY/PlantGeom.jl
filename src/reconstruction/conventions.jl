@@ -1693,48 +1693,13 @@ function _young_final_angle(
     length::Float64,
     tapering::Float64,
 )
-    if young_modulus <= 0.0 || length <= 0.0
-        return z_angle
-    end
-
-    cos_theta = cos(z_angle)
-    young = 1.0 / sqrt(young_modulus)
-    h = length / max(abs(tapering), 1e-6)
-    coeff = young * h * sqrt(abs(cos_theta))
-
-    deflexion = if z_angle > 1.553 && z_angle < 1.588
-        young * young * h * h / 2.0
-    else
-        denom = cos(coeff) * max(abs(cos_theta), 1e-8)
-        abs(denom) <= 1e-10 ? 0.0 : (sin(z_angle) * (1.0 - cos(coeff)) / denom)
-    end
-
-    amin = 0.0
-    amax = max(0.0, pi - z_angle)
-    threshold = pi / 180.0
-    precision = max(length / 10.0, 1e-6)
-
-    while (amax - amin) > threshold
-        deflexion = (amax + amin) / 2.0
-        omega = 0.0
-        sum_v = 0.0
-        increment = 1.0
-        nbiter = 0
-        while omega < deflexion && increment != 0.0 && nbiter < 500
-            term = abs(cos(z_angle + omega) - cos(z_angle + deflexion))
-            increment = precision * sqrt(2.0) * young * sqrt(term)
-            omega += increment
-            sum_v += precision
-            nbiter += 1
-        end
-        if sum_v <= (h - precision)
-            amin = deflexion
-        else
-            amax = deflexion
-        end
-    end
-
-    ((amin + amax) / 2.0) + z_angle
+    final_angle(
+        young_modulus,
+        z_angle,
+        length,
+        tapering;
+        length_scale=1.0,
+    )
 end
 
 function _young_local_flexion(
@@ -1744,15 +1709,13 @@ function _young_local_flexion(
     tapering::Float64,
     relative_position::Float64,
 )
-    angle = 2.0 * (cos(current_angle) - cos(final_angle))
-    angle < 0.0 && return 0.0
-
-    aux = 1.0 - ((1.0 - tapering) * relative_position)
-    aux2 = aux * aux
-    aux2 <= 1e-12 && return 0.0
-
-    flre = 1.0 / (sqrt(young_modulus) * aux2)
-    flre * sqrt(angle)
+    local_flexion(
+        current_angle,
+        final_angle,
+        young_modulus,
+        tapering,
+        relative_position,
+    )
 end
 
 function _resolve_stiffness_straightening(node, options::AmapReconstructionOptions)

@@ -86,8 +86,10 @@ export transform_mesh!
 export extrude_profile_mesh, extrude_profile_refmesh, extrude_tube_mesh
 export ExtrudedTubeGeometry
 export PointMappedGeometry
-export RationalBezierCurve, CerealLeafMap, cereal_leaf_midrib, cereal_leaf_mesh, cereal_leaf_refmesh
+export RationalBezierCurve, LaminaMidribMap, lamina_midrib, lamina_mesh, lamina_refmesh
 export LaminaTwistRollMap, LaminaAnticlasticWaveMap, ComposedPointMap, compose_point_maps
+export PointMapFrame, with_point_map_frame
+export final_angle, local_flexion, calculate_segment_angles, update_segment_angles!, BiomechanicalBendingTransform
 export extrusion_make_path, extrusion_make_spline, extrusion_make_interpolation, extrusion_make_curve
 export lathe_gen_mesh, lathe_gen_refmesh, lathe_mesh, lathe_refmesh
 export circle_section_profile, leaflet_midrib_profile
