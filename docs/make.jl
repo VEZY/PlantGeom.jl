@@ -50,7 +50,7 @@ makedocs(;
             "Diagram with Plots.jl" => "plot_diagram/plots_diagram.md",
         ],
         "API" => "API.md",
-        "For developpers" => "architecture.md",
+        "For developers" => "architecture.md",
     ]
 )
 

@@ -12,6 +12,15 @@ The Growth API is designed for explicit, readable Julia simulations:
 - control exactly when geometry is rebuilt
 - optionally couple growth events with `PlantSimEngine` statuses through extension methods
 
+## Quick Chooser
+
+| If you want to... | Use |
+| --- | --- |
+| Reconstruct existing MTG attributes | `set_geometry_from_attributes!` / `reconstruct_geometry_from_attributes!` |
+| Build structure procedurally over time | `emit_internode!`, `emit_leaf!`, `emit_phytomer!` |
+| Update growth values during simulation | `grow_length!`, `grow_width!`, `set_growth_attributes!` |
+| Control geometry update cost | explicit `rebuild_geometry!` cadence |
+
 ```@setup growth_api
 using PlantGeom
 using MultiScaleTreeGraph

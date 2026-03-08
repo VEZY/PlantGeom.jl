@@ -6,6 +6,9 @@
     - **Time:** 3 minutes
     - **Output:** Full-plant 3D visualizations from existing files
 
+If you are new to programming, you can treat this page as "copy-paste and run" first.  
+You can understand details later in the quickstarts.
+
 ```@setup gs_showcase
 using PlantGeom
 using CairoMakie
@@ -59,10 +62,14 @@ tree_demo = build_demo_tree_with_growth_api()
 plantviz(tree_demo, figure=(size=(980, 920),))
 ```
 
+Source file used by this example:
+`docs/src/getting_started/tree_demo_helpers.jl`
+
 ## Why It Works
 
-`read_opf` loads the MTG and geometry prototypes stored in the file.  
-`plantviz` materializes and renders the node geometries in one call.
+- `read_opf` gives you topology + geometry from existing plant files.
+- `build_demo_tree_with_growth_api()` shows a generated plant using explicit growth + rebuild steps.
+- `plantviz` materializes and renders current node geometries in one call.
 
 ## Next Step
 

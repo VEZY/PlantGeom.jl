@@ -70,6 +70,16 @@ set_geometry_from_attributes!(
 plantviz(mtg, figure=(size=(920, 640),))
 ```
 
+## What This Example Uses
+
+| Element | Role in reconstruction |
+| --- | --- |
+| `read_mtg(...)` | loads topology + numeric attributes |
+| `prototypes` | gives one reusable shape for `:Internode` and one for `:Leaf` |
+| `default_amap_geometry_convention()` | tells PlantGeom where to read `Length`, `Width`, angles, etc. |
+| `set_geometry_from_attributes!` | computes geometry from attributes + prototypes |
+| `plantviz(...)` | renders the final 3D result |
+
 ## Copy-Paste Example
 
 ```julia
@@ -88,6 +98,10 @@ plantviz(mtg, figure=(size=(920, 640),))
 ## Why It Works
 
 `set_geometry_from_attributes!` resolves node size/orientation attributes (`Length`, `Width`, insertion/euler angles) and instantiates node geometry from your prototypes.
+
+!!! details "Troubleshooting"
+    - If you get an empty figure, check that `CairoMakie.activate!()` ran before plotting.
+    - If your MTG has different column names, use explicit conventions or aliases (see [`AMAP Conventions Reference`](../geometry/amap_conventions_reference.md)).
 
 ## Next Step
 

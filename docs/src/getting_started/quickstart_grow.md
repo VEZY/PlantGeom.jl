@@ -88,6 +88,16 @@ end
 plantviz(plant, figure=(size=(980, 700),))
 ```
 
+## What Each Stage Does
+
+| Stage | What happens |
+| --- | --- |
+| `emit_internode!` | creates a new stem node and writes growth attributes |
+| `emit_leaf!` | creates a leaf node attached to current stem node |
+| `prototype_overrides` | changes shape parameters per leaf instance |
+| `rebuild_geometry!` | materializes all node geometry once at the end |
+| `plantviz(...)` | renders the generated plant |
+
 ## Copy-Paste Example
 
 ```julia
@@ -111,6 +121,10 @@ plantviz(plant, figure=(size=(980, 700),))
 
 The growth loop only updates topology and node attributes.  
 `rebuild_geometry!` is called once, so geometry generation stays explicit and easy to debug.
+
+!!! details "Troubleshooting"
+    - If your leaf shapes do not change, verify the leaf prototype key and override names.
+    - If plotting is slow, keep geometry rebuild explicit and lower its frequency.
 
 ## Next Step
 

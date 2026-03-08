@@ -6,12 +6,6 @@ CurrentModule = PlantGeom
 
 PlantGeom lets you build, reconstruct, and visualize 3D plants from MTG topology and mesh prototypes.
 
-!!! info "Page Info"
-    - **Audience:** Beginner
-    - **Prerequisites:** Julia 1.10+, `PlantGeom`, `CairoMakie`
-    - **Time:** 5 minutes
-    - **Output:** First full-plant render and navigation path to deeper topics
-
 ## If You Just Want X, Go Here
 
 - See impressive results immediately: [`Getting Started / Showcase`](getting_started/showcase.md)
@@ -19,6 +13,15 @@ PlantGeom lets you build, reconstruct, and visualize 3D plants from MTG topology
 - Build a plant in a Julia loop: [`Quickstart: Grow a Plant`](getting_started/quickstart_grow.md)
 - Advanced geometry internals: [`Geometry Concepts (advanced)`](geometry/refmesh.md)
 - AMAP conventions and parity: [`AMAP Reference`](geometry/amap_quickstart.md)
+
+## Choose Your Workflow
+
+| Your goal | Start here | Next |
+| --- | --- | --- |
+| Render an existing `.opf` file | [`Showcase`](getting_started/showcase.md) | [`3D Plant Plots`](makie_3d.md) |
+| Reconstruct geometry from an `.mtg` file | [`Quickstart: Reconstruct a Plant`](getting_started/quickstart_reconstruct.md) | [`Build & Simulate Plants`](geometry/building_plant_models.md) |
+| Simulate growth with explicit Julia loops | [`Quickstart: Grow a Plant`](getting_started/quickstart_grow.md) | [`Growth API`](geometry/growth_api.md) |
+| Tune advanced reconstruction behavior | [`AMAP Quickstart`](geometry/amap_quickstart.md) | [`AMAP Conventions Reference`](geometry/amap_conventions_reference.md) |
 
 ```@setup home
 using PlantGeom
@@ -61,6 +64,16 @@ prototypes = Dict(:Internode => RefMeshPrototype(stem), :Leaf => RefMeshPrototyp
 set_geometry_from_attributes!(mtg, prototypes; convention=default_amap_geometry_convention())
 plantviz(mtg, figure=(size=(900, 620),))
 ```
+
+## Mini Glossary
+
+| Term | Practical meaning |
+| --- | --- |
+| `Node` | one organ instance (stem segment, leaf, etc.) |
+| `MTG` | graph storing topology + attributes |
+| `RefMesh` | reusable unit organ mesh |
+| `Prototype` | rule for turning node attributes into geometry |
+| `rebuild_geometry!` | explicit geometry generation/update step |
 
 ## Learning Path
 

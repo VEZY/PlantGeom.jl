@@ -8,6 +8,14 @@
 
 This page is the practical bridge between quickstarts and advanced concepts.
 
+## Choose a Strategy
+
+| Situation | Recommended workflow | Why |
+| --- | --- | --- |
+| You already have measured attributes in an `.mtg` | Workflow A | fastest path to a first reconstruction |
+| You want dynamic growth over time | Workflow B | explicit, debuggable simulation loop |
+| You need strict AMAP behavior controls | AMAP pages | complete option set and decision guidance |
+
 ## If You Just Want X, Go Here
 
 - Attribute-based reconstruction from measured MTG data:

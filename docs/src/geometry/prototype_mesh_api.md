@@ -6,6 +6,10 @@
     - **Time:** 15 minutes
     - **Output:** Deterministic prototype realization model and parameter override strategy (Level 3 concept page)
 
+If you are new to PlantGeom, start with:
+- [`Quickstart: Reconstruct a Plant`](../getting_started/quickstart_reconstruct.md)
+- [`Quickstart: Grow a Plant`](../getting_started/quickstart_grow.md)
+
 PlantGeom now supports a unified prototype pipeline for reconstruction:
 
 1. resolve a mesh prototype
