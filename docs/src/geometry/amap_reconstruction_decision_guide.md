@@ -1,5 +1,11 @@
 # AMAP Reconstruction Decision Guide
 
+!!! info "Page Info"
+    - **Audience:** Intermediate
+    - **Prerequisites:** AMAP quickstart familiarity
+    - **Time:** 8 minutes
+    - **Output:** Selection of explicit-coordinate handling mode
+
 Use this page when you know what coordinates you have, but you are unsure which reconstruction option to pick.
 
 Technical API name:

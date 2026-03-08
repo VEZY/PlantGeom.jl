@@ -1,5 +1,11 @@
 # `Plots.jl` recipes
 
+!!! info "Page Info"
+    - **Audience:** Intermediate
+    - **Prerequisites:** `Plots.jl` backend configured
+    - **Time:** 8 minutes
+    - **Output:** 2D/3D MTG topology diagrams with Plots.jl
+
 ```@setup usepkg
 using PlantGeom
 using Plots

@@ -1,5 +1,11 @@
 # AMAP Conventions Reference
 
+!!! info "Page Info"
+    - **Audience:** Advanced
+    - **Prerequisites:** AMAP quickstart and decision guide
+    - **Time:** 25 minutes
+    - **Output:** Full alias, option, and convention reference
+
 This page documents the AMAP core profile used by default:
 
 ```julia
@@ -857,7 +863,7 @@ function _plot_coordinate_delegate_modes_with_skeleton(
 
     Label(
         fig[3, 1:length(modes)],
-        "Bottom row legend: black line = segment, orange point = point-anchor, red x = omitted node",
+        "Bottom row legend: black line = segment, orange point = point-anchor",
         fontsize=13,
         tellwidth=false,
     )

@@ -111,12 +111,12 @@ end
 end
 
 @testset "rational bezier cereal leaf helpers" begin
-    curve = PlantGeom.cereal_leaf_midrib(length=1.2, base_angle_deg=30.0, bend=0.25, tip_drop=0.08)
+    curve = PlantGeom.lamina_midrib(base_angle_deg=30.0, bend=0.25, tip_drop=0.08)
     @test curve(0.0) ≈ SVector{3,Float64}(0.0, 0.0, 0.0)
-    @test isapprox(curve(1.0)[1], 1.2; atol=1e-8)
+    @test isapprox(curve(1.0)[1], 1.0; atol=1e-8)
     @test curve(0.5)[3] > 0.0
 
-    mesh = PlantGeom.cereal_leaf_mesh(1.1, 0.18; n_long=4, n_half=2)
+    mesh = PlantGeom.lamina_mesh(1.1, 0.18; n_long=4, n_half=2)
     @test PlantGeom.nvertices(mesh) == 25
     @test PlantGeom.nelements(mesh) == 32
     xs = [p[1] for p in GeometryBasics.coordinates(mesh)]
@@ -125,14 +125,14 @@ end
     @test maximum(xs) ≈ 1.1
     @test maximum(abs, ys) > 0.05
 
-    ref = PlantGeom.cereal_leaf_refmesh("CerealLeaf"; length=1.1, max_width=0.18, n_long=6, n_half=2)
+    ref = PlantGeom.lamina_refmesh("CerealLeaf"; length=1.1, max_width=0.18, n_long=6, n_half=2)
     @test ref isa RefMesh
     @test ref.name == "CerealLeaf"
 end
 
 @testset "cereal leaf point mapping responds to base angle and bend" begin
-    mild_map = PlantGeom.CerealLeafMap(length=1.0, base_angle_deg=20.0, bend=0.20, tip_drop=0.04)
-    steep_map = PlantGeom.CerealLeafMap(length=1.0, base_angle_deg=48.0, bend=0.70, tip_drop=0.22)
+    mild_map = PlantGeom.LaminaMidribMap(base_angle_deg=20.0, bend=0.20, tip_drop=0.04)
+    steep_map = PlantGeom.LaminaMidribMap(base_angle_deg=48.0, bend=0.70, tip_drop=0.22)
 
     base_tangent_mild = mild_map.curve(0.02) - mild_map.curve(0.0)
     base_tangent_steep = steep_map.curve(0.02) - steep_map.curve(0.0)
@@ -147,41 +147,48 @@ end
     @test steep_tip[3] < mild_tip[3]
     @test steep_mid[3] > mild_mid[3]
 
-    ref = PlantGeom.cereal_leaf_refmesh("Blade"; length=1.0, max_width=0.12, n_long=10, n_half=2)
+    ref = PlantGeom.lamina_refmesh("Blade"; length=1.0, max_width=0.12, n_long=10, n_half=2)
     geom = PointMappedGeometry(ref, steep_map; transformation=PlantGeom.Translation(0.0, 0.5, 0.0))
     mesh = PlantGeom.geometry_to_mesh(geom)
     pts = collect(GeometryBasics.coordinates(mesh))
     @test minimum(p[2] for p in pts) > 0.3
     @test maximum(p[3] for p in pts) > 0.1
+
+    extreme_bend = PlantGeom.LaminaMidribMap(base_angle_deg=35.0, bend=1.0, tip_drop=0.12)
+    p_tip_extreme = extreme_bend(Point(1.0, 0.0, 0.0))
+    @test p_tip_extreme[3] < -0.25
+
+    p_before_tip = extreme_bend(Point(0.95, 0.0, 0.0))
+    tip_dir = p_tip_extreme - p_before_tip
+    tip_angle = atan(tip_dir[3], tip_dir[1])
+    @test tip_angle < deg2rad(-60.0)
 end
 
 @testset "lamina twist roll map and composition" begin
-    twist_only = PlantGeom.LaminaTwistRollMap(length=1.0, tip_twist_deg=90.0, roll_strength=0.0)
+    twist_only = PlantGeom.LaminaTwistRollMap(tip_twist_deg=90.0, roll_strength=0.0)
     p_tip = twist_only(Point(1.0, 0.1, 0.0))
     @test abs(p_tip[2]) < 1e-6
     @test p_tip[3] > 0.09
 
-    roll_only = PlantGeom.LaminaTwistRollMap(length=1.0, tip_twist_deg=0.0, roll_strength=0.8, roll_exponent=1.0)
+    roll_only = PlantGeom.LaminaTwistRollMap(tip_twist_deg=0.0, roll_strength=0.8, roll_exponent=1.0)
     p_roll = roll_only(Point(1.0, 0.1, 0.0))
     @test p_roll[3] > 0.007
 
-    margin_wave = PlantGeom.LaminaMarginWaveMap(
-        length=1.0,
-        max_half_width=0.10,
+    anticlastic_wave = PlantGeom.LaminaAnticlasticWaveMap(
         amplitude=0.02,
         wavelength=0.40,
         edge_exponent=1.0,
         progression_exponent=1.0,
         base_damping=0.0,
     )
-    p_wave_center = margin_wave(Point(0.5, 0.0, 0.0))
-    p_wave_margin = margin_wave(Point(0.5, 0.1, 0.0))
+    p_wave_center = anticlastic_wave(Point(0.5, 0.0, 0.0))
+    p_wave_pos = anticlastic_wave(Point(0.5, 0.5, 0.0))
+    p_wave_neg = anticlastic_wave(Point(0.5, -0.5, 0.0))
     @test abs(p_wave_center[3]) < 1e-10
-    @test p_wave_margin[3] > 0.009
+    @test p_wave_pos[3] > 0.009
+    @test p_wave_neg[3] < -0.009
 
-    outline_wave = PlantGeom.LaminaMarginWaveMap(
-        length=1.0,
-        max_half_width=0.10,
+    outline_wave = PlantGeom.LaminaAnticlasticWaveMap(
         amplitude=0.02,
         wavelength=0.40,
         edge_exponent=1.0,
@@ -190,35 +197,29 @@ end
         lateral_strength=1.0,
         vertical_strength=0.0,
     )
-    p_outline_pos = outline_wave(Point(0.5, 0.1, 0.0))
-    p_outline_neg = outline_wave(Point(0.5, -0.1, 0.0))
-    @test p_outline_pos[2] > 0.109
-    @test p_outline_neg[2] < -0.109
+    p_outline_pos = outline_wave(Point(0.5, 0.5, 0.0))
+    p_outline_neg = outline_wave(Point(0.5, -0.5, 0.0))
+    @test p_outline_pos[2] > 0.509
+    @test p_outline_neg[2] < -0.509
 
-    damped_wave = PlantGeom.LaminaMarginWaveMap(
-        length=1.0,
-        max_half_width=0.10,
+    damped_wave = PlantGeom.LaminaAnticlasticWaveMap(
         amplitude=0.03,
         wavelength=0.20,
         edge_exponent=1.0,
         progression_exponent=1.0,
         base_damping=8.0,
     )
-    p_undamped_near_base = PlantGeom.LaminaMarginWaveMap(
-        length=1.0,
-        max_half_width=0.10,
+    p_undamped_near_base = PlantGeom.LaminaAnticlasticWaveMap(
         amplitude=0.03,
         wavelength=0.20,
         edge_exponent=1.0,
         progression_exponent=1.0,
         base_damping=0.0,
-    )(Point(0.05, 0.1, 0.0))
-    p_damped_near_base = damped_wave(Point(0.05, 0.1, 0.0))
+    )(Point(0.05, 0.5, 0.0))
+    p_damped_near_base = damped_wave(Point(0.05, 0.5, 0.0))
     @test p_undamped_near_base[3] > p_damped_near_base[3]
 
-    asym_wave = PlantGeom.LaminaMarginWaveMap(
-        length=1.0,
-        max_half_width=0.10,
+    asym_wave = PlantGeom.LaminaAnticlasticWaveMap(
         amplitude=0.02,
         wavelength=0.40,
         edge_exponent=1.0,
@@ -226,18 +227,150 @@ end
         base_damping=0.0,
         asymmetry=0.5,
     )
-    p_pos = asym_wave(Point(0.5, 0.1, 0.0))
-    p_neg = asym_wave(Point(0.5, -0.1, 0.0))
-    @test p_pos[3] > p_neg[3] + 0.008
+    p_pos = asym_wave(Point(0.5, 0.5, 0.0))
+    p_neg = asym_wave(Point(0.5, -0.5, 0.0))
+    @test abs(p_pos[3]) > abs(p_neg[3]) + 0.008
 
     composed = PlantGeom.compose_point_maps(
-        PlantGeom.LaminaMarginWaveMap(length=1.0, max_half_width=0.10, amplitude=0.01, wavelength=0.20),
-        PlantGeom.LaminaTwistRollMap(length=1.0, tip_twist_deg=30.0, roll_strength=0.6),
-        PlantGeom.CerealLeafMap(length=1.0, base_angle_deg=30.0, bend=0.45, tip_drop=0.12),
+        PlantGeom.LaminaAnticlasticWaveMap(amplitude=0.08, wavelength=0.20),
+        PlantGeom.LaminaTwistRollMap(tip_twist_deg=30.0, roll_strength=0.6),
+        PlantGeom.LaminaMidribMap(base_angle_deg=30.0, bend=0.45, tip_drop=0.12),
     )
-    ref = PlantGeom.cereal_leaf_refmesh("BladeCompose"; length=1.0, max_width=0.10, n_long=8, n_half=2)
+    ref = PlantGeom.lamina_refmesh("BladeCompose"; length=1.0, max_width=1.0, n_long=8, n_half=2)
     geom = PointMappedGeometry(ref, composed)
     mesh = PlantGeom.geometry_to_mesh(geom)
     @test PlantGeom.nelements(mesh) > 0
     @test maximum(p[3] for p in GeometryBasics.coordinates(mesh)) > 0.1
+end
+
+@testset "point map frame applies dimensions before deformation" begin
+    normalized_map = PlantGeom.LaminaMidribMap(base_angle_deg=22.0, bend=1.0, tip_drop=1.0)
+    framed_map = PlantGeom.with_point_map_frame(normalized_map; length=1.0, width=0.12, z_scale=1.0)
+
+    p_norm = normalized_map(Point(1.0, 0.0, 0.0))
+    p_frame = framed_map(Point(1.0, 0.0, 0.0))
+    @test p_frame[3] ≈ p_norm[3] atol=1e-8
+
+    p_margin = framed_map(Point(0.5, 0.5, 0.0))
+    @test p_margin[2] > 0.01
+    @test p_margin[2] < 0.08
+
+    composed = PlantGeom.compose_point_maps(
+        PlantGeom.LaminaTwistRollMap(tip_twist_deg=6.0, roll_strength=0.2),
+        normalized_map,
+    )
+    framed_composed = PlantGeom.with_point_map_frame(composed; length=1.0, width=0.12, z_scale=1.0)
+    p_composed = framed_composed(Point(0.5, 0.5, 0.0))
+    @test isfinite(p_composed[1]) && isfinite(p_composed[2]) && isfinite(p_composed[3])
+
+    # Framed maps should behave consistently even if the reference mesh uses
+    # different source dimensions.
+    ref_unit = PlantGeom.lamina_refmesh("BladeUnit"; length=1.0, max_width=1.0, n_long=16, n_half=3)
+    ref_scaled = PlantGeom.lamina_refmesh("BladeScaled"; length=8.0, max_width=2.4, n_long=16, n_half=3)
+    framed_geometry_map = PlantGeom.with_point_map_frame(
+        PlantGeom.compose_point_maps(
+            PlantGeom.LaminaTwistRollMap(tip_twist_deg=3.0, roll_strength=0.05),
+            PlantGeom.LaminaMidribMap(base_angle_deg=46.0, bend=0.02, tip_drop=0.0),
+        );
+        length=1.0,
+        width=0.12,
+        z_scale=1.0,
+    )
+    geom_unit = PointMappedGeometry(ref_unit, framed_geometry_map)
+    geom_scaled = PointMappedGeometry(ref_scaled, framed_geometry_map)
+    pts_unit = collect(GeometryBasics.coordinates(PlantGeom.geometry_to_mesh(geom_unit)))
+    pts_scaled = collect(GeometryBasics.coordinates(PlantGeom.geometry_to_mesh(geom_scaled)))
+    @test length(pts_unit) == length(pts_scaled)
+    @test all(isapprox(pts_unit[i], pts_scaled[i]; atol=1e-8, rtol=1e-8) for i in eachindex(pts_unit))
+end
+
+@testset "biomechanical bending transformation" begin
+    initial = deg2rad(28.0)
+    flexible_final = PlantGeom.final_angle(25.0, initial, 0.6, 0.55)
+    stiff_final = PlantGeom.final_angle(1e12, initial, 0.6, 0.55)
+    @test flexible_final > initial
+    @test abs(stiff_final - initial) < deg2rad(0.35)
+
+    segments = collect(range(0.0, 1.0; length=18))
+    profile = PlantGeom.calculate_segment_angles(25.0, initial, 0.6, 0.55, segments)
+    @test length(profile) == length(segments)
+    @test issorted(profile)
+    @test profile[end] > profile[1]
+
+    bend_flexible = PlantGeom.BiomechanicalBendingTransform(
+        25.0,
+        initial,
+        1.0,
+        0.55;
+        x_min=0.0,
+        x_max=1.0,
+        n_samples=128,
+    )
+    bend_stiff = PlantGeom.BiomechanicalBendingTransform(
+        1e12,
+        initial,
+        1.0,
+        0.55;
+        x_min=0.0,
+        x_max=1.0,
+        n_samples=128,
+    )
+    tip_flexible = bend_flexible(SVector{3,Float64}(1.0, 0.0, 0.0))
+    tip_stiff = bend_stiff(SVector{3,Float64}(1.0, 0.0, 0.0))
+    @test tip_flexible[3] < tip_stiff[3]
+
+    node = Node(Node(NodeMTG(:/, :Plant, 1, 1)), NodeMTG(:/, :Leaf, 1, 2))
+    node[:geometry] = PlantGeom.Geometry(
+        ref_mesh=PlantGeom.lamina_refmesh("BendingLeaf"; n_long=6, n_half=2, max_width=0.08),
+        transformation=PlantGeom.IdentityTransformation(),
+    )
+    PlantGeom.transform_mesh!(node, bend_flexible)
+    bent_mesh = PlantGeom.geometry_to_mesh(node[:geometry])
+    points = collect(GeometryBasics.coordinates(bent_mesh))
+    @test minimum(p[3] for p in points) < -0.15
+end
+
+@testset "biomechanical segment-chain bending" begin
+    mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+    leaflet = Node(mtg, NodeMTG(:+, :Leaflet, 1, 2))
+    segment_positions = [0.0, 0.18, 0.42, 0.68, 0.90]
+
+    for (i, pos) in enumerate(segment_positions)
+        seg = Node(leaflet, NodeMTG(:/, :LeafletSegment, i, 3))
+        seg[:segment_boundaries] = pos
+    end
+
+    boundary_angles = PlantGeom.update_segment_angles!(
+        leaflet,
+        25.0,
+        deg2rad(28.0),
+        1.0,
+        0.55;
+        segment_symbol=:LeafletSegment,
+        position_key=:segment_boundaries,
+        angle_key=:zenithal_angle,
+        degrees=true,
+    )
+    @test length(boundary_angles) == length(segment_positions)
+    @test issorted(boundary_angles)
+
+    segment_nodes = collect(descendants(leaflet, symbol=:LeafletSegment))
+    stored_deg = [node[:zenithal_angle] for node in segment_nodes]
+    @test issorted(stored_deg)
+    @test isapprox(deg2rad(stored_deg[end]), boundary_angles[end]; atol=1e-8)
+
+    boundary_again = PlantGeom.update_segment_angles!(
+        segment_nodes,
+        25.0,
+        deg2rad(28.0),
+        1.0,
+        0.55;
+        segment_positions=segment_positions,
+        mode=:incremental,
+        angle_key=:local_flexion_angle,
+        degrees=false,
+    )
+    local_values = [node[:local_flexion_angle] for node in segment_nodes]
+    @test isapprox(local_values[1], boundary_again[1]; atol=1e-10)
+    @test isapprox(sum(local_values[2:end]), boundary_again[end] - boundary_again[1]; atol=1e-8)
 end
