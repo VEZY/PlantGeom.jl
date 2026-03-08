@@ -1,5 +1,11 @@
 # IO and File Formats
 
+!!! info "Page Info"
+    - **Audience:** Beginner to Intermediate
+    - **Prerequisites:** basic PlantGeom usage
+    - **Time:** 10 minutes
+    - **Output:** Correct choice and usage of OPF/OPS/MTG readers and writers
+
 PlantGeom works with three complementary representations:
 
 - `MTG` on disk and in memory: the graph structure written in `.mtg` files that you can import and manipulate in Julia using [MultiScaleTreeGraph.jl](https://github.com/VEZY/MultiScaleTreeGraph.jl).

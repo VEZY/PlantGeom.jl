@@ -1,5 +1,11 @@
 # Prototype-Centric Mesh API
 
+!!! info "Page Info"
+    - **Audience:** Intermediate to Advanced
+    - **Prerequisites:** familiarity with reconstruction and growth APIs
+    - **Time:** 15 minutes
+    - **Output:** Deterministic prototype realization model and parameter override strategy (Level 3 concept page)
+
 PlantGeom now supports a unified prototype pipeline for reconstruction:
 
 1. resolve a mesh prototype

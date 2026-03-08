@@ -1,5 +1,11 @@
 # Growth API
 
+!!! info "Page Info"
+    - **Audience:** Beginner to Intermediate
+    - **Prerequisites:** MTG basics and one reconstruction workflow
+    - **Time:** 20 minutes
+    - **Output:** Explicit Julia growth loops + controlled geometry rebuilds
+
 The Growth API is designed for explicit, readable Julia simulations:
 
 - build and mutate structure at node scale

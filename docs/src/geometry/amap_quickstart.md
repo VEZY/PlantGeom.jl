@@ -1,5 +1,11 @@
 # AMAP Quickstart
 
+!!! info "Page Info"
+    - **Audience:** Intermediate
+    - **Prerequisites:** completed beginner reconstruction quickstart
+    - **Time:** 12 minutes
+    - **Output:** AMAP-profile reconstruction in PlantGeom
+
 PlantGeom now uses the AMAP core reconstruction profile by default in
 `set_geometry_from_attributes!` and `reconstruct_geometry_from_attributes!`.
 

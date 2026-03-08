@@ -1,5 +1,11 @@
 # Architecture Overview
 
+!!! info "Page Info"
+    - **Audience:** Advanced / Contributors
+    - **Prerequisites:** familiarity with PlantGeom runtime APIs
+    - **Time:** 12 minutes
+    - **Output:** High-level architecture and data-flow mental model
+
 This package bridges Plant MTGs with meshes and high‑performance visualization.
 
 ```text

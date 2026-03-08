@@ -1,5 +1,11 @@
 # AMAP Parity Matrix
 
+!!! info "Page Info"
+    - **Audience:** Advanced
+    - **Prerequisites:** understanding of AMAP reconstruction terms
+    - **Time:** 5 minutes
+    - **Output:** Implementation parity status overview
+
 This matrix summarizes current PlantGeom parity for AMAPStudio core reconstruction semantics.
 
 ## Implemented in This Release

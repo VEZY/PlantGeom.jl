@@ -1,5 +1,11 @@
 # RefMesh
 
+!!! info "Page Info"
+    - **Audience:** Intermediate
+    - **Prerequisites:** basics of `Geometry` and reconstruction workflows
+    - **Time:** 15 minutes
+    - **Output:** Shared reference-mesh workflows (Level 2 concept page)
+
 This page focuses on shared reference-mesh workflows (`RefMesh` + `Geometry`).
 For the procedural extrusion counterpart (`ExtrudedTubeGeometry`,
 `extrude_*`, `lathe_*`), see [`Procedural / Extrusion Geometry`](procedural_geometry.md).

@@ -22,28 +22,35 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        "IO and File Formats" => "io.md",
-        "3D Plots" => "makie_3d.md",
-        "Geometry Concepts" => [
+        "Getting Started" => [
+            "Showcase" => "getting_started/showcase.md",
+            "Quickstart: Reconstruct a Plant" => "getting_started/quickstart_reconstruct.md",
+            "Quickstart: Grow a Plant" => "getting_started/quickstart_grow.md",
+        ],
+        "Build & Simulate Plants" => [
+            "Workflow Tutorial" => "geometry/building_plant_models.md",
+            "Growth API" => "geometry/growth_api.md",
+        ],
+        "Geometry Concepts (advanced)" => [
             "Reference Meshes" => "geometry/refmesh.md",
             "Procedural / Extrusion Geometry" => "geometry/procedural_geometry.md",
             "Prototype Mesh API" => "geometry/prototype_mesh_api.md",
-            "Growth API" => "geometry/growth_api.md",
             "Merging Meshes" => "geometry/merging_geometry.md",
         ],
-        "Building a 3D plant" => "geometry/building_plant_models.md",
-        "AMAP-Style reconstructions" => [
+        "AMAP Reference" => [
             "Quickstart" => "geometry/amap_quickstart.md",
             "Reconstruction Decision Guide" => "geometry/amap_reconstruction_decision_guide.md",
             "Conventions Reference" => "geometry/amap_conventions_reference.md",
             "AMAPStudio Parity Matrix" => "geometry/amap_parity_matrix.md",
         ],
+        "IO and File Formats" => "io.md",
         "Plotting the graph" => [
-            "Makie.jl" => "plot_diagram/makie_diagram.md",
-            "Plots.jl" => "plot_diagram/plots_diagram.md",
+            "3D Plant Plots" => "makie_3d.md",
+            "Diagram with Makie.jl" => "plot_diagram/makie_diagram.md",
+            "Diagram with Plots.jl" => "plot_diagram/plots_diagram.md",
         ],
+        "API" => "API.md",
         "For developpers" => "architecture.md",
-        "API" => "API.md"
     ]
 )
 

@@ -1,5 +1,11 @@
 # Procedural / Extrusion Geometry
 
+!!! info "Page Info"
+    - **Audience:** Intermediate to Advanced
+    - **Prerequisites:** comfortable with `RefMesh` basics and transforms
+    - **Time:** 20 minutes
+    - **Output:** Parametric/extruded organ geometry and low-level control (Level 3 concept page)
+
 PlantGeom supports two complementary geometry workflows:
 
 - shared geometry with `RefMesh` + `Geometry(ref_mesh=..., transformation=...)`
