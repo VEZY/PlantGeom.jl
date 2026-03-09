@@ -34,17 +34,28 @@ hero_opf = read_opf(joinpath(files_dir, "coffee.opf"))
 include(joinpath(pkgdir(PlantGeom), "docs", "src", "getting_started", "tree_demo_helpers.jl"))
 ```
 
-## What You'll Get
+## Quick example
+
+A coffee plant rendered from an `.opf` file:
 
 ```@example home
+using PlantGeom
+using CairoMakie
+files_dir = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files")
+hero_opf = read_opf(joinpath(files_dir, "coffee.opf"))
 plantviz(hero_opf, figure=(size=(980, 720),))
 ```
 
-## Tree Highlight
+A tree built with PlantGeom's growth API and colored by height:
 
 ```@example home
+using PlantGeom
+using CairoMakie
+include(joinpath(pkgdir(PlantGeom), "docs", "src", "getting_started", "tree_demo_helpers.jl"))
 tree_demo = build_demo_tree_with_growth_api()
-plantviz(tree_demo, figure=(size=(860, 780),))
+f, ax, p = plantviz(tree_demo, figure=(size=(860, 780),), color=:ZZ)
+colorbar(f[1, 2], p, label="Height")
+f
 ```
 
 ## 15-Line Quickstart
