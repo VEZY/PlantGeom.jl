@@ -42,11 +42,10 @@ makedocs(;
                 "Prototype Mesh API" => "geometry/prototype_mesh_api.md",
                 "Merging Meshes" => "geometry/merging_geometry.md",
             ],
-            "AMAP Reference" => [
+            "MTG Reconstruction" => [
                 "Quickstart" => "geometry/amap_quickstart.md",
                 "Reconstruction Decision Guide" => "geometry/amap_reconstruction_decision_guide.md",
                 "Conventions Reference" => "geometry/amap_conventions_reference.md",
-                "AMAPStudio Parity Matrix" => "geometry/amap_parity_matrix.md",
             ],
             "IO and File Formats" => "io.md",
             "Plotting the graph" => [

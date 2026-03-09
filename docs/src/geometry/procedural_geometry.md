@@ -661,4 +661,3 @@ See also:
 
 - [`Reference Meshes`](refmesh.md)
 - [`Building Plant Models`](building_plant_models.md)
-- [`AMAPStudio Parity Matrix`](amap_parity_matrix.md)

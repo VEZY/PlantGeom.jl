@@ -22,20 +22,26 @@ hero:
       link: /API
 
 features:
-  - icon: <img width="64" height="64" src="https://img.icons8.com/arcade/64/markdown.png" alt="markdown"/>
-    title: Read / Write OPF, MTG, and more
-    details: Read and write in standard formats (`.opf`, `.ops`, `.mtg`, compatible with any 3D format using MeshIO.jl)
+  - icon: <img width="64" height="64" src="folder-plus.png" alt="folder icon"/>
+    title: Read & write 3D files
+    details: Compatible with `.opf`, `.ops`, `.mtg` files and any standard format using MeshIO.jl
     link: /io
-  - icon: <img width="64" height="64" src="growth_api.png" alt="markdown"/>
+  - icon: <img width="64" height="64" src="growth_api.png" alt="simulated plant"/>
     title: Build and simulate plants
     details: Simulate plant growth using our growth API, also compatible with PlantSimEngine.jl
     link: /geometry/growth_api
-  - icon: <img width="64" height="64" src="visualize.png" alt="markdown"/>
+  - icon: <img width="64" height="64" src="visualize.png" alt="3d plant"/>
     title: Visualize 3D plants
-    details: Explore the possibilities with VUE components
+    details: Color by attributes, add legends, customize the visualization and integrate with other plots using Makie.jl
     link: /makie_3d
 ---
 ```
+
+````@raw html
+<p style="margin-bottom:2cm"></p>
+
+<div class="vp-doc" style="width:80%; margin:auto">
+````
 
 # What is PlantGeom.jl?
 
@@ -43,7 +49,7 @@ PlantGeom lets you build, reconstruct, and visualize 3D plants powered by [`Maki
 
 ## Basic usage
 
-1. Import the package and one of Makie's backends (e.g. `CairoMakie` or `GLMakie`):
+1. Import the package and one of Makie's backends (e.g. `CairoMakie` or `GLMakie`)
 2. Read a plant or scene from a file or build one with PlantGeom's API
 3. Visualize it with `plantviz`
 
@@ -103,3 +109,7 @@ Here's a mini glossary of some of the terms used in PlantGeom.jl documentation:
 | `RefMesh` | reusable normalized reference mesh for organs, e.g. the mesh used for the leaves |
 | `Prototype` | rule for turning node attributes into geometry |
 | `rebuild_geometry!` | explicit geometry generation/update step |
+
+````@raw html
+</div>
+````
