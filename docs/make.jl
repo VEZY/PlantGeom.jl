@@ -29,7 +29,8 @@ makedocs(;
         "Manual" => [
             "Getting Started" => [
                 "Showcase" => "getting_started/showcase.md",
-                "Quickstart: Reconstruct a Plant" => "getting_started/quickstart_reconstruct.md",
+                "Quickstart: 3D Plot" => "makie_3d.md",
+                # "Quickstart: Reconstruct a Plant" => "getting_started/quickstart_reconstruct.md",
                 "Quickstart: Grow a Plant" => "getting_started/quickstart_grow.md",
             ],
             "Build & Simulate Plants" => [
@@ -43,13 +44,12 @@ makedocs(;
                 "Merging Meshes" => "geometry/merging_geometry.md",
             ],
             "MTG Reconstruction" => [
-                "Quickstart" => "geometry/amap_quickstart.md",
+                "Tutorial" => "geometry/amap_quickstart.md",
                 "Reconstruction Decision Guide" => "geometry/amap_reconstruction_decision_guide.md",
                 "Conventions Reference" => "geometry/amap_conventions_reference.md",
             ],
             "IO and File Formats" => "io.md",
-            "Plotting the graph" => [
-                "3D Plant Plots" => "makie_3d.md",
+            "Plotting the MTG" => [
                 "Diagram with Makie.jl" => "plot_diagram/makie_diagram.md",
                 "Diagram with Plots.jl" => "plot_diagram/plots_diagram.md",
             ],

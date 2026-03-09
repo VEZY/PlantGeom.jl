@@ -2,18 +2,11 @@
 
 !!! info "Page Info"
     - **Audience:** Intermediate
-    - **Prerequisites:** AMAP quickstart familiarity
+    - **Prerequisites:** Familiarity with MTG reconstruction and AMAP conventions (see [Tutorial here](geometry/amap_quickstart.md)).
     - **Time:** 8 minutes
     - **Output:** Selection of explicit-coordinate handling mode
 
 Use this page when you know what coordinates you have, but you are unsure which reconstruction option to pick.
-
-Technical API name:
-- `AmapReconstructionOptions(explicit_coordinate_mode=...)`
-- `coordinate_delegate_mode` remains supported as an alias.
-
-User-facing meaning:
-- this option is the **explicit-coordinate handling mode**.
 
 ## 1. Quick Chooser
 
