@@ -203,4 +203,4 @@ If you only need a list for plotting, use `get_ref_meshes(opf)` (or
   `read_opf(file; attribute_types=Dict("Length" => Float64))` (same keyword is
   available in `read_ops` and forwarded to embedded OPFs).
 - For reconstruction workflows from `.mtg`, see:
-  [AMAP-Style Quickstart](geometry/amap_quickstart.md).
+  [AMAP-Style Quickstart](build_and_simulate_3d_plants/reconstructing_an_mtg/amap_quickstart.md).

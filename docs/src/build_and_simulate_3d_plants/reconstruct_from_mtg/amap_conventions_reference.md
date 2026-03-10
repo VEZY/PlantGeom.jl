@@ -2,7 +2,7 @@
 
 !!! info "Page Info"
     - **Audience:** Beginner to Advanced
-    - **Prerequisites:** [`MTG Reconstruction Tutorial`](amap_quickstart.md)
+    - **Prerequisites:** [`MTG Reconstruction Tutorial`](build_and_simulate_3d_plants/reconstructing_an_mtg/amap_quickstart.md)
     - **Time:** 25 minutes
     - **Output:** Full list of MTG variables, reconstruction options, and alias rules
 
@@ -29,7 +29,7 @@ If you are new to this page, read it in this order:
 4. **Detailed alias/reference tables**: exact accepted names
 
 If your question is specifically about explicit coordinates (`XX`, `YY`, `ZZ`, `EndX`, `EndY`, `EndZ`), first read
-[`Explicit Coordinates: Which Option Should I Use?`](amap_reconstruction_decision_guide.md).
+[`Explicit Coordinates: Which Option Should I Use?`](build_and_simulate_3d_plants/reconstructing_an_mtg/amap_reconstruction_decision_guide.md).
 
 ## 1. What Can I Measure in My MTG?
 

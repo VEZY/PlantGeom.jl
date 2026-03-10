@@ -33,19 +33,19 @@ makedocs(;
                 "Quickstart: Grow a Plant" => "getting_started/quickstart_grow.md",
             ],
             "Build & Simulate Plants" => [
-                "Workflow Tutorial" => "geometry/building_plant_models.md",
-                "Growth API" => "geometry/growth_api.md",
+                "Workflow Tutorial" => "build_and_simulate_3d_plants/choose_a_workflow.md",
+                "Growth API" => "build_and_simulate_3d_plants/growth_api.md",
+                "Reconstructing an MTG" => [
+                    "Tutorial" => "build_and_simulate_3d_plants/reconstructing_an_mtg/amap_quickstart.md",
+                    "Reconstruction Decision Guide" => "build_and_simulate_3d_plants/reconstructing_an_mtg/amap_reconstruction_decision_guide.md",
+                    "Conventions Reference" => "build_and_simulate_3d_plants/reconstructing_an_mtg/amap_conventions_reference.md",
+                ],
             ],
             "Geometry Concepts (advanced)" => [
                 "Reference Meshes" => "geometry/refmesh.md",
                 "Procedural / Extrusion Geometry" => "geometry/procedural_geometry.md",
                 "Prototype Mesh API" => "geometry/prototype_mesh_api.md",
                 "Merging Meshes" => "geometry/merging_geometry.md",
-            ],
-            "MTG Reconstruction" => [
-                "Tutorial" => "geometry/amap_quickstart.md",
-                "Reconstruction Decision Guide" => "geometry/amap_reconstruction_decision_guide.md",
-                "Conventions Reference" => "geometry/amap_conventions_reference.md",
             ],
             "IO and File Formats" => "io.md",
             "Plotting the MTG" => [

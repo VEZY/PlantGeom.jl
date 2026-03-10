@@ -8,24 +8,21 @@
 
 This page is the practical bridge between quickstarts and advanced concepts.
 
-## Choose a Strategy
+## Strategies for plant reconstruction
+
+There are two main strategies for building plant models in PlantGeom:
+
+1. You already have an MTG with attributes (e.g. from field data or from another simulator such as AMAPSim) and want to reconstruct geometry from it.
+2. You want to simulate growth in Julia with explicit control over the growth loop, and rebuild geometry on demand.
+
+Based on the strategy, you will follow either Workflow A or Workflow B below. Both workflows use the same underlying geometry and prototype systems, but they differ in how and when you call the reconstruction functions:
 
 | Situation | Recommended workflow | Why |
 | --- | --- | --- |
 | You already have measured attributes in an `.mtg` | Workflow A | fastest path to a first reconstruction |
 | You want dynamic growth over time | Workflow B | explicit, debuggable simulation loop |
-| You need strict AMAP behavior controls | AMAP pages | complete option set and decision guidance |
 
-## If You Just Want X, Go Here
-
-- Attribute-based reconstruction from measured MTG data:
-  [`Quickstart: Reconstruct a Plant`](../geometry/amap_quickstart.md)
-- Loop-driven growth with explicit rebuild:
-  [`Quickstart: Grow a Plant`](../getting_started/quickstart_grow.md)
-- AMAP options and conventions:
-  [`AMAP Quickstart`](amap_quickstart.md) and [`AMAP Conventions Reference`](amap_conventions_reference.md)
-- Low-level geometry control:
-  [`Prototype Mesh API`](prototype_mesh_api.md) and [`Procedural / Extrusion Geometry`](procedural_geometry.md)
+In this page, we introduce the two workflows and the key concepts behind them. For more technical details about the reconstruction pipeline, see the linked concept pages.
 
 ```@setup buildsim
 using PlantGeom
@@ -131,10 +128,10 @@ Why this is useful:
 
 !!! details "Where the deep technical details moved"
     - AMAP coordinate delegates, insertion modes, and alias tables:
-      [`AMAP Conventions Reference`](amap_conventions_reference.md)
+      [`AMAP Conventions Reference`](build_and_simulate_3d_plants/reconstructing_an_mtg/amap_conventions_reference.md)
     - Explicit-coordinate mode selection:
-      [`AMAP Reconstruction Decision Guide`](amap_reconstruction_decision_guide.md)
+      [`AMAP Reconstruction Decision Guide`](build_and_simulate_3d_plants/reconstructing_an_mtg/amap_reconstruction_decision_guide.md)
     - Prototype realization order and override precedence:
-      [`Prototype Mesh API`](prototype_mesh_api.md)
+      [`Prototype Mesh API`](geometry/prototype_mesh_api.md)
     - Manual low-level geometry assignment (`Geometry`, `PointMappedGeometry`, `ExtrudedTubeGeometry`):
-      [`Procedural / Extrusion Geometry`](procedural_geometry.md)
+      [`Procedural / Extrusion Geometry`](geometry/procedural_geometry.md)

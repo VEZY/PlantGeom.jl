@@ -66,11 +66,24 @@ Then, with the first internode in place, we can enter a growth loop that emits n
 The resulting code is as follows:
 
 ```@example gs_grow
-axis = emit_internode!(plant; link=:/, length=0.18, width=0.022)
+let
+    axis = emit_internode!(plant; link=:/, length=0.18, width=0.022)
 
-for i in 2:8
-    axis = emit_internode!(axis; index=i, length=0.17 * 0.95^(i - 2), width=0.021 * 0.93^(i - 2))
-    emit_leaf!(axis; index=i, offset=0.8 * axis[:Length], length=0.22 + 0.018i, width=0.032 + 0.003i, thickness=0.01 + 0.0015i, phyllotaxy=isodd(i) ? 0.0 : 180.0, y_insertion_angle=54.0, prototype=:Leaf, prototype_overrides=(bend=0.12 + 0.06i, tip_drop=0.02i))
+    for i in 2:8
+        axis = emit_internode!(axis; index=i, length=0.17 * 0.95^(i - 2), width=0.021 * 0.93^(i - 2))
+        emit_leaf!(
+            axis; 
+            index=i, 
+            offset=0.8 * axis[:Length], 
+            length=0.22 + 0.018i, 
+            width=0.032 + 0.003i, 
+            thickness=0.01 + 0.0015i, 
+            phyllotaxy=isodd(i) ? 0.0 : 180.0, 
+            y_insertion_angle=54.0, 
+            prototype=:Leaf, 
+            prototype_overrides=(bend=0.12 + 0.06i, tip_drop=0.02i)
+        )
+    end
 end
 
 plant
@@ -136,4 +149,4 @@ The growth loop only updates topology and node attributes.
 
 ## Next Step
 
-Go to [`Workflow Tutorial`](../geometry/building_plant_models.md) for a complete build-and-simulate workflow and links to advanced geometry and AMAP references.
+Go to [`Workflow Tutorial`](../geometry/choose_a_workflow.md) for a complete build-and-simulate workflow and links to advanced geometry and AMAP references.

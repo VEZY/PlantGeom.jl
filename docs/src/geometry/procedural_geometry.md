@@ -406,7 +406,7 @@ fig
 
 This deforms the blade itself. If you instead want topology-driven component
 bending across segmented organs, use the AMAP stiffness/orthotropy pipeline from
-[`Conventions Reference`](amap_conventions_reference.md).
+[`Conventions Reference`](build_and_simulate_3d_plants/reconstructing_an_mtg/amap_conventions_reference.md).
 
 ## Node-Level Procedural Geometry
 

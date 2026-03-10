@@ -29,7 +29,7 @@ features:
   - icon: <img width="64" height="64" src="growth_api.png" alt="simulated plant"/>
     title: Build and simulate plants
     details: Simulate plant growth using our growth API, also compatible with PlantSimEngine.jl
-    link: /geometry/growth_api
+    link: /build_and_simulate_3d_plants/growth_api
   - icon: <img width="64" height="64" src="visualize.png" alt="3d plant"/>
     title: Visualize 3D plants
     details: Color by attributes, add legends, customize the visualization and integrate with other plots using Makie.jl
