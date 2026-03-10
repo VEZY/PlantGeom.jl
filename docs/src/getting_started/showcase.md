@@ -40,7 +40,7 @@ coffee_opf = read_opf(joinpath(files_dir, "coffee.opf"))
 plantviz(coffee_opf, figure=(size=(980, 720),))
 ```
 
-A tree generated with gthe growth API from PlantGeom:
+A tree generated with the growth API from PlantGeom:
 
 ```@example gs_showcase
 tree_demo = build_demo_tree_with_growth_api()

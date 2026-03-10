@@ -29,8 +29,7 @@ makedocs(;
         "Manual" => [
             "Getting Started" => [
                 "Showcase" => "getting_started/showcase.md",
-                "Quickstart: 3D Plot" => "makie_3d.md",
-                # "Quickstart: Reconstruct a Plant" => "getting_started/quickstart_reconstruct.md",
+                "Quickstart: 3D Plot" => "getting_started/makie_3d.md",
                 "Quickstart: Grow a Plant" => "getting_started/quickstart_grow.md",
             ],
             "Build & Simulate Plants" => [

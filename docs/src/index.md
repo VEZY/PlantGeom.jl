@@ -12,8 +12,8 @@ hero:
     alt: "Coffee plant"
   actions:
     - theme: brand
-      text: Get Started
-      link: /manual/get_started
+      text: Showcase
+      link: /getting_started/showcase
     - theme: alt
       text: View on Github
       link: https://github.com/VEZY/PlantGeom.jl
@@ -33,7 +33,7 @@ features:
   - icon: <img width="64" height="64" src="visualize.png" alt="3d plant"/>
     title: Visualize 3D plants
     details: Color by attributes, add legends, customize the visualization and integrate with other plots using Makie.jl
-    link: /makie_3d
+    link: /getting_started/makie_3d
 ---
 ```
 
@@ -43,7 +43,7 @@ features:
 <div class="vp-doc" style="width:80%; margin:auto">
 ````
 
-# What is PlantGeom.jl?
+# PlantGeom.jl
 
 PlantGeom lets you build, reconstruct, and visualize 3D plants powered by [`Makie.jl`](https://docs.makie.org/stable/).
 

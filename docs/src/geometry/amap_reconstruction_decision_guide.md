@@ -1,77 +1,152 @@
-# AMAP Reconstruction Decision Guide
+# Explicit Coordinates: Which Option Should I Use?
 
 !!! info "Page Info"
-    - **Audience:** Intermediate
-    - **Prerequisites:** Familiarity with MTG reconstruction and AMAP conventions (see [Tutorial here](geometry/amap_quickstart.md)).
+    - **Audience:** Beginner to Intermediate
+    - **Prerequisites:** [`MTG Reconstruction Tutorial`](amap_quickstart.md)
     - **Time:** 8 minutes
-    - **Output:** Selection of explicit-coordinate handling mode
+    - **Output:** Clear choice of explicit-coordinate option in `AmapReconstructionOptions`
 
-Use this page when you know what coordinates you have, but you are unsure which reconstruction option to pick.
-
-## 1. Quick Chooser
-
-| If your data has... | And you want... | Use | Why |
-| --- | --- | --- | --- |
-| No `XX/YY/ZZ` | Standard MTG topology reconstruction | `:topology_default` | Uses topology + insertion/euler pipeline only. |
-| `XX/YY/ZZ` on some nodes, no `EndX/EndY/EndZ` | Keep visible geometry on explicit nodes | `:topology_default` | Explicit start sets base; node still creates a segment. |
-| `XX/YY/ZZ` on some nodes, no `EndX/EndY/EndZ` | Mimic AMAP topology-editor rewiring | `:explicit_rewire_previous` | Explicit point rewires previous segment; explicit node becomes a point-anchor. |
-| `XX/YY/ZZ` and complete `EndX/EndY/EndZ` | Strict start/end interpretation | `:explicit_start_end_required` | Segment is built only from start/end data. |
-| `XX/YY/ZZ` but missing some endpoint values | Strict behavior (reject incomplete endpoints) | `:explicit_start_end_required` | Nodes with missing end coordinates are omitted by design. |
-
-## 2. Most Common Confusion
-
-### "I have start coordinates but not end coordinates. What are my options?"
-
-You have three valid strategies:
-
-1. `:topology_default`
-   Keep all visible segments. Explicit start coordinates place node bases, and segment direction/length are still resolved by the regular reconstruction stages.
-2. `:explicit_rewire_previous`
-   Treat explicit coordinates as control points that reorient the previous segment. The explicit node itself is a point-anchor (zero-length geometry).
-3. `:explicit_start_end_required`
-   Enforce strict start/end semantics. If `EndX/EndY/EndZ` is missing, the node geometry is omitted.
-
-Definition: point-anchor = node kept in topology, but represented as a point (zero-length geometry, no cylinder).
-
-Important clarification for `:explicit_rewire_previous`:
-- It does not mean "draw cylinders only between explicit nodes".
-- It means explicit nodes act as control points:
-  - previous segment is rewired to the explicit coordinate;
-  - explicit node becomes a point-anchor;
-  - following non-explicit nodes are still regular visible segments.
-
-So if you provide explicit coordinates every 10 nodes, you usually get one point-anchor every 10 nodes, with regular cylinders between those control points.
-
-Note on the resulting geometry:
-- Fewer cylinders does **not** necessarily mean data loss.
-- It can mean a node is intentionally represented as a point-anchor (`:explicit_rewire_previous`) or intentionally omitted (`:explicit_start_end_required` with missing end).
-
-## 3. Minimal Code Patterns
+This page is about **one specific reconstruction option**:
 
 ```julia
-# A) Keep explicit-start nodes as visible segments
+AmapReconstructionOptions(explicit_coordinate_mode=...)
+```
+
+You pass this option to reconstruction like this:
+
+```julia
+set_geometry_from_attributes!(
+    mtg,
+    prototypes;
+    convention=default_amap_geometry_convention(),
+    amap_options=AmapReconstructionOptions(explicit_coordinate_mode=:topology_default),
+)
+```
+
+Use this page **only if your MTG contains explicit coordinates** such as `XX`, `YY`, `ZZ`, `EndX`, `EndY`, `EndZ`.
+
+If your MTG only contains sizes and angles (`Length`, `Width`, `YInsertionAngle`, `XEuler`, ...), you do **not** need this page yet.  
+Stay with the default reconstruction from [`MTG Reconstruction Tutorial`](amap_quickstart.md).
+
+## What This Option Controls
+
+`explicit_coordinate_mode` tells PlantGeom what to do when node coordinates are present in the MTG.
+
+Without explicit coordinates:
+- node positions are reconstructed from topology (`:<`, `:+`, `:/`) and attributes such as `Offset`, insertion angles, and Euler angles.
+
+With explicit coordinates:
+- PlantGeom must decide whether these coordinates:
+  - simply place the current node,
+  - rewire the previous segment,
+  - or require a full start/end segment definition.
+
+That is exactly what `explicit_coordinate_mode` chooses.
+
+## Quick Chooser
+
+| Your MTG contains | You want | Use in `AmapReconstructionOptions(...)` |
+| --- | --- | --- |
+| No `XX/YY/ZZ` | Standard MTG reconstruction from topology + angles | do nothing; default is fine |
+| `XX/YY/ZZ`, but no `EndX/EndY/EndZ` | Coordinates place the node base, but the node stays a visible segment | `explicit_coordinate_mode=:topology_default` |
+| `XX/YY/ZZ`, but no `EndX/EndY/EndZ` | Coordinates should act as control points that bend/rewire the previous segment | `explicit_coordinate_mode=:explicit_rewire_previous` |
+| `XX/YY/ZZ` and complete `EndX/EndY/EndZ` | Each explicit node should be reconstructed from a known start and end | `explicit_coordinate_mode=:explicit_start_end_required` |
+
+## The Three Modes in Plain Language
+
+### 1. `:topology_default`
+
+Use this when:
+- you have some explicit base coordinates,
+- but you still want the current node to be a normal visible segment,
+- and you still want angles/topology to define direction when end coordinates are missing.
+
+Mental model:
+- `XX/YY/ZZ` says where the node starts
+- the rest of the geometry is still reconstructed normally
+
+This is the safest choice for most users.
+
+```julia
 opts = AmapReconstructionOptions(explicit_coordinate_mode=:topology_default)
+```
 
-# B) Rewire previous segment from explicit node position
+### 2. `:explicit_rewire_previous`
+
+Use this when:
+- your explicit coordinates come from a topology editor or manual control-point workflow,
+- and a node position is intended to redirect the **previous** segment.
+
+Mental model:
+- explicit nodes are used as control points
+- the previous segment is rewired toward that point
+- the current explicit node becomes a point-anchor rather than a normal visible cylinder
+
+This is more specialized. Use it only if you know your data was produced that way.
+
+```julia
 opts = AmapReconstructionOptions(explicit_coordinate_mode=:explicit_rewire_previous)
+```
 
-# C) Strict start/end mode (incomplete endpoints are omitted)
+### 3. `:explicit_start_end_required`
+
+Use this when:
+- you trust your explicit coordinates fully,
+- and your MTG stores both node start and node end coordinates.
+
+Mental model:
+- `XX/YY/ZZ` gives the start
+- `EndX/EndY/EndZ` gives the end
+- PlantGeom builds the segment directly from those two points
+
+If end coordinates are missing, the node geometry is omitted on purpose.
+
+```julia
 opts = AmapReconstructionOptions(explicit_coordinate_mode=:explicit_start_end_required)
+```
+
+## Recommended Starting Point
+
+Start with:
+
+```julia
+opts = AmapReconstructionOptions(explicit_coordinate_mode=:topology_default)
+```
+
+Then switch only if your data clearly matches one of these cases:
+- topology-editor style control points: `:explicit_rewire_previous`
+- complete and trusted start/end coordinates: `:explicit_start_end_required`
+
+## Minimal Code Patterns
+
+```julia
+using PlantGeom
+
+opts = AmapReconstructionOptions(
+    explicit_coordinate_mode=:topology_default,
+)
 
 set_geometry_from_attributes!(
     mtg,
-    ref_meshes;
+    prototypes;
     convention=default_amap_geometry_convention(),
     amap_options=opts,
 )
 ```
 
-## 4. Practical Recommendation
+```julia
+opts = AmapReconstructionOptions(
+    explicit_coordinate_mode=:explicit_rewire_previous,
+)
+```
 
-Start with `:topology_default`.  
-Switch to `:explicit_rewire_previous` only when importing topology-editor style coordinates.  
-Use `:explicit_start_end_required` only when your endpoint columns are complete and trusted.
+```julia
+opts = AmapReconstructionOptions(
+    explicit_coordinate_mode=:explicit_start_end_required,
+)
+```
 
-Practical tip for nice reconstructions with `:explicit_rewire_previous`:
-- Do not put explicit coordinates on every node.
-- Use sparse control points (for example every 2nd or 3rd internode), so anchor nodes remain rare and most organs stay visible as segments.
+## What To Read Next
+
+- If you want to know **which MTG columns you can measure**, read [`AMAP Conventions Reference`](amap_conventions_reference.md).
+- If you want the first complete reconstruction workflow, go back to [`MTG Reconstruction Tutorial`](amap_quickstart.md).
