@@ -19,7 +19,7 @@ This page is the practical bridge between quickstarts and advanced concepts.
 ## If You Just Want X, Go Here
 
 - Attribute-based reconstruction from measured MTG data:
-  [`Quickstart: Reconstruct a Plant`](../getting_started/quickstart_reconstruct.md)
+  [`Quickstart: Reconstruct a Plant`](../geometry/amap_quickstart.md)
 - Loop-driven growth with explicit rebuild:
   [`Quickstart: Grow a Plant`](../getting_started/quickstart_grow.md)
 - AMAP options and conventions:

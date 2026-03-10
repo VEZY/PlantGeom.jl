@@ -14,7 +14,7 @@ using Colors
 using CairoMakie
 ```
 
-We 'll need several packages to build and visualize our plant model. Make sure to add them to your environment if you haven't already, and then load them:
+We'll need a few packages to build and visualize the plant model. Add them to your environment if needed, then load them:
 
 ```@example gs_grow
 using PlantGeom
@@ -26,7 +26,7 @@ using CairoMakie
 
 ## Defining Prototypes
 
-Before we can grow a plant, we need to define the reference meshes and prototypes for the organs we want to create. In this example, we'll define a simple cylindrical stem and a lamina leaf with some shape parameters. The lamina leaf prototype uses a `PointMapPrototype` with an intrinsic shape defined by a `LaminaMidribMap`, which allows us to control the curvature and tip drop of the leaf based on parameters. These parameters can be overridden for each leaf instance during growth, giving us flexibility in the shapes of individual leaves. This is all provided by PlantGeom's built-in lamina reference mesh and midrib map.
+Before growing the plant, we first define the basic shapes used for each organ. In this example, we create a simple cylindrical stem and a leaf shape. The leaf is defined with a `PointMapPrototype` and a `LaminaMidribMap`, which let us control features such as leaf curvature and tip droop. These settings can also be overridden for each individual leaf during growth, so the leaves do not all have the same shape. PlantGeom provides the built-in lamina mesh and midrib map used here.
 
 ```@example gs_grow
 # Build the reference meshes:
@@ -35,7 +35,7 @@ leaf = lamina_refmesh("leaf"; length=1.0, max_width=1.0, material=RGB(0.19, 0.61
 prototypes = Dict(:Internode => RefMeshPrototype(stem), :Leaf => PointMapPrototype(leaf; defaults=(base_angle_deg=42.0, bend=0.3, tip_drop=0.08), intrinsic_shape=p -> LaminaMidribMap(base_angle_deg=p.base_angle_deg, bend=p.bend, tip_drop=p.tip_drop)))
 ```
 
-We can visualize the prototypes to check that they look correct:
+We can visualize the prototypes to make sure they look right:
 
 ```@example gs_grow
 f = Figure(size=(400, 200))
@@ -46,28 +46,28 @@ mesh!(ax2, leaf.mesh, color=leaf.material)
 f
 ```
 
-Note that prototypes are just templates for geometry generation, so only their shape matter, their dimensions are normalized, will be given by node attributes during growth.
+Keep in mind that prototypes are only templates for geometry generation. What matters here is their shape. Their final dimensions are normalized in the prototype and later set from node attributes during growth.
 
-Then we create a first node with the label `:Plant` and an edge label of `:/`, which will serve as the starting point for our growth process.
+Next, we create the first node, labeled `:Plant`, with an edge label of `:/`. This node serves as the starting point for the growth process.
 
 !!! note
-    By default we use terms from graph theory, not botany, unless otherwise specified, this means that: 
-    - The root node is the first node of the graph, not the root of the plant
-    - A node is a graph node, which can represent any plant organ (stem, leaf, etc.), not the botanical term "node".
+    By default, this tutorial uses graph-theory terms rather than botanical ones unless stated otherwise:
+    - The root node is the first node in the graph, not the root of the plant.
+    - A node is a graph node that can represent any plant organ, such as a stem or a leaf, and not the botanical term "node".
 
 ```@example gs_grow
 plant = Node(NodeMTG(:/, :Plant, 1, 1))
 ```
 
-Now we can make the first growth step by emitting an internode from the plant node. This creates a new node with the label `:Internode` and attaches it to the plant node with an edge labeled `:/`. We also set some attributes for this internode, such as its length and width, which will be used later during geometry generation:
+We can now take the first growth step by emitting an internode from the plant node. This creates a new node labeled `:Internode`, attaches it to the plant node with an edge labeled `:/`, and stores attributes such as length and width for later geometry generation.
+
+Then, with the first internode in place, we can enter a growth loop that emits new internodes and leaves step by step. In this example, we build a simple axis with 8 internodes and 7 leaves, with one leaf attached to each internode after the first. We also assign attributes to each leaf, including length, width, thickness, phyllotaxy, and y-insertion angle. In addition, we use `prototype_overrides` to vary the bend and tip-drop parameters from one leaf to the next, which creates a gradual change in leaf shape along the axis.
+
+The resulting code is as follows:
 
 ```@example gs_grow
 axis = emit_internode!(plant; link=:/, length=0.18, width=0.022)
-```
 
-Now that we setup the first internode, we can enter a growth loop where we emit new internodes and leaves iteratively. In this example, we create a simple axis with 7 internodes and 7 leaves, where each leaf is attached to its corresponding internode. We also set various attributes for each leaf, such as its length, width, thickness, phyllotaxy, and y-insertion angle. Additionally, we use `prototype_overrides` to change the bend and tip drop parameters for each leaf instance based on the loop index `i`, creating a gradient of leaf shapes along the axis:
-
-```@example gs_grow
 for i in 2:8
     axis = emit_internode!(axis; index=i, length=0.17 * 0.95^(i - 2), width=0.021 * 0.93^(i - 2))
     emit_leaf!(axis; index=i, offset=0.8 * axis[:Length], length=0.22 + 0.018i, width=0.032 + 0.003i, thickness=0.01 + 0.0015i, phyllotaxy=isodd(i) ? 0.0 : 180.0, y_insertion_angle=54.0, prototype=:Leaf, prototype_overrides=(bend=0.12 + 0.06i, tip_drop=0.02i))
@@ -76,13 +76,13 @@ end
 plant
 ```
 
-Now that our plant is generated, we can materialize its geometry by calling `rebuild_geometry!` with the plant graph and the prototypes. This function will traverse the graph, generate geometry for each node based on its attributes and the corresponding prototype, and store the geometry in the node attributes. By keeping geometry generation separate from topology and attribute updates, we maintain a clear and efficient growth process:
+Once the plant structure has been created, we can materialize its geometry by calling `rebuild_geometry!` with the plant graph and the prototypes. This function traverses the graph, generates geometry for each node from its attributes and prototype, and stores the result in the node attributes. Keeping geometry generation separate from topology and attribute updates makes the growth process easier to understand and debug:
 
 ```@example gs_grow
 rebuild_geometry!(plant, prototypes)
 ```
 
-Finally, we can visualize the generated plant using `plantviz`, which will render the geometry stored in the node attributes. We can specify figure options such as size to improve the visualization:
+Finally, we can visualize the generated plant with `plantviz`, which renders the geometry stored in the node attributes. Note that we also pass a figure size to improve readability from this document, but it is not necessary in a normal Julia session:
 
 ```@example gs_grow
 plantviz(plant, figure=(size=(980, 700),))
@@ -90,7 +90,7 @@ plantviz(plant, figure=(size=(980, 700),))
 
 ## Summary
 
-In summary, the growth process involves the following stages:
+The growth process has the following stages:
 
 | Stage | What happens |
 | --- | --- |
@@ -100,13 +100,13 @@ In summary, the growth process involves the following stages:
 | `rebuild_geometry!` | materializes all node geometry once at the end |
 | `plantviz(...)` | renders the generated plant |
 
-The growth API allows us to build complex plant structures by iteratively updating the graph topology and node attributes, while keeping geometry generation explicit and efficient. By defining prototypes with shape parameters, we can create a wide variety of organ shapes and easily control them during growth.
+The growth API lets us build complex plant structures by iteratively updating graph topology and node attributes while keeping geometry generation explicit. By defining prototypes with shape parameters, we can produce a wide range of organ shapes and control them during growth.
 
-The growth API does not cover every possible growth process, but it provides a flexible framework for building custom growth loops and organ emission patterns. You can create your own growth functions, define new prototypes, and implement more complex growth dynamics as needed. You can take a look at the VPalm module in [XPalm](https://github.com/PalmStudio/XPalm.jl) for a more involved example of growth and geometry generation.
+The growth API is not meant to cover every possible growth process, but it provides a flexible framework for building custom growth loops and organ emission patterns. You can define your own growth functions, create new prototypes, and implement more complex growth dynamics as needed. For a more advanced example of growth and geometry generation, see the VPalm module in [XPalm](https://github.com/PalmStudio/XPalm.jl).
 
 ## Copy-Paste Example
 
-If you want to reproduce this example quickly, you can copy and paste the following code into a Julia session with the required packages loaded:
+If you want to reproduce this example quickly, paste the following code into a Julia session with the required packages loaded:
 
 ```julia
 using PlantGeom, MultiScaleTreeGraph, GeometryBasics, Colors, CairoMakie

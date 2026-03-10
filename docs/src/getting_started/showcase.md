@@ -56,7 +56,3 @@ And an even more complex plant: a palm generated with the VPalm module from [XPa
 - `read_opf` gives you topology + geometry from existing plant files.
 - `build_demo_tree_with_growth_api()` shows a generated plant using explicit growth + rebuild steps.
 - `plantviz` materializes and renders current node geometries in one call.
-
-## Next Step
-
-Go to [`Quickstart: Reconstruct a Plant`](quickstart_reconstruct.md) to reconstruct geometry from an MTG that has topology/attributes but no explicit meshes.
