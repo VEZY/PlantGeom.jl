@@ -2,9 +2,17 @@
 
 !!! info "Page Info"
     - **Audience:** Beginner to Intermediate
-    - **Prerequisites:** [`MTG Reconstruction Tutorial`](@ref "MTG Reconstruction Tutorial")
+    - **Prerequisites:** [`MTG Reconstruction Tutorial`](@ref "MTG Reconstruction Tutorial"), [AMAP Conventions Reference](@ref)
     - **Time:** 8 minutes
     - **Output:** Clear choice of explicit-coordinate option in `AmapReconstructionOptions`
+
+This page is a focused follow-up to the tutorial and the reference page.
+
+By the time you read it, you should already know:
+
+- whether your MTG contains `XX`, `YY`, `ZZ`
+- whether it also contains `EndX`, `EndY`, `EndZ`
+- that these columns describe explicit node coordinates rather than topology-derived placement
 
 This page is about **one specific reconstruction option**:
 
@@ -28,6 +36,23 @@ Use this page **only if your MTG contains explicit coordinates** such as `XX`, `
 If your MTG only contains sizes and angles (`Length`, `Width`, `YInsertionAngle`, `XEuler`, ...), you do **not** need this page yet.  
 Stay with the default reconstruction from [`MTG Reconstruction Tutorial`](@ref "MTG Reconstruction Tutorial").
 
+If instead you need the full list of accepted MTG columns or aliases, go back to
+[AMAP Conventions Reference](@ref).
+
+## What This Page Assumes
+
+This page does **not** re-list all AMAP variables. It assumes you already know the coordinate columns:
+
+| Column family | Meaning |
+| --- | --- |
+| `XX`, `YY`, `ZZ` | explicit start position of the node |
+| `EndX`, `EndY`, `EndZ` | explicit end position of the node |
+| `Offset`, insertion angles, Euler angles | topology-driven fallback when explicit coordinates do not fully define the node |
+
+So the only question left is:
+
+> when explicit coordinates are present, how should PlantGeom combine them with the topology-driven reconstruction?
+
 ## What This Option Controls
 
 `explicit_coordinate_mode` tells PlantGeom what to do when node coordinates are present in the MTG.
@@ -42,6 +67,11 @@ With explicit coordinates:
   - or require a full start/end segment definition.
 
 That is exactly what `explicit_coordinate_mode` chooses.
+
+In other words:
+
+- the **reference page** tells you which columns exist
+- this page tells you how to choose the controller behavior when those coordinate columns are present
 
 ## Quick Chooser
 
@@ -117,6 +147,11 @@ Then switch only if your data clearly matches one of these cases:
 - topology-editor style control points: `:explicit_rewire_previous`
 - complete and trusted start/end coordinates: `:explicit_start_end_required`
 
+That is the main recommendation for most users:
+
+- if you are unsure, choose `:topology_default`
+- only move away from it when your data source clearly encodes a different intent
+
 ## Minimal Code Patterns
 
 ```julia
@@ -145,3 +180,10 @@ opts = AmapReconstructionOptions(
     explicit_coordinate_mode=:explicit_start_end_required,
 )
 ```
+
+## Where To Go Next
+
+- If you need the full list of AMAP variables and aliases again:
+  [AMAP Conventions Reference](@ref)
+- If you want to keep working from the standard measured-MTG workflow:
+  [`MTG Reconstruction Tutorial`](@ref "MTG Reconstruction Tutorial")

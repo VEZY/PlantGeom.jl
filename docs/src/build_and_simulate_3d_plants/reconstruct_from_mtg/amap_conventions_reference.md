@@ -19,7 +19,10 @@ This page answers those questions in that order. It is more detailed than the qu
 If you have not used AMAP-style reconstruction yet, start here first:
 
 - [`MTG Reconstruction Tutorial`](@ref "MTG Reconstruction Tutorial")
-- [Explicit Coordinates: Which Option Should I Use?](@ref)
+
+This page focuses on **which MTG columns PlantGeom can read** and **which reconstruction options exist**.  
+The detailed choice of `explicit_coordinate_mode` is handled on the next page:
+[Explicit Coordinates: Which Option Should I Use?](@ref).
 
 The default AMAP-style reconstruction call is:
 
@@ -40,7 +43,7 @@ If you are new to PlantGeom, read this page in this order:
 3. **Julia options**: change behavior with `AmapReconstructionOptions(...)` only if needed.
 4. **Alias tables**: use them only when your imported column names differ from the defaults.
 
-If your question is specifically about explicit coordinates (`XX`, `YY`, `ZZ`, `EndX`, `EndY`, `EndZ`), first read
+If your question is specifically about **which explicit-coordinate mode to choose**, read the next page after this one:
 [Explicit Coordinates: Which Option Should I Use?](@ref).
 
 ## Before the Full Reference: What Should I Actually Measure?
@@ -120,6 +123,8 @@ Use this set when your upstream source already provides 3D coordinates, for exam
 
 These columns are powerful, but they are also the easiest ones to misuse if you mix them with topology-based expectations. If you are not sure, stay with the standard set above.
 
+This page only lists the columns. The precise meaning of `explicit_coordinate_mode` is explained on the next page.
+
 | Variable | Meaning | Use when |
 | --- | --- | --- |
 | `XX`, `YY`, `ZZ` | explicit start position | geometry source already provides 3D coordinates |
@@ -176,6 +181,10 @@ For most projects:
 - keep `explicit_coordinate_mode=:topology_default` unless your coordinate source clearly requires another mode
 - keep `verticil_mode=:rotation360` unless sibling spread is already fully measured
 - keep `order_override_mode=:override` only when you really want branch-order calibration to dominate node values
+
+If you need to decide between `:topology_default`, `:explicit_rewire_previous`, and
+`:explicit_start_end_required`, continue with
+[Explicit Coordinates: Which Option Should I Use?](@ref) after this page.
 
 ### Common reconstruction recipes
 
@@ -311,42 +320,29 @@ When to use what:
 - Use Euler angles for mesh-pose corrections (twist/roll) after topology is correct.
 - Avoid compensating missing insertion data with large Euler rotations, because that breaks architectural meaning.
 
-### Explicit translation vs topology placement
+### Explicit coordinates: what the columns do
 
-When `XX/YY/ZZ` are present, placement is explicit. When missing, PlantGeom reconstructs position from topology (`Offset`, insertion mode, bearer frame).
+This page intentionally keeps explicit-coordinate behavior at a practical level.
 
-With endpoint columns (`EndX`/`EndY`/`EndZ`), PlantGeom uses:
+When `XX/YY/ZZ` are present, the node has an explicit start position.  
+When those columns are absent, PlantGeom reconstructs position from topology (`Offset`, insertion mode, bearer frame).
 
-- start = explicit translation if present, else topology-derived base
-- end = provided endpoint coordinates
-- orientation and effective `Length` = inferred from `(start -> end)`
+If `EndX`/`EndY`/`EndZ` are also present:
 
-Example: setting `XX/YY/ZZ` for one leaf detaches it from topology and can produce a correct but non-botanical placement if coordinates are inconsistent with bearer geometry.
+- the node end point is explicit as well
+- orientation and effective `Length` are inferred from `(start -> end)`
+- angle stages are skipped for that node because the segment direction is already known
+- `Width` and `Thickness` are still used normally
 
-When to use what:
+Use this mental model:
 
-- Use topology-based placement for botanical reconstructions.
-- Use explicit `XX/YY/ZZ` when ingesting already solved 3D coordinates from another pipeline.
-- Use `EndX`/`EndY`/`EndZ` when start-end coordinates are known and must dominate angle-derived orientation.
-- Use `AmapReconstructionOptions(explicit_coordinate_mode=:explicit_start_end_required)` to require complete start/end coordinates on explicit-coordinate nodes (AMAP `CoordinateDelegate3` behavior).
-- Use `AmapReconstructionOptions(explicit_coordinate_mode=:explicit_rewire_previous)` for topology-editor style imports where each node position rewires the previous segment and the current node becomes a point-anchor (AMAP `CoordinateDelegate2` behavior).
+- `XX/YY/ZZ` answer: **where does the node start?**
+- `EndX`/`EndY`/`EndZ` answer: **where does the node end?**
+- topology columns such as `Offset` answer: **where should the node be placed when no explicit coordinates are available?**
 
-### Endpoint coordinates (`EndX`/`EndY`/`EndZ`)
-
-`EndX`/`EndY`/`EndZ` activate endpoint-driven reconstruction for that node.
-
-Practical precedence:
-
-1. Base position is resolved first (explicit `XX/YY/ZZ` if present, otherwise topology).
-2. If `EndX`/`EndY`/`EndZ` are all numeric, orientation and length are computed from base-to-end.
-3. Angle stages (`Insertion`, azimuth/elevation, orthotropy/stiffness angle, deviation, Euler, projection, geometrical constraint) are skipped for that node.
-4. Width/thickness scaling still uses `Width`/`Thickness`.
-
-Notes:
-
-- If only some endpoint columns are present, endpoint override is ignored (lenient fallback).
-- If endpoint equals base (zero-length vector), endpoint override is ignored.
-- Successor `:<` nodes continue from this computed endpoint through normal topology rules.
+The remaining decision is what PlantGeom should do when a node has explicit start coordinates but no explicit end coordinates.  
+That is exactly what `explicit_coordinate_mode` controls, and it is explained on the next page:
+[Explicit Coordinates: Which Option Should I Use?](@ref).
 
 ### Allometry delegate semantics (AMAP core)
 

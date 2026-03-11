@@ -37,11 +37,11 @@ makedocs(;
                 "Growth API" => "build_and_simulate_3d_plants/growth_api.md",
                 "Reconstructing an MTG" => [
                     "Tutorial" => "build_and_simulate_3d_plants/reconstruct_from_mtg/amap_quickstart.md",
-                    "Reconstruction Decision Guide" => "build_and_simulate_3d_plants/reconstruct_from_mtg/amap_reconstruction_decision_guide.md",
                     "Conventions Reference" => "build_and_simulate_3d_plants/reconstruct_from_mtg/amap_conventions_reference.md",
+                    "Explicit Coordinate Modes" => "build_and_simulate_3d_plants/reconstruct_from_mtg/amap_reconstruction_decision_guide.md",
                 ],
             ],
-            "Geometry Concepts (advanced)" => [
+            "Reference meshes" => [
                 "Reference Meshes" => "geometry/refmesh.md",
                 "Procedural / Extrusion Geometry" => "geometry/procedural_geometry.md",
                 "Prototype Mesh API" => "geometry/prototype_mesh_api.md",
