@@ -10,9 +10,11 @@ The Growth API is designed for explicit, readable Julia simulations:
 
 - build and mutate structure at node scale
 - control exactly when geometry is rebuilt
-- optionally couple growth events with `PlantSimEngine` statuses through extension methods
+- optionally couple growth events with [`PlantSimEngine`](https://github.com/VirtualPlantLab/PlantSimEngine.jl) statuses through extension methods
 
 ## Quick Chooser
+
+Here's a quick guide to which functions to use based on your goals:
 
 | If you want to... | Use |
 | --- | --- |
@@ -136,7 +138,14 @@ end
 
 ## Public functions
 
+PlantGeom provides two way for simulating plant growth in Julia:
+
+- a pure structural growth API that you can use dynamically
+- an extended API to use [`PlantSimEngine`](https://github.com/VirtualPlantLab/PlantSimEngine.jl) for coupling structure and function in a full simulation engine
+
 ### Structure-only mode (core PlantGeom)
+
+The main functions to know for structure-only growth simulations are summarized in the table below:
 
 | Function | Purpose |
 |---|---|
@@ -159,7 +168,7 @@ Key defaults:
 
 ### PlantSimEngine-coupled mode (extension)
 
-When `PlantGeom` and `PlantSimEngine` are both loaded, extra overloads are available:
+When `PlantGeom` and [`PlantSimEngine`](https://github.com/VirtualPlantLab/PlantSimEngine.jl) are both loaded, extra overloads are available:
 
 - `emit_internode!(parent::Node, sim::GraphSimulation; ...) -> Status`
 - `emit_internode!(parent_status::Status, sim::GraphSimulation; ...) -> Status`
