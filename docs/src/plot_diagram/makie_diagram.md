@@ -1,5 +1,11 @@
 # `Makie.jl` recipes
 
+!!! info "Page Info"
+    - **Audience:** Beginner to Intermediate
+    - **Prerequisites:** MTG loaded in memory
+    - **Time:** 8 minutes
+    - **Output:** 2D/3D topology diagrams with Makie
+
 ```@setup usewgl
 using CairoMakie
 CairoMakie.activate!(type = "svg")

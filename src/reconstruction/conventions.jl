@@ -763,6 +763,268 @@ end
     return SMatrix{3,3,Float64}(sx, 0.0, 0.0, 0.0, sy, 0.0, 0.0, 0.0, sz)
 end
 
+struct _AxisScalePointMap
+    sx::Float64
+    sy::Float64
+    sz::Float64
+end
+
+@inline function (map::_AxisScalePointMap)(p)
+    q = _pointmap_to_svec3(p)
+    SVector{3,Float64}(q[1] * map.sx, q[2] * map.sy, q[3] * map.sz)
+end
+
+@inline function _point_map_scale(length_axis::Symbol, length_val::Float64, width_val::Float64, thickness_val::Float64)
+    sx, sy, sz = _scale_components(length_axis, length_val, width_val, thickness_val)
+    _AxisScalePointMap(sx, sy, sz)
+end
+
+@inline _to_map_tuple(::Nothing) = ()
+@inline _to_map_tuple(map::ComposedPointMap) = map.maps
+@inline _to_map_tuple(maps::Tuple) = maps
+@inline _to_map_tuple(map) = (map,)
+
+function _resolve_callable_value(f, argsets::Tuple)
+    f === nothing && return nothing
+    for args in argsets
+        applicable(f, args...) && return f(args...)
+    end
+    error("Callable $(typeof(f)) does not match any supported signature.")
+end
+
+function _resolve_extrusion_builder(proto::ExtrusionPrototype, params, node)
+    _resolve_callable_value(
+        proto.build_local,
+        (
+            (params, node),
+            (params,),
+            (node,),
+            (),
+        ),
+    )
+end
+
+function _apply_extrusion_intrinsic(proto::ExtrusionPrototype, local_geom, params, node)
+    proto.intrinsic_shape === nothing && return local_geom
+    _resolve_callable_value(
+        proto.intrinsic_shape,
+        (
+            (local_geom, params, node),
+            (local_geom, params),
+            (local_geom, node),
+            (local_geom,),
+        ),
+    )
+end
+
+function _resolve_extrusion_physical(proto::ExtrusionPrototype, params, node, length_val, width_val, thickness_val)
+    proto.physical_deformation === nothing && return IdentityTransformation()
+    value = _resolve_callable_value(
+        proto.physical_deformation,
+        (
+            (params, node, length_val, width_val, thickness_val),
+            (params, node),
+            (params,),
+            (node,),
+            (),
+        ),
+    )
+    value === nothing && return IdentityTransformation()
+    value isa Transformation || error("Extrusion physical_deformation must return a Transformation or nothing, got $(typeof(value)).")
+    value
+end
+
+function _scale_extruded_geometry(geom::ExtrudedTubeGeometry, length_axis::Symbol, length_val::Float64, width_val::Float64, thickness_val::Float64)
+    sx, sy, sz = _scale_components(length_axis, length_val, width_val, thickness_val)
+
+    scaled_path = [point3(p[1] * sx, p[2] * sy, p[3] * sz) for p in geom.path]
+    scaled_normals = if geom.path_normals === nothing
+        nothing
+    else
+        [vec3(n[1] * sx, n[2] * sy, n[3] * sz) for n in geom.path_normals]
+    end
+
+    radial_scale = 0.5 * (abs(width_val) + abs(thickness_val))
+    scaled_radii = geom.radii === nothing ? nothing : geom.radii
+    scaled_widths = geom.widths === nothing ? nothing : [Float64(w) * abs(width_val) for w in geom.widths]
+    scaled_heights = geom.heights === nothing ? nothing : [Float64(h) * abs(thickness_val) for h in geom.heights]
+
+    ExtrudedTubeGeometry(
+        scaled_path;
+        n_sides=geom.n_sides,
+        radius=geom.radius * radial_scale,
+        radii=scaled_radii,
+        widths=scaled_widths,
+        heights=scaled_heights,
+        path_normals=scaled_normals,
+        torsion=geom.torsion,
+        cap_ends=geom.cap_ends,
+        material=geom.material,
+        transformation=geom.transformation,
+    )
+end
+
+function _resolve_proto_params(node, proto::AbstractMeshPrototype, prototype_overrides)
+    call_overrides = _prototype_call_overrides(prototype_overrides, node)
+    effective_parameters(node, proto; overrides=call_overrides)
+end
+
+function _geometry_from_prototype(
+    node,
+    proto::RefMeshPrototype,
+    params,
+    node_convention::GeometryConvention,
+    rot::SMatrix{3,3,Float64,9},
+    base_pos::SVector{3,Float64},
+    length_val::Float64,
+    width_val::Float64,
+    thickness_val::Float64;
+    dUp::Real=1.0,
+    dDwn::Real=1.0,
+    warn_missing::Bool=false,
+)
+    lin = rot * _scale_linear(node_convention.length_axis, length_val, width_val, thickness_val)
+    world_t = AffineMap(Matrix(lin), base_pos)
+    Geometry(ref_mesh=proto.ref_mesh, transformation=world_t, dUp=dUp, dDwn=dDwn)
+end
+
+function _geometry_from_prototype(
+    node,
+    proto::RawMeshPrototype,
+    params,
+    node_convention::GeometryConvention,
+    rot::SMatrix{3,3,Float64,9},
+    base_pos::SVector{3,Float64},
+    length_val::Float64,
+    width_val::Float64,
+    thickness_val::Float64;
+    dUp::Real=1.0,
+    dDwn::Real=1.0,
+    warn_missing::Bool=false,
+)
+    if warn_missing && (length_val != 1.0 || width_val != 1.0 || thickness_val != 1.0)
+        @warn "Ignoring Length/Width/Thickness for RawMeshPrototype." node_symbol = symbol(node)
+    end
+    pose_t = AffineMap(Matrix(rot), base_pos)
+    Geometry(ref_mesh=proto.ref_mesh, transformation=pose_t, dUp=dUp, dDwn=dDwn)
+end
+
+function _geometry_from_prototype(
+    node,
+    proto::PointMapPrototype,
+    params,
+    node_convention::GeometryConvention,
+    rot::SMatrix{3,3,Float64,9},
+    base_pos::SVector{3,Float64},
+    length_val::Float64,
+    width_val::Float64,
+    thickness_val::Float64;
+    dUp::Real=1.0,
+    dDwn::Real=1.0,
+    warn_missing::Bool=false,
+)
+    intrinsic_map = _resolve_callable_value(
+        proto.intrinsic_shape,
+        (
+            (params, node),
+            (params,),
+            (node,),
+            (),
+        ),
+    )
+    physical_map = _resolve_callable_value(
+        proto.physical_deformation,
+        (
+            (params, node, length_val, width_val, thickness_val),
+            (params, node),
+            (params,),
+            (node,),
+            (),
+        ),
+    )
+
+    map_stack = Any[]
+    append!(map_stack, collect(_to_map_tuple(intrinsic_map)))
+    push!(map_stack, _point_map_scale(node_convention.length_axis, length_val, width_val, thickness_val))
+    append!(map_stack, collect(_to_map_tuple(physical_map)))
+    point_map = length(map_stack) == 1 ? map_stack[1] : compose_point_maps(map_stack...)
+
+    pose_t = AffineMap(Matrix(rot), base_pos)
+    PointMappedGeometry(proto.ref_mesh, point_map; transformation=pose_t)
+end
+
+function _geometry_from_prototype(
+    node,
+    proto::ExtrusionPrototype,
+    params,
+    node_convention::GeometryConvention,
+    rot::SMatrix{3,3,Float64,9},
+    base_pos::SVector{3,Float64},
+    length_val::Float64,
+    width_val::Float64,
+    thickness_val::Float64;
+    dUp::Real=1.0,
+    dDwn::Real=1.0,
+    warn_missing::Bool=false,
+)
+    local_geom = _resolve_extrusion_builder(proto, params, node)
+    local_geom isa ExtrudedTubeGeometry || error("ExtrusionPrototype build_local must return ExtrudedTubeGeometry, got $(typeof(local_geom)).")
+    intrinsic_geom = _apply_extrusion_intrinsic(proto, local_geom, params, node)
+    intrinsic_geom isa ExtrudedTubeGeometry || error("ExtrusionPrototype intrinsic_shape must return ExtrudedTubeGeometry, got $(typeof(intrinsic_geom)).")
+    sized_geom = _scale_extruded_geometry(intrinsic_geom, node_convention.length_axis, length_val, width_val, thickness_val)
+    physical_t = _resolve_extrusion_physical(proto, params, node, length_val, width_val, thickness_val)
+    pose_t = AffineMap(Matrix(rot), base_pos)
+    final_t = _compose_transformation(pose_t, _compose_transformation(physical_t, sized_geom.transformation))
+    ExtrudedTubeGeometry(
+        sized_geom.path;
+        n_sides=sized_geom.n_sides,
+        radius=sized_geom.radius,
+        radii=sized_geom.radii,
+        widths=sized_geom.widths,
+        heights=sized_geom.heights,
+        path_normals=sized_geom.path_normals,
+        torsion=sized_geom.torsion,
+        cap_ends=sized_geom.cap_ends,
+        material=sized_geom.material,
+        transformation=final_t,
+    )
+end
+
+function _assign_node_geometry_from_prototypes!(
+    node,
+    prototypes::AbstractDict,
+    prototype_selector::Union{Nothing,Function},
+    prototype_overrides,
+    node_convention::GeometryConvention,
+    rot::SMatrix{3,3,Float64,9},
+    base_pos::SVector{3,Float64},
+    length_val::Float64,
+    width_val::Float64,
+    thickness_val::Float64;
+    dUp::Real=1.0,
+    dDwn::Real=1.0,
+    warn_missing::Bool=false,
+)
+    proto = _resolve_prototype(node, prototypes, prototype_selector)
+    proto === nothing && return false
+    params = _resolve_proto_params(node, proto, prototype_overrides)
+    node[:geometry] = _geometry_from_prototype(
+        node,
+        proto,
+        params,
+        node_convention,
+        rot,
+        base_pos,
+        length_val,
+        width_val,
+        thickness_val;
+        dUp=dUp,
+        dDwn=dDwn,
+        warn_missing=warn_missing,
+    )
+    return true
+end
+
 function _resolve_endpoint_position(node, options::AmapReconstructionOptions; warn_missing::Bool=false)
     ex, fx = _resolve_alias(node, options.endpoint_x_aliases)
     ey, fy = _resolve_alias(node, options.endpoint_y_aliases)
@@ -817,7 +1079,9 @@ function _apply_coordinate_delegate2_previous!(
     target_pos::SVector{3,Float64},
     default_convention::GeometryConvention,
     conventions::AbstractDict,
-    ref_meshes::AbstractDict,
+    prototypes::AbstractDict,
+    prototype_selector::Union{Nothing,Function},
+    prototype_overrides,
     base_pos::IdDict{Any,SVector{3,Float64}},
     top_pos::IdDict{Any,SVector{3,Float64}},
     direction::IdDict{Any,SVector{3,Float64}},
@@ -856,15 +1120,21 @@ function _apply_coordinate_delegate2_previous!(
     direction[previous_node] = d0
     base_rot[previous_node] = r0
 
-    ref_mesh = _resolve_ref_mesh(previous_node, ref_meshes)
-    if ref_mesh !== nothing
-        previous_node[:geometry] = Geometry(
-            ref_mesh=ref_mesh,
-            transformation=prev_world_t,
-            dUp=dUp,
-            dDwn=dDwn,
-        )
-    end
+    _assign_node_geometry_from_prototypes!(
+        previous_node,
+        prototypes,
+        prototype_selector,
+        prototype_overrides,
+        prev_conv,
+        r0,
+        prev_base,
+        prev_length,
+        prev_width,
+        prev_thickness;
+        dUp=dUp,
+        dDwn=dDwn,
+        warn_missing=warn_missing,
+    )
     return true
 end
 
@@ -882,14 +1152,6 @@ function _rotation_from_direction_with_hint(
     secondary = _normalize_perpendicular(hint_secondary, dir, _any_perpendicular(dir, hint_normal))
     normal = _normalize_perpendicular(cross(dir, secondary), dir, _any_perpendicular(dir, hint_normal))
     return _build_rotation_from_local_axes(length_axis, dir, secondary, normal)
-end
-
-function _resolve_ref_mesh(node, ref_meshes::AbstractDict)
-    name = symbol(node)
-    haskey(ref_meshes, name) && return ref_meshes[name]
-    name_str = String(name)
-    haskey(ref_meshes, name_str) && return ref_meshes[name_str]
-    return nothing
 end
 
 function _resolve_node_convention(node, default_convention::GeometryConvention, conventions::AbstractDict)
@@ -1684,48 +1946,13 @@ function _young_final_angle(
     length::Float64,
     tapering::Float64,
 )
-    if young_modulus <= 0.0 || length <= 0.0
-        return z_angle
-    end
-
-    cos_theta = cos(z_angle)
-    young = 1.0 / sqrt(young_modulus)
-    h = length / max(abs(tapering), 1e-6)
-    coeff = young * h * sqrt(abs(cos_theta))
-
-    deflexion = if z_angle > 1.553 && z_angle < 1.588
-        young * young * h * h / 2.0
-    else
-        denom = cos(coeff) * max(abs(cos_theta), 1e-8)
-        abs(denom) <= 1e-10 ? 0.0 : (sin(z_angle) * (1.0 - cos(coeff)) / denom)
-    end
-
-    amin = 0.0
-    amax = max(0.0, pi - z_angle)
-    threshold = pi / 180.0
-    precision = max(length / 10.0, 1e-6)
-
-    while (amax - amin) > threshold
-        deflexion = (amax + amin) / 2.0
-        omega = 0.0
-        sum_v = 0.0
-        increment = 1.0
-        nbiter = 0
-        while omega < deflexion && increment != 0.0 && nbiter < 500
-            term = abs(cos(z_angle + omega) - cos(z_angle + deflexion))
-            increment = precision * sqrt(2.0) * young * sqrt(term)
-            omega += increment
-            sum_v += precision
-            nbiter += 1
-        end
-        if sum_v <= (h - precision)
-            amin = deflexion
-        else
-            amax = deflexion
-        end
-    end
-
-    ((amin + amax) / 2.0) + z_angle
+    final_angle(
+        young_modulus,
+        z_angle,
+        length,
+        tapering;
+        length_scale=1.0,
+    )
 end
 
 function _young_local_flexion(
@@ -1735,15 +1962,13 @@ function _young_local_flexion(
     tapering::Float64,
     relative_position::Float64,
 )
-    angle = 2.0 * (cos(current_angle) - cos(final_angle))
-    angle < 0.0 && return 0.0
-
-    aux = 1.0 - ((1.0 - tapering) * relative_position)
-    aux2 = aux * aux
-    aux2 <= 1e-12 && return 0.0
-
-    flre = 1.0 / (sqrt(young_modulus) * aux2)
-    flre * sqrt(angle)
+    local_flexion(
+        current_angle,
+        final_angle,
+        young_modulus,
+        tapering,
+        relative_position,
+    )
 end
 
 function _resolve_stiffness_straightening(node, options::AmapReconstructionOptions)
@@ -1901,7 +2126,7 @@ function _fallback_insertion_x_angle_deg_amap(
 end
 
 """
-    reconstruct_geometry_from_attributes!(mtg, ref_meshes;
+    reconstruct_geometry_from_attributes!(mtg, prototypes;
         convention=default_amap_geometry_convention(),
         conventions=Dict(),
         offset_aliases=[:Offset, :offset],
@@ -1910,6 +2135,8 @@ end
         phyllotaxy_aliases=[:Phyllotaxy, :phyllotaxy, :PHYLLOTAXY],
         verticil_mode=:rotation360,
         amap_options=default_amap_reconstruction_options(),
+        prototype_selector=nothing,
+        prototype_overrides=nothing,
         dUp=1.0,
         dDwn=1.0,
         warn_missing=false,
@@ -1931,7 +2158,7 @@ If endpoint attributes (`EndX`/`EndY`/`EndZ` aliases) are present, they override
 orientation and `Length` for that node: base position comes from translation/topology, and
 orientation+length are inferred from `(base -> end)`.
 """
-function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
+function reconstruct_geometry_from_attributes!(mtg, prototypes::AbstractDict;
     convention=default_amap_geometry_convention(),
     conventions=Dict(),
     offset_aliases=[:Offset, :offset],
@@ -1940,6 +2167,8 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
     phyllotaxy_aliases=[:Phyllotaxy, :phyllotaxy, :PHYLLOTAXY],
     verticil_mode=:rotation360,
     amap_options=default_amap_reconstruction_options(),
+    prototype_selector::Union{Nothing,Function}=nothing,
+    prototype_overrides=nothing,
     dUp=1.0,
     dDwn=1.0,
     warn_missing=false,
@@ -1958,6 +2187,7 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
     effective_phyllotaxy_aliases = _compose_aliases(amap_cfg.phyllotaxy_aliases, phyllotaxy_aliases_norm)
     effective_verticil_mode = verticil_mode_norm == :rotation360 ? amap_cfg.verticil_mode : verticil_mode_norm
     coordinate_mode = _coordinate_delegate_mode(amap_cfg.coordinate_delegate_mode)
+    prepared_prototypes = _prepare_prototype_library(prototypes)
 
     if amap_cfg.auto_compute_branching_order &&
        !_mtg_has_numeric_attribute(mtg, amap_cfg.order_attribute)
@@ -2063,7 +2293,9 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
                         current_base_pos,
                         convention,
                         conventions,
-                        ref_meshes,
+                        prepared_prototypes,
+                        prototype_selector,
+                        prototype_overrides,
                         base_pos,
                         top_pos,
                         direction,
@@ -2262,16 +2494,27 @@ function reconstruct_geometry_from_attributes!(mtg, ref_meshes::AbstractDict;
             amap_cfg,
         )
 
-        ref_mesh = _resolve_ref_mesh(node, ref_meshes)
-        if ref_mesh !== nothing
-            node[:geometry] = Geometry(ref_mesh=ref_mesh, transformation=world_t, dUp=dUp, dDwn=dDwn)
-        end
+        _assign_node_geometry_from_prototypes!(
+            node,
+            prepared_prototypes,
+            prototype_selector,
+            prototype_overrides,
+            node_convention,
+            rot,
+            current_base_pos,
+            length_val,
+            width_val,
+            thickness_val;
+            dUp=dUp,
+            dDwn=dDwn,
+            warn_missing=warn_missing,
+        )
     end
 
     mtg
 end
 
-function set_geometry_from_attributes!(mtg::MultiScaleTreeGraph.Node, ref_meshes::AbstractDict;
+function set_geometry_from_attributes!(mtg::MultiScaleTreeGraph.Node, prototypes::AbstractDict;
     convention=default_amap_geometry_convention(),
     conventions=Dict(),
     offset_aliases=[:Offset, :offset],
@@ -2280,6 +2523,8 @@ function set_geometry_from_attributes!(mtg::MultiScaleTreeGraph.Node, ref_meshes
     phyllotaxy_aliases=[:Phyllotaxy, :phyllotaxy, :PHYLLOTAXY],
     verticil_mode=:rotation360,
     amap_options=default_amap_reconstruction_options(),
+    prototype_selector::Union{Nothing,Function}=nothing,
+    prototype_overrides=nothing,
     dUp=1.0,
     dDwn=1.0,
     warn_missing=false,
@@ -2287,7 +2532,7 @@ function set_geometry_from_attributes!(mtg::MultiScaleTreeGraph.Node, ref_meshes
 )
     reconstruct_geometry_from_attributes!(
         mtg,
-        ref_meshes;
+        prototypes;
         convention=convention,
         conventions=conventions,
         offset_aliases=offset_aliases,
@@ -2296,6 +2541,8 @@ function set_geometry_from_attributes!(mtg::MultiScaleTreeGraph.Node, ref_meshes
         phyllotaxy_aliases=phyllotaxy_aliases,
         verticil_mode=verticil_mode,
         amap_options=amap_options,
+        prototype_selector=prototype_selector,
+        prototype_overrides=prototype_overrides,
         dUp=dUp,
         dDwn=dDwn,
         warn_missing=warn_missing,

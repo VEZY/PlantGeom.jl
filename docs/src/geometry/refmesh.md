@@ -1,8 +1,16 @@
 # RefMesh
 
+!!! info "Page Info"
+    - **Audience:** Intermediate
+    - **Prerequisites:** basics of `Geometry` and reconstruction workflows
+    - **Time:** 15 minutes
+    - **Output:** Shared reference-mesh workflows (Level 2 concept page)
+
 This page focuses on shared reference-mesh workflows (`RefMesh` + `Geometry`).
 For the procedural extrusion counterpart (`ExtrudedTubeGeometry`,
 `extrude_*`, `lathe_*`), see [`Procedural / Extrusion Geometry`](procedural_geometry.md).
+For the high-level attribute-driven realization layer, see
+[`Prototype Mesh API`](prototype_mesh_api.md).
 
 ```@setup refmesh
 using PlantGeom
@@ -44,11 +52,67 @@ This approach offers significant benefits:
 
 For highly specialized shapes that can't be derived from a reference (like wheat leaves with complex curvatures), PlantGeom can still use direct mesh representations.
 
+## Where `RefMesh` fits in the API
+
+`RefMesh` is the shared geometry asset in PlantGeom.
+
+It is not the same thing as a prototype:
+
+- `RefMesh` stores one canonical mesh plus metadata
+- a prototype tells PlantGeom how to realize node geometry from that asset and from node attributes
+
+This means:
+
+- use `RefMesh` when you want to create, inspect, cache, import, or manually attach shared mesh assets
+- use the [`Prototype Mesh API`](prototype_mesh_api.md) when you want PlantGeom to turn `Length`, `Width`, `Thickness`, and other node attributes into final geometry automatically
+
+### Quick chooser
+
+| If you want to... | Use |
+| --- | --- |
+| Reuse one mesh asset manually with your own transforms | `RefMesh` + `Geometry` |
+| Build a shared organ asset once and cache it | `RefMesh` |
+| Assign one geometry to one node for debugging | `RefMesh` + `Geometry` |
+| Rebuild many nodes automatically from MTG attributes | a prototype built from a `RefMesh` |
+| Keep an imported mesh exactly as-is during reconstruction | `RawMeshPrototype` |
+
+### Minimal comparison
+
+Manual / low-level:
+
+```julia
+node[:geometry] = Geometry(
+    ref_mesh=leaf_refmesh,
+    transformation=compose(Translation(0.0, 0.0, 0.8), LinearMap(RotZ(pi / 4))),
+)
+```
+
+High-level / attribute-driven:
+
+```julia
+prototypes = Dict(
+    :Leaf => RefMeshPrototype(leaf_refmesh),
+)
+
+rebuild_geometry!(mtg, prototypes)
+```
+
+Both are valid, but they solve different problems:
+
+- the first gives you total manual control
+- the second lets PlantGeom realize many node instances consistently from attributes
+
 ## Overview
 
 `RefMesh` is PlantGeom's reference geometry container. It stores one canonical mesh plus metadata
 (material, normals, optional UVs). Node geometries then reuse the same reference mesh with per-node
 transformations.
+
+This is why `RefMesh` remains the right low-level building block even now that PlantGeom also has prototypes:
+
+- a `RefMesh` stays immutable and shareable
+- many nodes can point to the same mesh asset
+- you can use the same `RefMesh` directly in manual geometry or wrap it later in a `RefMeshPrototype`
 
 ## Structure
 
@@ -66,6 +130,9 @@ Geometries in PlantGeom are attached to nodes in a Multi-scale Tree Graph (MTG) 
 # Attaching geometry to an MTG node
 node.geometry = Geometry(ref_mesh=some_ref_mesh, transformation=some_transformation)
 ```
+
+This is the direct/manual path.  
+If instead you want the MTG attributes themselves to drive geometry realization, keep the `RefMesh` as the asset and wrap it in a prototype during reconstruction.
 
 ## Create a RefMesh
 

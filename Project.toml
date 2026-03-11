@@ -24,10 +24,12 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 [weakdeps]
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Meshes = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
+PlantSimEngine = "9a576370-710b-4269-adf9-4f603a9c6423"
 
 [extensions]
 PlantGeomMakie = "Makie"
 PlantGeomMeshesInterop = "Meshes"
+PlantGeomPlantSimEngineExt = "PlantSimEngine"
 
 [compat]
 ColorSchemes = "3"
@@ -40,6 +42,7 @@ Makie = "0.24"
 Meshes = "0.56"
 MultiScaleTreeGraph = "0.15.2"
 OrderedCollections = "1.7.0"
+PlantSimEngine = "0.13"
 RecipesBase = "1"
 Rotations = "1"
 StaticArrays = "1"

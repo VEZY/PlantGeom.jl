@@ -1,5 +1,11 @@
 # Procedural / Extrusion Geometry
 
+!!! info "Page Info"
+    - **Audience:** Intermediate to Advanced
+    - **Prerequisites:** comfortable with `RefMesh` basics and transforms
+    - **Time:** 20 minutes
+    - **Output:** Parametric/extruded organ geometry and low-level control (Level 3 concept page)
+
 PlantGeom supports two complementary geometry workflows:
 
 - shared geometry with `RefMesh` + `Geometry(ref_mesh=..., transformation=...)`
@@ -45,29 +51,146 @@ Use procedural extrusion when:
 fully procedural mesh generation (`ExtrudedTubeGeometry`): the base organ mesh
 is still reusable, but each node can carry its own deformation map.
 
-PlantGeom now includes a small cereal-leaf toolkit for that workflow:
+PlantGeom now includes a small midrib-driven lamina toolkit for that workflow:
 
 - `RationalBezierCurve`: NURBS-like weighted Bezier midrib
-- `cereal_leaf_midrib`: convenience weighted curve builder
-- `CerealLeafMap`: point map that wraps a flat cereal blade around that midrib
+- `lamina_midrib`: convenience weighted curve builder
+- `LaminaMidribMap`: point map that wraps a flat lamina around a midrib
 - `LaminaTwistRollMap`: local lamina torsion and edge-roll map
-- `LaminaMarginWaveMap`: margin undulation map (wavy leaf borders)
+- `LaminaAnticlasticWaveMap`: anticlastic margin map (one side up, the other down)
+- `BiomechanicalBendingTransform`: cantilever-style organ bending from Young's modulus
 - `compose_point_maps`: compose multiple point maps into one
-- `cereal_leaf_mesh` / `cereal_leaf_refmesh`: reusable flat blade reference mesh
+- `lamina_mesh` / `lamina_refmesh`: reusable flat blade reference mesh
 
-For cereal-like ruffled margins, use `LaminaMarginWaveMap` with:
+For these cereal point maps, parameters are normalized for a unit blade frame
+(`x ∈ [0, 1]`, `|y| ≤ 0.5`). Use `lamina_refmesh(...; max_width=1.0)` and
+apply physical width later via node transforms or reconstruction attributes.
+Note: scaling local `z` strongly also scales down bend amplitude, because
+midrib deflection is represented in local `z` by the point map.
+To define dimensions before deformation, use `with_point_map_frame(...)`.
+When used through `PointMappedGeometry`, the input `RefMesh` coordinates are
+normalized to blade space automatically (`x → [0,1]`, centered `y`) before the
+point-map pipeline, so framed mappings remain stable across source mesh units.
+
+For cereal-like anticlastic ripples (opposite side displacement), use `LaminaAnticlasticWaveMap` with:
 
 - `lateral_strength=0.0`
 - `vertical_strength=1.0`
 
-This creates normal-direction margin waves (as in typical cereal lamina), not a
-side-to-side zig-zag outline.
+This creates opposite-sign side displacement in the normal direction (`+Y` and
+`-Y` move in opposite `Z` directions), not a side-to-side zig-zag outline.
+
+### Biomechanical Cantilever Bending
+
+For organs that should bend under gravity without explicit biomass simulation,
+PlantGeom provides:
+
+- `final_angle`: maximal beam deflection angle (from vertical, radians)
+- `local_flexion`: local incremental bending contribution
+- `calculate_segment_angles`: angle profile along segment boundaries
+- `BiomechanicalBendingTransform`: fast sampled non-linear transform to apply on meshes
+
+`BiomechanicalBendingTransform` precomputes centerline/frame samples once, so
+per-vertex evaluation is interpolation only. You can apply it directly to
+`Geometry` nodes with `transform_mesh!` (or compose it with other transforms).
 
 ```@example procgeom
-leaf_ref = cereal_leaf_refmesh(
+segments = collect(range(0.0, 1.0; length=8))
+angles = calculate_segment_angles(25.0, deg2rad(30.0), 1.0, 0.55, segments)
+
+bend = BiomechanicalBendingTransform(
+    25.0,
+    deg2rad(30.0),
+    1.0,
+    0.55;
+    x_min=0.0,
+    x_max=1.0,
+    n_samples=96,
+)
+
+(angles[1], angles[end], bend(Point(1.0, 0.0, 0.0)))
+```
+
+`beam_length` should use the same unit as your mesh local `x` axis (unless you
+explicitly adjust `x_min`/`x_max`). By default, the helper equations use
+`length_scale=100.0` to match legacy centimeter-based formulations.
+
+For segmented organs modeled as consecutive MTG nodes (legacy leaflet style),
+you can write angles directly on each segment node with
+`update_segment_angles!`.
+
+```@example procgeom
+function segmented_polyline(segment_positions, angle_deg_values)
+    boundaries = vcat(segment_positions, 1.0)
+    pts = Point2f[(0.0, 0.0)]
+    for i in eachindex(angle_deg_values)
+        θ = deg2rad(angle_deg_values[i])
+        ds = boundaries[i + 1] - boundaries[i]
+        x_prev = pts[end][1]
+        z_prev = pts[end][2]
+        push!(pts, Point2f(x_prev + ds * sin(θ), z_prev + ds * cos(θ)))
+    end
+    pts
+end
+
+mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+leaflet_soft = Node(mtg, NodeMTG(:+, :Leaflet, 1, 2))
+leaflet_stiff = Node(mtg, NodeMTG(:+, :Leaflet, 2, 2))
+segment_positions = [0.0, 0.20, 0.42, 0.66, 0.88]
+
+for (i, pos) in enumerate(segment_positions)
+    s_soft = Node(leaflet_soft, NodeMTG(:/, :LeafletSegment, i, 3))
+    s_stiff = Node(leaflet_stiff, NodeMTG(:/, :LeafletSegment, i, 3))
+    s_soft[:segment_boundaries] = pos
+    s_stiff[:segment_boundaries] = pos
+end
+
+update_segment_angles!(
+    leaflet_soft,
+    18.0,
+    deg2rad(26.0),
+    1.0,
+    0.55;
+    segment_symbol=:LeafletSegment,
+    position_key=:segment_boundaries,
+    angle_key=:zenithal_angle,
+    degrees=true,
+)
+update_segment_angles!(
+    leaflet_stiff,
+    220.0,
+    deg2rad(26.0),
+    1.0,
+    0.55;
+    segment_symbol=:LeafletSegment,
+    position_key=:segment_boundaries,
+    angle_key=:zenithal_angle,
+    degrees=true,
+)
+
+soft_segments = descendants(leaflet_soft, symbol=:LeafletSegment)
+stiff_segments = descendants(leaflet_stiff, symbol=:LeafletSegment)
+angles_soft = [s[:zenithal_angle] for s in soft_segments]
+angles_stiff = [s[:zenithal_angle] for s in stiff_segments]
+
+soft_poly = segmented_polyline(segment_positions, angles_soft)
+stiff_poly = segmented_polyline(segment_positions, angles_stiff)
+
+fig = Figure(size=(780, 320))
+ax = Axis(fig[1, 1], xlabel="Projected x", ylabel="Projected z", title="Segment-chain bending (soft vs stiff)")
+lines!(ax, soft_poly, color=RGBA(0.14, 0.53, 0.26, 0.95), linewidth=4, label="soft (low Young)")
+scatter!(ax, soft_poly, color=RGBA(0.14, 0.53, 0.26, 0.95), markersize=8)
+lines!(ax, stiff_poly, color=RGBA(0.16, 0.36, 0.70, 0.95), linewidth=4, label="stiff (high Young)")
+scatter!(ax, stiff_poly, color=RGBA(0.16, 0.36, 0.70, 0.95), markersize=8)
+axislegend(ax, position=:rb)
+fig
+```
+
+```@example procgeom
+leaf_ref = lamina_refmesh(
     "CerealBlade";
     length=1.0,
-    max_width=0.12,
+    max_width=1.0,
     n_long=28,
     n_half=4,
     material=RGB(0.22, 0.62, 0.24),
@@ -75,45 +198,28 @@ leaf_ref = cereal_leaf_refmesh(
 
 base_leaf = PointMappedGeometry(
     leaf_ref,
-    compose_point_maps(
-        LaminaMarginWaveMap(
-            length=1.0,
-            max_half_width=0.06,
-            amplitude=0.0035,
-            wavelength=0.20,
-            edge_exponent=1.6,
-            lateral_strength=0.0,
-            vertical_strength=1.0,
-        ),
-        LaminaTwistRollMap(length=1.0, tip_twist_deg=6.0, roll_strength=0.12),
-        CerealLeafMap(length=1.0, base_angle_deg=22.0, bend=0.18, tip_drop=0.04),
-    ),
+    with_point_map_frame(compose_point_maps(
+        LaminaTwistRollMap(tip_twist_deg=3.0, roll_strength=0.05),
+        LaminaMidribMap(base_angle_deg=46.0, bend=0.02, tip_drop=0.00),
+    ); length=1.0, width=0.12, z_scale=1.0),
 )
 steeper_leaf = PointMappedGeometry(
     leaf_ref,
-    compose_point_maps(
-        LaminaMarginWaveMap(
-            length=1.0,
-            max_half_width=0.06,
-            amplitude=0.0065,
-            wavelength=0.16,
-            edge_exponent=1.8,
-            lateral_strength=0.0,
-            vertical_strength=1.0,
-        ),
+    with_point_map_frame(compose_point_maps(
         LaminaTwistRollMap(
-            length=1.0,
-            tip_twist_deg=28.0,
-            roll_strength=0.34,
+            tip_twist_deg=26.0,
+            roll_strength=0.32,
             roll_exponent=1.2,
         ),
-        CerealLeafMap(length=1.0, base_angle_deg=42.0, bend=0.65, tip_drop=0.22),
-    );
-    transformation=PlantGeom.Translation(0.0, 0.22, 0.0),
+        LaminaMidribMap(base_angle_deg=22.0, bend=1.0, tip_drop=1.0),
+    ); length=1.0, width=0.12, z_scale=1.0);
+    transformation=PlantGeom.compose(
+        PlantGeom.Translation(0.0, 0.22, 0.0),
+    ),
 )
 
 fig = Figure(size=(920, 360))
-ax = Axis3(fig[1, 1], title="PointMappedGeometry: cereal leaf angle + bend")
+ax = Axis3(fig[1, 1], title="PointMappedGeometry: cereal leaf angle + bend", aspect = :data)
 mesh!(ax, PlantGeom.geometry_to_mesh(base_leaf), color=RGBA(0.30, 0.70, 0.28, 0.95))
 mesh!(ax, PlantGeom.geometry_to_mesh(steeper_leaf), color=RGBA(0.12, 0.50, 0.18, 0.95))
 fig
@@ -140,28 +246,26 @@ stem[:geometry] = ExtrudedTubeGeometry(
     material=RGB(0.54, 0.76, 0.38),
 )
 
-blade_ref = cereal_leaf_refmesh(
+blade_ref = lamina_refmesh(
     "CerealBlade";
     length=1.0,
-    max_width=0.12,
+    max_width=1.0,
     n_long=40,
     n_half=8,
     material=RGB(0.20, 0.60, 0.22),
 )
 
 leaf_specs = [
-    (z=0.20, azimuth_deg=-35.0, base_angle_deg=18.0, bend=0.18, tip_drop=0.05, twist=8.0, roll=0.18, wave_amp=0.008, wave_len=0.18, scale=0.82),
-    (z=0.56, azimuth_deg=84.0, base_angle_deg=30.0, bend=0.40, tip_drop=0.11, twist=18.0, roll=0.30, wave_amp=0.010, wave_len=0.15, scale=0.96),
-    (z=0.90, azimuth_deg=208.0, base_angle_deg=44.0, bend=0.74, tip_drop=0.24, twist=34.0, roll=0.44, wave_amp=0.012, wave_len=0.12, scale=1.05),
+    (z=0.20, azimuth_deg=-35.0, insertion_tilt_deg=42.0, base_angle_deg=34.0, bend=0.16, tip_drop=0.04, twist=8.0, roll=0.18, wave_amp=0.008, wave_len=0.23, scale=0.82),
+    (z=0.56, azimuth_deg=84.0, insertion_tilt_deg=48.0, base_angle_deg=44.0, bend=0.30, tip_drop=0.08, twist=18.0, roll=0.30, wave_amp=0.010, wave_len=0.19, scale=0.96),
+    (z=0.90, azimuth_deg=208.0, insertion_tilt_deg=54.0, base_angle_deg=54.0, bend=0.46, tip_drop=0.14, twist=34.0, roll=0.44, wave_amp=0.012, wave_len=0.15, scale=1.05),
 ]
 
 for (i, spec) in enumerate(leaf_specs)
     leaf = Node(stem, NodeMTG(:+, :Leaf, i, 2))
     point_map = compose_point_maps(
-        LaminaMarginWaveMap(
-            length=1.0,
-            max_half_width=0.06,
-            amplitude=spec.wave_amp,
+        LaminaAnticlasticWaveMap(
+            amplitude=spec.wave_amp / 0.12,
             wavelength=spec.wave_len,
             edge_exponent=1.6,
             progression_exponent=1.1,
@@ -172,13 +276,11 @@ for (i, spec) in enumerate(leaf_specs)
             vertical_strength=1.0,
         ),
         LaminaTwistRollMap(
-            length=1.0,
             tip_twist_deg=spec.twist,
             roll_strength=spec.roll,
             roll_exponent=1.2,
         ),
-        CerealLeafMap(
-            length=1.0,
+        LaminaMidribMap(
             base_angle_deg=spec.base_angle_deg,
             bend=spec.bend,
             tip_drop=spec.tip_drop,
@@ -186,11 +288,16 @@ for (i, spec) in enumerate(leaf_specs)
     )
     leaf[:geometry] = PointMappedGeometry(
         blade_ref,
-        point_map;
+        with_point_map_frame(
+            point_map;
+            length=spec.scale,
+            width=0.12 * spec.scale,
+            z_scale=spec.scale,
+        );
         transformation=PlantGeom.compose(
             PlantGeom.Translation(0.0, 0.0, spec.z),
             PlantGeom.LinearMap(PlantGeom.RotZ(deg2rad(spec.azimuth_deg))),
-            PlantGeom.LinearMap(Diagonal([spec.scale, spec.scale, spec.scale])),
+            PlantGeom.LinearMap(PlantGeom.RotMatrix(PlantGeom.AngleAxis(deg2rad(-spec.insertion_tilt_deg), 0.0, 1.0, 0.0))),
         ),
     )
 end
@@ -199,12 +306,10 @@ terminal_leaf = Node(stem, NodeMTG(:+, :Leaf, length(leaf_specs) + 1, 2))
 stem_top_z = stem_path[end][3]
 terminal_leaf[:geometry] = PointMappedGeometry(
     blade_ref,
-    compose_point_maps(
-        LaminaMarginWaveMap(
-            length=1.0,
-            max_half_width=0.06,
-            amplitude=0.008,
-            wavelength=0.16,
+    with_point_map_frame(compose_point_maps(
+        LaminaAnticlasticWaveMap(
+            amplitude=0.008 / 0.12,
+            wavelength=0.20,
             edge_exponent=1.6,
             progression_exponent=1.1,
             base_damping=5.0,
@@ -214,38 +319,36 @@ terminal_leaf[:geometry] = PointMappedGeometry(
             vertical_strength=1.0,
         ),
         LaminaTwistRollMap(
-            length=1.0,
             tip_twist_deg=10.0,
             roll_strength=0.20,
             roll_exponent=1.1,
         ),
-        CerealLeafMap(
-            length=1.0,
-            base_angle_deg=72.0,
-            bend=0.28,
-            tip_drop=0.06,
+        LaminaMidribMap(
+            base_angle_deg=62.0,
+            bend=0.22,
+            tip_drop=0.05,
         ),
-    );
+    ); length=0.76, width=0.12 * 0.76, z_scale=0.76);
     transformation=PlantGeom.compose(
         PlantGeom.Translation(0.0, 0.0, stem_top_z),
         PlantGeom.LinearMap(PlantGeom.RotZ(deg2rad(6.0))),
-        PlantGeom.LinearMap(Diagonal([0.76, 0.76, 0.76])),
+        PlantGeom.LinearMap(PlantGeom.RotMatrix(PlantGeom.AngleAxis(deg2rad(-48.0), 0.0, 1.0, 0.0))),
     ),
 )
 
 plantviz(mtg, color=Dict("CerealBlade" => RGB(0.20, 0.60, 0.22), "ExtrudedTube" => RGB(0.54, 0.76, 0.38)))
 ```
 
-### Cereal Margin Wave (Normal Direction)
+### Cereal Anticlastic Wave (Normal Direction)
 
-This focused comparison isolates the margin effect only: same base blade and
-bending, with or without `LaminaMarginWaveMap`.
+This focused comparison isolates the anticlastic effect only: same base blade and
+bending, with or without `LaminaAnticlasticWaveMap`.
 
 ```@example procgeom
-compare_ref = cereal_leaf_refmesh(
+compare_ref = lamina_refmesh(
     "CerealBladeCompare";
     length=1.0,
-    max_width=0.14,
+    max_width=1.0,
     n_long=72,
     n_half=14,
     material=RGB(0.20, 0.60, 0.22),
@@ -254,20 +357,21 @@ compare_ref = cereal_leaf_refmesh(
 smooth_leaf = PointMappedGeometry(
     compare_ref,
     compose_point_maps(
-        LaminaTwistRollMap(length=1.0, tip_twist_deg=20.0, roll_strength=0.32, roll_exponent=1.15),
-        CerealLeafMap(length=1.0, base_angle_deg=34.0, bend=0.56, tip_drop=0.16),
+        LaminaTwistRollMap(tip_twist_deg=20.0, roll_strength=0.32, roll_exponent=1.15),
+        LaminaMidribMap(base_angle_deg=34.0, bend=0.56, tip_drop=0.16),
     );
-    transformation=PlantGeom.Translation(0.0, -0.20, 0.0),
+    transformation=PlantGeom.compose(
+        PlantGeom.Translation(0.0, -0.20, 0.0),
+        PlantGeom.LinearMap(Diagonal([1.0, 0.14, 0.14])),
+    ),
 )
 
 wavy_leaf = PointMappedGeometry(
     compare_ref,
     compose_point_maps(
-        LaminaMarginWaveMap(
-            length=1.0,
-            max_half_width=0.07,
-            amplitude=0.022,
-            wavelength=0.115,
+        LaminaAnticlasticWaveMap(
+            amplitude=0.022 / 0.14,
+            wavelength=0.145,
             edge_exponent=1.7,
             progression_exponent=1.1,
             base_damping=4.5,
@@ -275,16 +379,19 @@ wavy_leaf = PointMappedGeometry(
             lateral_strength=0.0,
             vertical_strength=1.0,
         ),
-        LaminaTwistRollMap(length=1.0, tip_twist_deg=20.0, roll_strength=0.32, roll_exponent=1.15),
-        CerealLeafMap(length=1.0, base_angle_deg=34.0, bend=0.56, tip_drop=0.16),
+        LaminaTwistRollMap(tip_twist_deg=20.0, roll_strength=0.32, roll_exponent=1.15),
+        LaminaMidribMap(base_angle_deg=34.0, bend=0.56, tip_drop=0.16),
     );
-    transformation=PlantGeom.Translation(0.0, 0.20, 0.0),
+    transformation=PlantGeom.compose(
+        PlantGeom.Translation(0.0, 0.20, 0.0),
+        PlantGeom.LinearMap(Diagonal([1.0, 0.14, 0.14])),
+    ),
 )
 
 fig = Figure(size=(1200, 520))
 ax = Axis3(
     fig[1, 1];
-    title="Cereal leaf margin wave (top: wavy, bottom: smooth)",
+    title="Cereal leaf anticlastic wave (top: wavy, bottom: smooth)",
     azimuth=1.45,
     elevation=0.36,
     perspectiveness=0.7,
@@ -299,7 +406,7 @@ fig
 
 This deforms the blade itself. If you instead want topology-driven component
 bending across segmented organs, use the AMAP stiffness/orthotropy pipeline from
-[`Conventions Reference`](amap_conventions_reference.md).
+[`Conventions Reference`](@ref "AMAP Conventions Reference").
 
 ## Node-Level Procedural Geometry
 
@@ -549,9 +656,3 @@ fig
 - Repeated geometry: use cached procedural `RefMesh` constructors.
 - Unique per-node geometry: use `ExtrudedTubeGeometry` directly on nodes.
 - In both cases, render with the same `plantviz` pipeline.
-
-See also:
-
-- [`Reference Meshes`](refmesh.md)
-- [`Building Plant Models`](building_plant_models.md)
-- [`AMAPStudio Parity Matrix`](amap_parity_matrix.md)

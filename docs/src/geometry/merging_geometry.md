@@ -1,5 +1,11 @@
 # Merging Fine-Scale Geometry
 
+!!! info "Page Info"
+    - **Audience:** Intermediate to Advanced
+    - **Prerequisites:** reconstructed geometry in MTG nodes
+    - **Time:** 10 minutes
+    - **Output:** Structural mesh merging across MTG scales
+
 ```@setup merge_geometry
 using PlantGeom, CairoMakie, Statistics
 using Bonito

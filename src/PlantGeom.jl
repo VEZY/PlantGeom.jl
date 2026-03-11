@@ -40,7 +40,9 @@ include("geometry/pointmaps.jl")
 include("geometry/materialize.jl")
 include("geometry/metadata.jl")
 include("reconstruction/amap_reconstruction.jl")
+include("reconstruction/prototypes.jl")
 include("reconstruction/conventions.jl")
+include("growth/growth_api.jl")
 include("equality.jl")
 include("helpers.jl")
 include("opf/read_opf.jl")
@@ -85,8 +87,10 @@ export transform_mesh!
 export extrude_profile_mesh, extrude_profile_refmesh, extrude_tube_mesh
 export ExtrudedTubeGeometry
 export PointMappedGeometry
-export RationalBezierCurve, CerealLeafMap, cereal_leaf_midrib, cereal_leaf_mesh, cereal_leaf_refmesh
-export LaminaTwistRollMap, LaminaMarginWaveMap, ComposedPointMap, compose_point_maps
+export RationalBezierCurve, LaminaMidribMap, lamina_midrib, lamina_mesh, lamina_refmesh
+export LaminaTwistRollMap, LaminaAnticlasticWaveMap, ComposedPointMap, compose_point_maps
+export PointMapFrame, with_point_map_frame
+export final_angle, local_flexion, calculate_segment_angles, update_segment_angles!, BiomechanicalBendingTransform
 export extrusion_make_path, extrusion_make_spline, extrusion_make_interpolation, extrusion_make_curve
 export lathe_gen_mesh, lathe_gen_refmesh, lathe_mesh, lathe_refmesh
 export circle_section_profile, leaflet_midrib_profile
@@ -100,10 +104,15 @@ export default_geometry_convention
 export default_amap_geometry_convention
 export AmapReconstructionOptions
 export default_amap_reconstruction_options
+export AbstractMeshPrototype, AbstractParametricPrototype
+export RefMeshPrototype, PointMapPrototype, ExtrusionPrototype, RawMeshPrototype
+export available_parameters, effective_parameters
 export transformation_from_attributes
 export geometry_from_attributes
 export reconstruct_geometry_from_attributes!
 export set_geometry_from_attributes!
+export emit_internode!, emit_leaf!, emit_phytomer!
+export grow_length!, grow_width!, set_growth_attributes!, rebuild_geometry!
 
 function colorbar end # Extended in PlantGeomMakie extension
 export colorbar

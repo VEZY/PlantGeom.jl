@@ -1,0 +1,133 @@
+# Build & Simulate Plants
+
+!!! info "Page Info"
+    - **Audience:** Beginner to Intermediate
+    - **Prerequisites:** completed the Getting Started quickstarts
+    - **Time:** 20 minutes
+    - **Output:** End-to-end workflow (reconstruct from attributes, then loop-driven growth)
+
+This page is the practical bridge between quickstarts and advanced concepts.
+
+## Strategies for plant reconstruction
+
+There are two main strategies for building plant models in PlantGeom:
+
+1. You already have an MTG with attributes (e.g. from field data or from another simulator such as AMAPSim) and want to reconstruct geometry from it.
+2. You want to simulate growth in Julia with explicit control over the growth loop, and rebuild geometry on demand.
+
+Based on the strategy, you will follow either Workflow A or Workflow B below. Both workflows use the same underlying geometry and prototype systems, but they differ in how and when you call the reconstruction functions:
+
+| Situation | Recommended workflow | Why |
+| --- | --- | --- |
+| You already have measured attributes in an `.mtg` | Workflow A | fastest path to a first reconstruction |
+| You want dynamic growth over time | Workflow B | explicit, debuggable simulation loop |
+
+In this page, we introduce the two workflows and the key concepts behind them. For more technical details about the reconstruction pipeline, see the linked concept pages.
+
+```@setup buildsim
+using PlantGeom
+using MultiScaleTreeGraph
+using GeometryBasics
+using Colors
+using CairoMakie
+
+CairoMakie.activate!()
+
+stem_ref = RefMesh(
+    "stem",
+    GeometryBasics.mesh(
+        GeometryBasics.Cylinder(
+            Point(0.0, 0.0, 0.0),
+            Point(1.0, 0.0, 0.0),
+            0.5,
+        ),
+    ),
+    RGB(0.50, 0.38, 0.26),
+)
+
+leaf_ref = lamina_refmesh(
+    "leaf";
+    length=1.0,
+    max_width=1.0,
+    n_long=36,
+    n_half=7,
+    material=RGB(0.19, 0.61, 0.29),
+)
+
+prototypes = Dict(
+    :Internode => RefMeshPrototype(stem_ref),
+    :Leaf => PointMapPrototype(
+        leaf_ref;
+        defaults=(base_angle_deg=44.0, bend=0.25, tip_drop=0.06),
+        intrinsic_shape=params -> LaminaMidribMap(
+            base_angle_deg=params.base_angle_deg,
+            bend=params.bend,
+            tip_drop=params.tip_drop,
+        ),
+    ),
+)
+```
+
+## Workflow A: Reconstruct from Existing MTG Attributes
+
+This workflow is ideal when you already have an MTG with attributes such as `Length`, `Width`, `YInsertionAngle`, `XEuler`, etc. (*e.g.* from field data) and want to reconstruct geometry from it. If you followed the MTG standards, the code is as simple as:
+
+```@example buildsim
+mtg = read_mtg(joinpath(pkgdir(PlantGeom), "test", "files", "reconstruction_standard.mtg"))
+
+set_geometry_from_attributes!(
+    mtg,
+    prototypes;
+    convention=default_amap_geometry_convention(),
+)
+
+plantviz(mtg, figure=(size=(920, 640),))
+```
+
+Why this is useful:
+
+- good starting point when data already has `Length`, `Width`, insertion/euler attributes
+- deterministic and easy to compare with AMAP-style conventions
+
+## Workflow B: Grow Structure in Julia, Rebuild on Demand
+
+This workflow is ideal when you want to simulate growth in Julia with explicit control over the growth loop, and rebuild geometry on demand. In this case, you build the topology and set attributes in a loop, and then call `rebuild_geometry!` when you want to update the geometry:
+
+```@example buildsim
+plant = let
+    p = Node(NodeMTG(:/, :Plant, 1, 1))
+    axis = emit_internode!(p; index=1, link=:/, length=0.18, width=0.022)
+
+    for rank in 2:8
+        axis = emit_internode!(
+            axis;
+            index=rank,
+            length=0.17 * 0.95^(rank - 2),
+            width=0.021 * 0.93^(rank - 2),
+        )
+
+        emit_leaf!(
+            axis;
+            index=rank,
+            offset=0.80 * axis[:Length],
+            length=0.21 + 0.02 * rank,
+            width=0.032 + 0.003 * rank,
+            thickness=0.010 + 0.0015 * rank,
+            phyllotaxy=isodd(rank) ? 0.0 : 180.0,
+            y_insertion_angle=54.0,
+            prototype=:Leaf,
+            prototype_overrides=(bend=0.10 + 0.06 * rank, tip_drop=0.02 * rank),
+        )
+    end
+
+    rebuild_geometry!(p, prototypes)
+    p
+end
+
+plantviz(plant, figure=(size=(980, 700),))
+```
+
+Why this is useful:
+
+- topology/attributes stay explicit and debuggable
+- you choose rebuild cadence for performance
