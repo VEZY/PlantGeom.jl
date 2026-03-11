@@ -2,3 +2,5 @@
 /docs/build/
 test/Manifest.toml
 docs/Manifest.toml
+*/node_modules/
+*/package-lock.json
