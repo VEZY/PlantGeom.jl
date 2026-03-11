@@ -6,10 +6,20 @@
     - **Time:** 25 minutes
     - **Output:** Full list of MTG variables, reconstruction options, and alias rules
 
-This page answers two practical questions:
+This page is the practical reference for AMAP-style reconstruction from an MTG.
 
-1. **Which variables can I put in my MTG?**
-2. **Which reconstruction options can I change?**
+After the tutorial, users usually want to answer three questions:
+
+1. **Which columns can I put in my MTG?**
+2. **Which of these columns are worth measuring first?**
+3. **Which Julia options can I change when the default reconstruction is not enough?**
+
+This page answers those questions in that order. It is more detailed than the quickstart, but it is still meant to help you make choices, not just to list internal names.
+
+If you have not used AMAP-style reconstruction yet, start here first:
+
+- [`MTG Reconstruction Tutorial`](@ref "MTG Reconstruction Tutorial")
+- [Explicit Coordinates: Which Option Should I Use?](@ref)
 
 The default AMAP-style reconstruction call is:
 
@@ -21,19 +31,64 @@ set_geometry_from_attributes!(
 )
 ```
 
-If you are new to this page, read it in this order:
+## How To Read This Page
 
-1. **Measurement sets**: what to measure first
-2. **All supported MTG variables**: what each column means
-3. **Reconstruction options**: what you can change in `AmapReconstructionOptions(...)`
-4. **Detailed alias/reference tables**: exact accepted names
+If you are new to PlantGeom, read this page in this order:
+
+1. **Measurement strategy**: decide what you want to measure in your MTG.
+2. **MTG columns**: see which columns PlantGeom can read automatically.
+3. **Julia options**: change behavior with `AmapReconstructionOptions(...)` only if needed.
+4. **Alias tables**: use them only when your imported column names differ from the defaults.
 
 If your question is specifically about explicit coordinates (`XX`, `YY`, `ZZ`, `EndX`, `EndY`, `EndZ`), first read
 [Explicit Coordinates: Which Option Should I Use?](@ref).
 
+## Before the Full Reference: What Should I Actually Measure?
+
+You do **not** need to measure every variable listed on this page.
+
+In practice, most users fall into one of these three workflows:
+
+| Your goal | Measure first | Usually enough? | Notes |
+| --- | --- | --- | --- |
+| Get a first recognizable 3D plant quickly | `Length`, `Width`, `Thickness` | yes for simple synthetic or regular plants | all organs reuse a prototype shape and are mainly distinguished by size |
+| Reconstruct a measured plant with realistic attachment and orientation | previous columns + `Offset`, insertion angles, optionally Euler angles | yes for many MTGs | this is the standard AMAP-style workflow |
+| Reconstruct from digitized 3D coordinates | explicit coordinates (`XX`, `YY`, `ZZ`, optionally `EndX`, `EndY`, `EndZ`) plus size columns | yes when coordinates are trusted | use `AmapReconstructionOptions(explicit_coordinate_mode=...)` |
+
+If you are unsure where to start, use the **second workflow**. It is the most broadly useful one.
+
+### MTG columns vs Julia options
+
+There are two different things on this page:
+
+- **MTG columns** are attributes stored on the nodes themselves, such as `Length`, `Width`, `Offset`, or `YInsertionAngle`.
+- **Julia options** are not stored in the MTG. They are passed once when calling reconstruction.
+
+```julia
+opts = AmapReconstructionOptions(
+    explicit_coordinate_mode=:topology_default,
+)
+
+set_geometry_from_attributes!(
+    mtg,
+    prototypes;
+    convention=default_amap_geometry_convention(),
+    amap_options=opts,
+)
+```
+
+This distinction matters:
+
+- if you want to describe **one specific organ**, add or change an MTG column on that node
+- if you want to change **how PlantGeom interprets many nodes**, use a Julia option
+
 ## 1. What Can I Measure in My MTG?
 
 ### 1.1 Smallest useful set
+
+Use this set when you mainly want a **size-driven reconstruction**.
+
+PlantGeom will take a normalized prototype for each organ type and scale it from these values.
 
 | Variable | Meaning | Recommended? |
 | --- | --- | --- |
@@ -44,6 +99,10 @@ If your question is specifically about explicit coordinates (`XX`, `YY`, `ZZ`, `
 With only these variables, PlantGeom can already scale a reusable organ shape.
 
 ### 1.2 Standard reconstruction set
+
+Use this set when you want a **botanically structured reconstruction** from topology and measurements.
+
+This is the set most users should aim for first.
 
 | Variable | Meaning | Recommended? |
 | --- | --- | --- |
@@ -57,6 +116,10 @@ This is the most common workflow for measured MTGs.
 
 ### 1.3 Explicit-coordinate set
 
+Use this set when your upstream source already provides 3D coordinates, for example from digitizing, scanning, or another reconstruction pipeline.
+
+These columns are powerful, but they are also the easiest ones to misuse if you mix them with topology-based expectations. If you are not sure, stay with the standard set above.
+
 | Variable | Meaning | Use when |
 | --- | --- | --- |
 | `XX`, `YY`, `ZZ` | explicit start position | geometry source already provides 3D coordinates |
@@ -65,6 +128,8 @@ This is the most common workflow for measured MTGs.
 Use these variables only if your data source already gives coordinates or if you deliberately want coordinate-driven reconstruction.
 
 ### 1.4 Advanced optional variables
+
+These variables are usually not the first thing to measure. They are useful when you already have a working reconstruction and want to make it more faithful or more constrained.
 
 | Variable family | Purpose |
 | --- | --- |
@@ -78,7 +143,7 @@ Use these variables only if your data source already gives coordinates or if you
 ## 2. Which Reconstruction Options Exist?
 
 These options are **not MTG columns**.  
-They are Julia options passed in:
+They are Julia options passed to the reconstruction call:
 
 ```julia
 opts = AmapReconstructionOptions(...)
@@ -101,11 +166,42 @@ Most users only need to know these first:
 | `insertion_y_by_order` | default `Y` insertion angle by branching order | empty |
 | `phyllotaxy_by_order` | default phyllotaxy by branching order | empty |
 
+Recommended mental model:
+
+- first, put the organ-specific measurements in the MTG
+- then, only if the reconstruction still does not match your data source, change one of these Julia options
+
+For most projects:
+
+- keep `explicit_coordinate_mode=:topology_default` unless your coordinate source clearly requires another mode
+- keep `verticil_mode=:rotation360` unless sibling spread is already fully measured
+- keep `order_override_mode=:override` only when you really want branch-order calibration to dominate node values
+
+### Common reconstruction recipes
+
+| If your plant data looks like... | Put these in the MTG | Usually set these options | Why |
+| --- | --- | --- | --- |
+| simple measured axes and leaves | `Length`, `Width`, `Thickness`, `Offset`, insertion angles | none | this is the standard topology-driven workflow |
+| same as above, but some local twist/roll is missing from prototypes | previous columns + `XEuler`, `YEuler`, `ZEuler` only where needed | none | Euler angles are best used as local corrections |
+| digitized node positions with trusted start/end coordinates | `XX`, `YY`, `ZZ`, `EndX`, `EndY`, `EndZ`, size columns | `explicit_coordinate_mode=:explicit_start_end_required` | coordinates should dominate orientation |
+| topology editor control points that should redirect previous segments | `XX`, `YY`, `ZZ`, size columns | `explicit_coordinate_mode=:explicit_rewire_previous` | explicit nodes act like anchors instead of visible segments |
+| incomplete angle data, but branch order is known | size columns, topology columns, measured angles when available | `insertion_y_by_order`, `phyllotaxy_by_order`, maybe `order_override_mode=:missing_only` | branch-order rules fill or override missing architecture |
+
 ## 3. Detailed Variable and Alias Reference
 
-This section lists the exact MTG column names accepted by default.
+This section is the exact reference for what PlantGeom accepts by default.
+
+You do **not** need to memorize these tables. Use them when:
+
+- you are importing data and a column is not being recognized
+- you want to understand which aliases are accepted out of the box
+- you want to build a custom `GeometryConvention` from the default one
+
+The phrase **"first matching alias wins"** means that PlantGeom checks the names in order and uses the first one it finds on the node.
 
 ### 3.1 Geometry Convention (`default_amap_geometry_convention()`)
+
+These aliases describe the usual organ-local measurements: size, angles, and explicit translation.
 
 #### Scale columns
 
@@ -135,6 +231,10 @@ This section lists the exact MTG column names accepted by default.
 | Z translation | `ZZ`, `zz` | `0.0` |
 
 ### 3.2 AMAP Options (`default_amap_reconstruction_options()`)
+
+This table lists the option names, related aliases, and defaults used by the AMAP reconstruction controller.
+
+If you are just trying to reconstruct a plant, do not start here. Start from the simpler summary above and come back only when you need to understand a specific option in detail.
 
 | Option semantic | Default aliases / values |
 | --- | --- |
@@ -172,6 +272,8 @@ This section lists the exact MTG column names accepted by default.
 
 ### 3.3 Topology columns (used when `XX/YY/ZZ` are missing)
 
+These columns matter only when node position is reconstructed from topology instead of from explicit coordinates.
+
 | Column | Aliases | Meaning | Default |
 | --- | --- | --- | --- |
 | Offset | `Offset`, `offset` | Position along bearer where `+` organ starts | Bearer `Length` |
@@ -182,6 +284,8 @@ This section lists the exact MTG column names accepted by default.
 First matching alias wins.
 
 ## 4. Parameter Guide for First-Time Users
+
+This section explains the variables in the order users usually encounter them while improving a reconstruction.
 
 ### Size and scale parameters
 
@@ -259,6 +363,8 @@ PlantGeom now applies AMAP-style allometry preprocessing before geometric stages
 - Missing complex-node allometry is accumulated from terminal components (length sum, width max).
 
 ### AMAP option parameters (practical decisions)
+
+This section is about the options that are easy to see in the output but not always easy to choose from the name alone.
 
 `InsertionMode`: controls lateral insertion offset on the bearer cross-section.
 
@@ -358,6 +464,10 @@ Important:
 
 ## 5. Stage Order and Semantics
 
+This is the execution order used by the AMAP-style reconstruction pipeline.
+
+You usually do not need to think about every stage. The main reason to read this section is to understand **why one variable seems to override another**.
+
 Reconstruction applies stages in this order:
 
 1. Allometry preprocessing (interpolation, propagation, smoothing, complex accumulation).
@@ -391,6 +501,8 @@ Key rules:
 
 ## 6. Local vs Global Angles in `GeometryConvention`
 
+This is an advanced customization section. Read it only if you are defining your own `GeometryConvention`.
+
 Angle scope is controlled per entry in `GeometryConvention.angle_map`:
 
 - Local angle (`frame=:local`): composed as `T = T ∘ R`.
@@ -421,6 +533,8 @@ leaf_conv = GeometryConvention(
 
 ## 7. Order-Based Defaults and Overrides
 
+This section is useful when you do not have a complete measured angle set and want to inject branch-order rules in a controlled way.
+
 When `auto_compute_branching_order=true` and no numeric order exists in `order_attribute`, PlantGeom computes `branching_order!` automatically.
 
 Then for each node:
@@ -441,6 +555,15 @@ Effective fallback for missing `XInsertionAngle`:
 - `verticil_mode=:none`: `verticil_term = 0`
 
 ## 8. Option Impact Examples
+
+The examples below show what the main options actually change in the reconstructed geometry.
+
+Read them selectively:
+
+- `InsertionMode` if organs attach on the wrong side of the bearer
+- `verticil_mode` if sibling organs all overlap when azimuth is missing
+- order overrides if your architecture should differ by branching order
+- `explicit_coordinate_mode` if your MTG contains `XX/YY/ZZ` or endpoints
 
 ```@setup amapref
 using PlantGeom
