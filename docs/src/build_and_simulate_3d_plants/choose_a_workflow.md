@@ -8,24 +8,21 @@
 
 This page is the practical bridge between quickstarts and advanced concepts.
 
-## Choose a Strategy
+## Strategies for plant reconstruction
+
+There are two main strategies for building plant models in PlantGeom:
+
+1. You already have an MTG with attributes (e.g. from field data or from another simulator such as AMAPSim) and want to reconstruct geometry from it.
+2. You want to simulate growth in Julia with explicit control over the growth loop, and rebuild geometry on demand.
+
+Based on the strategy, you will follow either Workflow A or Workflow B below. Both workflows use the same underlying geometry and prototype systems, but they differ in how and when you call the reconstruction functions:
 
 | Situation | Recommended workflow | Why |
 | --- | --- | --- |
 | You already have measured attributes in an `.mtg` | Workflow A | fastest path to a first reconstruction |
 | You want dynamic growth over time | Workflow B | explicit, debuggable simulation loop |
-| You need strict AMAP behavior controls | AMAP pages | complete option set and decision guidance |
 
-## If You Just Want X, Go Here
-
-- Attribute-based reconstruction from measured MTG data:
-  [`Quickstart: Reconstruct a Plant`](../getting_started/quickstart_reconstruct.md)
-- Loop-driven growth with explicit rebuild:
-  [`Quickstart: Grow a Plant`](../getting_started/quickstart_grow.md)
-- AMAP options and conventions:
-  [`AMAP Quickstart`](amap_quickstart.md) and [`AMAP Conventions Reference`](amap_conventions_reference.md)
-- Low-level geometry control:
-  [`Prototype Mesh API`](prototype_mesh_api.md) and [`Procedural / Extrusion Geometry`](procedural_geometry.md)
+In this page, we introduce the two workflows and the key concepts behind them. For more technical details about the reconstruction pipeline, see the linked concept pages.
 
 ```@setup buildsim
 using PlantGeom
@@ -73,6 +70,8 @@ prototypes = Dict(
 
 ## Workflow A: Reconstruct from Existing MTG Attributes
 
+This workflow is ideal when you already have an MTG with attributes such as `Length`, `Width`, `YInsertionAngle`, `XEuler`, etc. (*e.g.* from field data) and want to reconstruct geometry from it. If you followed the MTG standards, the code is as simple as:
+
 ```@example buildsim
 mtg = read_mtg(joinpath(pkgdir(PlantGeom), "test", "files", "reconstruction_standard.mtg"))
 
@@ -86,10 +85,13 @@ plantviz(mtg, figure=(size=(920, 640),))
 ```
 
 Why this is useful:
+
 - good starting point when data already has `Length`, `Width`, insertion/euler attributes
 - deterministic and easy to compare with AMAP-style conventions
 
 ## Workflow B: Grow Structure in Julia, Rebuild on Demand
+
+This workflow is ideal when you want to simulate growth in Julia with explicit control over the growth loop, and rebuild geometry on demand. In this case, you build the topology and set attributes in a loop, and then call `rebuild_geometry!` when you want to update the geometry:
 
 ```@example buildsim
 plant = let
@@ -126,15 +128,6 @@ plantviz(plant, figure=(size=(980, 700),))
 ```
 
 Why this is useful:
+
 - topology/attributes stay explicit and debuggable
 - you choose rebuild cadence for performance
-
-!!! details "Where the deep technical details moved"
-    - AMAP coordinate delegates, insertion modes, and alias tables:
-      [`AMAP Conventions Reference`](amap_conventions_reference.md)
-    - Explicit-coordinate mode selection:
-      [`AMAP Reconstruction Decision Guide`](amap_reconstruction_decision_guide.md)
-    - Prototype realization order and override precedence:
-      [`Prototype Mesh API`](prototype_mesh_api.md)
-    - Manual low-level geometry assignment (`Geometry`, `PointMappedGeometry`, `ExtrudedTubeGeometry`):
-      [`Procedural / Extrusion Geometry`](procedural_geometry.md)

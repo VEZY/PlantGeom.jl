@@ -6,7 +6,7 @@
     - **Time:** 10 minutes
     - **Output:** Correct choice and usage of OPF/OPS/MTG readers and writers
 
-PlantGeom works with three complementary representations:
+PlantGeom works with four complementary representations:
 
 - `MTG` on disk and in memory: the graph structure written in `.mtg` files that you can import and manipulate in Julia using [MultiScaleTreeGraph.jl](https://github.com/VEZY/MultiScaleTreeGraph.jl).
 - `OPF` on disk: one plant object with topology + geometry stored in the OPF format (`.opf`). This is basically an `.mtg` file with geometry data.
@@ -203,4 +203,4 @@ If you only need a list for plotting, use `get_ref_meshes(opf)` (or
   `read_opf(file; attribute_types=Dict("Length" => Float64))` (same keyword is
   available in `read_ops` and forwarded to embedded OPFs).
 - For reconstruction workflows from `.mtg`, see:
-  [AMAP-Style Quickstart](geometry/amap_quickstart.md).
+  [AMAP-Style Quickstart](build_and_simulate_3d_plants/reconstruct_from_mtg/amap_quickstart.md).

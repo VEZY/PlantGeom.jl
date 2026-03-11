@@ -1,35 +1,216 @@
 # AMAP Conventions Reference
 
 !!! info "Page Info"
-    - **Audience:** Advanced
-    - **Prerequisites:** AMAP quickstart and decision guide
+    - **Audience:** Beginner to Advanced
+    - **Prerequisites:** [`MTG Reconstruction Tutorial`](@ref "MTG Reconstruction Tutorial")
     - **Time:** 25 minutes
-    - **Output:** Full alias, option, and convention reference
+    - **Output:** Full list of MTG variables, reconstruction options, and alias rules
 
-This page documents the AMAP core profile used by default:
+This page is the practical reference for AMAP-style reconstruction from an MTG.
+
+After the tutorial, users usually want to answer three questions:
+
+1. **Which columns can I put in my MTG?**
+2. **Which of these columns are worth measuring first?**
+3. **Which Julia options can I change when the default reconstruction is not enough?**
+
+This page answers those questions in that order. It is more detailed than the quickstart, but it is still meant to help you make choices, not just to list internal names.
+
+If you have not used AMAP-style reconstruction yet, start here first:
+
+- [`MTG Reconstruction Tutorial`](@ref "MTG Reconstruction Tutorial")
+
+This page focuses on **which MTG columns PlantGeom can read** and **which reconstruction options exist**.  
+The detailed choice of `explicit_coordinate_mode` is handled on the next page:
+[Explicit Coordinates: Which Option Should I Use?](@ref).
+
+The default AMAP-style reconstruction call is:
 
 ```julia
 set_geometry_from_attributes!(
     mtg,
-    ref_meshes;
+    prototypes;
     convention=default_amap_geometry_convention(),
 )
 ```
 
-If you are new to AMAP-style reconstruction, read this page in this order:
+## How To Read This Page
 
-1. Alias tables (what attribute names are accepted).
-2. Practical parameter guide (what each parameter changes in geometry).
-3. Option impact plots (what the changes look like in 3D).
+If you are new to PlantGeom, read this page in this order:
 
-The same MTG can be reconstructed very differently depending on orientation and insertion options. Most differences come from a small set of parameters (`InsertionMode`, insertion/euler angles, order overrides, and verticil handling), so those are explained with short examples below.
+1. **Measurement strategy**: decide what you want to measure in your MTG.
+2. **MTG columns**: see which columns PlantGeom can read automatically.
+3. **Julia options**: change behavior with `AmapReconstructionOptions(...)` only if needed.
+4. **Alias tables**: use them only when your imported column names differ from the defaults.
 
-If you want a scenario-based chooser ("I have start coordinates but no end coordinates"), use the
-[`AMAP Reconstruction Decision Guide`](amap_reconstruction_decision_guide.md).
+If your question is specifically about **which explicit-coordinate mode to choose**, read the next page after this one:
+[Explicit Coordinates: Which Option Should I Use?](@ref).
 
-## 1. Naming Conventions (Column Aliases)
+## Before the Full Reference: What Should I Actually Measure?
 
-### 1.1 Geometry Convention (`default_amap_geometry_convention()`)
+You do **not** need to measure every variable listed on this page.
+
+In practice, most users fall into one of these three workflows:
+
+| Your goal | Measure first | Usually enough? | Notes |
+| --- | --- | --- | --- |
+| Get a first recognizable 3D plant quickly | `Length`, `Width`, `Thickness` | yes for simple synthetic or regular plants | all organs reuse a prototype shape and are mainly distinguished by size |
+| Reconstruct a measured plant with realistic attachment and orientation | previous columns + `Offset`, insertion angles, optionally Euler angles | yes for many MTGs | this is the standard AMAP-style workflow |
+| Reconstruct from digitized 3D coordinates | explicit coordinates (`XX`, `YY`, `ZZ`, optionally `EndX`, `EndY`, `EndZ`) plus size columns | yes when coordinates are trusted | use `AmapReconstructionOptions(explicit_coordinate_mode=...)` |
+
+If you are unsure where to start, use the **second workflow**. It is the most broadly useful one.
+
+### MTG columns vs Julia options
+
+There are two different things on this page:
+
+- **MTG columns** are attributes stored on the nodes themselves, such as `Length`, `Width`, `Offset`, or `YInsertionAngle`.
+- **Julia options** are not stored in the MTG. They are passed once when calling reconstruction.
+
+```julia
+opts = AmapReconstructionOptions(
+    explicit_coordinate_mode=:topology_default,
+)
+
+set_geometry_from_attributes!(
+    mtg,
+    prototypes;
+    convention=default_amap_geometry_convention(),
+    amap_options=opts,
+)
+```
+
+This distinction matters:
+
+- if you want to describe **one specific organ**, add or change an MTG column on that node
+- if you want to change **how PlantGeom interprets many nodes**, use a Julia option
+
+## 1. What Can I Measure in My MTG?
+
+### 1.1 Smallest useful set
+
+Use this set when you mainly want a **size-driven reconstruction**.
+
+PlantGeom will take a normalized prototype for each organ type and scale it from these values.
+
+| Variable | Meaning | Recommended? |
+| --- | --- | --- |
+| `Length` | organ length | yes |
+| `Width` | organ width | yes |
+| `Thickness` | organ thickness | recommended |
+
+With only these variables, PlantGeom can already scale a reusable organ shape.
+
+### 1.2 Standard reconstruction set
+
+Use this set when you want a **botanically structured reconstruction** from topology and measurements.
+
+This is the set most users should aim for first.
+
+| Variable | Meaning | Recommended? |
+| --- | --- | --- |
+| `Offset` | position of a `:+` organ along its bearer | yes for attached organs |
+| `XInsertionAngle`, `YInsertionAngle`, `ZInsertionAngle` | organ orientation at attachment | yes when measured |
+| `XEuler`, `YEuler`, `ZEuler` | local pose correction after insertion | optional |
+| `BorderInsertionOffset` | lateral shift on bearer cross-section | optional |
+| `Phyllotaxy` | fallback azimuth when insertion angle data are missing | optional |
+
+This is the most common workflow for measured MTGs.
+
+### 1.3 Explicit-coordinate set
+
+Use this set when your upstream source already provides 3D coordinates, for example from digitizing, scanning, or another reconstruction pipeline.
+
+These columns are powerful, but they are also the easiest ones to misuse if you mix them with topology-based expectations. If you are not sure, stay with the standard set above.
+
+This page only lists the columns. The precise meaning of `explicit_coordinate_mode` is explained on the next page.
+
+| Variable | Meaning | Use when |
+| --- | --- | --- |
+| `XX`, `YY`, `ZZ` | explicit start position | geometry source already provides 3D coordinates |
+| `EndX`, `EndY`, `EndZ` | explicit end position | segment endpoints are known |
+
+Use these variables only if your data source already gives coordinates or if you deliberately want coordinate-driven reconstruction.
+
+### 1.4 Advanced optional variables
+
+These variables are usually not the first thing to measure. They are useful when you already have a working reconstruction and want to make it more faithful or more constrained.
+
+| Variable family | Purpose |
+| --- | --- |
+| `InsertionMode`, `BorderInsertionOffset` | cross-section insertion behavior |
+| `Azimuth`, `Elevation` | world-space orientation stages |
+| `DeviationAngle`, `Orthotropy`, `StiffnessAngle` | biomechanical / architectural bending stages |
+| `Plagiotropy`, `NormalUp` | projection/orientation constraints |
+| `GeometricalConstraint` | clamp direction into a geometric domain |
+| `OrientationReset` / `Global` | reset inherited frame |
+
+## 2. Which Reconstruction Options Exist?
+
+These options are **not MTG columns**.  
+They are Julia options passed to the reconstruction call:
+
+```julia
+opts = AmapReconstructionOptions(...)
+
+set_geometry_from_attributes!(
+    mtg,
+    prototypes;
+    convention=default_amap_geometry_convention(),
+    amap_options=opts,
+)
+```
+
+Most users only need to know these first:
+
+| Option | What it changes | Default |
+| --- | --- | --- |
+| `explicit_coordinate_mode` | how `XX/YY/ZZ` and endpoints are interpreted | `:topology_default` |
+| `verticil_mode` | sibling angular spread when azimuth is missing | `:rotation360` |
+| `order_override_mode` | whether order maps override present values or only fill missing ones | `:override` |
+| `insertion_y_by_order` | default `Y` insertion angle by branching order | empty |
+| `phyllotaxy_by_order` | default phyllotaxy by branching order | empty |
+
+Recommended mental model:
+
+- first, put the organ-specific measurements in the MTG
+- then, only if the reconstruction still does not match your data source, change one of these Julia options
+
+For most projects:
+
+- keep `explicit_coordinate_mode=:topology_default` unless your coordinate source clearly requires another mode
+- keep `verticil_mode=:rotation360` unless sibling spread is already fully measured
+- keep `order_override_mode=:override` only when you really want branch-order calibration to dominate node values
+
+If you need to decide between `:topology_default`, `:explicit_rewire_previous`, and
+`:explicit_start_end_required`, continue with
+[Explicit Coordinates: Which Option Should I Use?](@ref) after this page.
+
+### Common reconstruction recipes
+
+| If your plant data looks like... | Put these in the MTG | Usually set these options | Why |
+| --- | --- | --- | --- |
+| simple measured axes and leaves | `Length`, `Width`, `Thickness`, `Offset`, insertion angles | none | this is the standard topology-driven workflow |
+| same as above, but some local twist/roll is missing from prototypes | previous columns + `XEuler`, `YEuler`, `ZEuler` only where needed | none | Euler angles are best used as local corrections |
+| digitized node positions with trusted start/end coordinates | `XX`, `YY`, `ZZ`, `EndX`, `EndY`, `EndZ`, size columns | `explicit_coordinate_mode=:explicit_start_end_required` | coordinates should dominate orientation |
+| topology editor control points that should redirect previous segments | `XX`, `YY`, `ZZ`, size columns | `explicit_coordinate_mode=:explicit_rewire_previous` | explicit nodes act like anchors instead of visible segments |
+| incomplete angle data, but branch order is known | size columns, topology columns, measured angles when available | `insertion_y_by_order`, `phyllotaxy_by_order`, maybe `order_override_mode=:missing_only` | branch-order rules fill or override missing architecture |
+
+## 3. Detailed Variable and Alias Reference
+
+This section is the exact reference for what PlantGeom accepts by default.
+
+You do **not** need to memorize these tables. Use them when:
+
+- you are importing data and a column is not being recognized
+- you want to understand which aliases are accepted out of the box
+- you want to build a custom `GeometryConvention` from the default one
+
+The phrase **"first matching alias wins"** means that PlantGeom checks the names in order and uses the first one it finds on the node.
+
+### 3.1 Geometry Convention (`default_amap_geometry_convention()`)
+
+These aliases describe the usual organ-local measurements: size, angles, and explicit translation.
 
 #### Scale columns
 
@@ -58,7 +239,11 @@ If you want a scenario-based chooser ("I have start coordinates but no end coord
 | Y translation | `YY`, `yy` | `0.0` |
 | Z translation | `ZZ`, `zz` | `0.0` |
 
-### 1.2 AMAP Options (`default_amap_reconstruction_options()`)
+### 3.2 AMAP Options (`default_amap_reconstruction_options()`)
+
+This table lists the option names, related aliases, and defaults used by the AMAP reconstruction controller.
+
+If you are just trying to reconstruct a plant, do not start here. Start from the simpler summary above and come back only when you need to understand a specific option in detail.
 
 | Option semantic | Default aliases / values |
 | --- | --- |
@@ -94,7 +279,9 @@ If you want a scenario-based chooser ("I have start coordinates but no end coord
 | Insertion-by-order map | empty `Dict{Int,Float64}` |
 | Phyllotaxy-by-order map | empty `Dict{Int,Float64}` |
 
-### 1.3 Topology columns (used when `XX/YY/ZZ` are missing)
+### 3.3 Topology columns (used when `XX/YY/ZZ` are missing)
+
+These columns matter only when node position is reconstructed from topology instead of from explicit coordinates.
 
 | Column | Aliases | Meaning | Default |
 | --- | --- | --- | --- |
@@ -105,9 +292,11 @@ If you want a scenario-based chooser ("I have start coordinates but no end coord
 
 First matching alias wins.
 
-## 2. Parameter Guide for First-Time Users
+## 4. Parameter Guide for First-Time Users
 
-### 2.1 Size and scale parameters
+This section explains the variables in the order users usually encounter them while improving a reconstruction.
+
+### Size and scale parameters
 
 `Length`, `Width`, and `Thickness` scale the reference mesh in local coordinates (`+X` is organ length in AMAP). If `Thickness` is absent, width is reused, which can make flat organs look unnaturally thick.
 
@@ -119,7 +308,7 @@ When to use what:
 - Keep `Thickness` explicit for leaves if your reference mesh is not already very thin.
 - Use a single fallback width/thickness policy only for synthetic plants or quick debugging.
 
-### 2.2 Insertion angles and Euler angles
+### Insertion angles and Euler angles
 
 Insertion angles define attachment orientation relative to the bearer; Euler angles are post-attachment local refinements.
 
@@ -131,44 +320,31 @@ When to use what:
 - Use Euler angles for mesh-pose corrections (twist/roll) after topology is correct.
 - Avoid compensating missing insertion data with large Euler rotations, because that breaks architectural meaning.
 
-### 2.3 Explicit translation vs topology placement
+### Explicit coordinates: what the columns do
 
-When `XX/YY/ZZ` are present, placement is explicit. When missing, PlantGeom reconstructs position from topology (`Offset`, insertion mode, bearer frame).
+This page intentionally keeps explicit-coordinate behavior at a practical level.
 
-With endpoint columns (`EndX`/`EndY`/`EndZ`), PlantGeom uses:
+When `XX/YY/ZZ` are present, the node has an explicit start position.  
+When those columns are absent, PlantGeom reconstructs position from topology (`Offset`, insertion mode, bearer frame).
 
-- start = explicit translation if present, else topology-derived base
-- end = provided endpoint coordinates
-- orientation and effective `Length` = inferred from `(start -> end)`
+If `EndX`/`EndY`/`EndZ` are also present:
 
-Example: setting `XX/YY/ZZ` for one leaf detaches it from topology and can produce a correct but non-botanical placement if coordinates are inconsistent with bearer geometry.
+- the node end point is explicit as well
+- orientation and effective `Length` are inferred from `(start -> end)`
+- angle stages are skipped for that node because the segment direction is already known
+- `Width` and `Thickness` are still used normally
 
-When to use what:
+Use this mental model:
 
-- Use topology-based placement for botanical reconstructions.
-- Use explicit `XX/YY/ZZ` when ingesting already solved 3D coordinates from another pipeline.
-- Use `EndX`/`EndY`/`EndZ` when start-end coordinates are known and must dominate angle-derived orientation.
-- Use `AmapReconstructionOptions(explicit_coordinate_mode=:explicit_start_end_required)` to require complete start/end coordinates on explicit-coordinate nodes (AMAP `CoordinateDelegate3` behavior).
-- Use `AmapReconstructionOptions(explicit_coordinate_mode=:explicit_rewire_previous)` for topology-editor style imports where each node position rewires the previous segment and the current node becomes a point-anchor (AMAP `CoordinateDelegate2` behavior).
+- `XX/YY/ZZ` answer: **where does the node start?**
+- `EndX`/`EndY`/`EndZ` answer: **where does the node end?**
+- topology columns such as `Offset` answer: **where should the node be placed when no explicit coordinates are available?**
 
-### 2.6 Endpoint coordinates (`EndX`/`EndY`/`EndZ`)
+The remaining decision is what PlantGeom should do when a node has explicit start coordinates but no explicit end coordinates.  
+That is exactly what `explicit_coordinate_mode` controls, and it is explained on the next page:
+[Explicit Coordinates: Which Option Should I Use?](@ref).
 
-`EndX`/`EndY`/`EndZ` activate endpoint-driven reconstruction for that node.
-
-Practical precedence:
-
-1. Base position is resolved first (explicit `XX/YY/ZZ` if present, otherwise topology).
-2. If `EndX`/`EndY`/`EndZ` are all numeric, orientation and length are computed from base-to-end.
-3. Angle stages (`Insertion`, azimuth/elevation, orthotropy/stiffness angle, deviation, Euler, projection, geometrical constraint) are skipped for that node.
-4. Width/thickness scaling still uses `Width`/`Thickness`.
-
-Notes:
-
-- If only some endpoint columns are present, endpoint override is ignored (lenient fallback).
-- If endpoint equals base (zero-length vector), endpoint override is ignored.
-- Successor `:<` nodes continue from this computed endpoint through normal topology rules.
-
-### 2.7 Allometry delegate semantics (AMAP core)
+### Allometry delegate semantics (AMAP core)
 
 PlantGeom now applies AMAP-style allometry preprocessing before geometric stages:
 
@@ -182,7 +358,9 @@ PlantGeom now applies AMAP-style allometry preprocessing before geometric stages
 - Missing predecessor `TopWidth`/`TopHeight` are smoothed from next same-type successor bottom sizes.
 - Missing complex-node allometry is accumulated from terminal components (length sum, width max).
 
-### 2.4 AMAP option parameters (practical decisions)
+### AMAP option parameters (practical decisions)
+
+This section is about the options that are easy to see in the output but not always easy to choose from the name alone.
 
 `InsertionMode`: controls lateral insertion offset on the bearer cross-section.
 
@@ -236,7 +414,7 @@ Practical effect:
 
 Use `NormalUp=true` for leaf datasets where adaxial/abaxial flips appear. Add `Plagiotropy` only if you also need directional projection control in the insertion plane.
 
-### 2.5 Why `node_convention.length_axis` is critical
+### Why `node_convention.length_axis` is critical
 
 `node_convention.length_axis` defines which local reference-mesh axis is considered the organ main axis.
 
@@ -264,7 +442,7 @@ Rule of thumb:
 - `StiffnessStraightening` (0..1 or 0..100) progressively damps propagated bending after that relative position.
 - `Broken` (0..100) forces downstream component angles to `-180` after the break threshold.
 
-### 2.8 What `GeometricalConstraint` is for
+### What `GeometricalConstraint` is for
 
 `GeometricalConstraint` is an envelope rule applied after angle/projection stages to keep an organ direction inside a geometric domain (cone/cylinder/plane families).
 
@@ -280,7 +458,11 @@ Important:
 - it does not move the already computed base insertion point
 - for chained `:<` axes, changing orientation still changes downstream positions through topology
 
-## 3. Stage Order and Semantics
+## 5. Stage Order and Semantics
+
+This is the execution order used by the AMAP-style reconstruction pipeline.
+
+You usually do not need to think about every stage. The main reason to read this section is to understand **why one variable seems to override another**.
 
 Reconstruction applies stages in this order:
 
@@ -313,7 +495,9 @@ Key rules:
 - Dict/NamedTuple with `type` (or `kind`) and optional parameters (`primary_angle`, `secondary_angle`, `radius`, `secondary_radius`, `cone_length`, `normal`, `d`, `origin`, `axis`).
 - Parameters can also be provided as node columns using aliases such as `ConstraintAngle`, `ConstraintRadius`, `ConstraintLength`, `ConstraintNormalX/Y/Z`, `ConstraintPlaneD`, `ConstraintOriginX/Y/Z`, `ConstraintAxisX/Y/Z`.
 
-## 4. Local vs Global Angles in `GeometryConvention`
+## 6. Local vs Global Angles in `GeometryConvention`
+
+This is an advanced customization section. Read it only if you are defining your own `GeometryConvention`.
 
 Angle scope is controlled per entry in `GeometryConvention.angle_map`:
 
@@ -343,7 +527,9 @@ leaf_conv = GeometryConvention(
 )
 ```
 
-## 5. Order-Based Defaults and Overrides
+## 7. Order-Based Defaults and Overrides
+
+This section is useful when you do not have a complete measured angle set and want to inject branch-order rules in a controlled way.
 
 When `auto_compute_branching_order=true` and no numeric order exists in `order_attribute`, PlantGeom computes `branching_order!` automatically.
 
@@ -364,7 +550,16 @@ Effective fallback for missing `XInsertionAngle`:
 - `verticil_mode=:rotation360` (default): `verticil_term = 360 * rank / total`
 - `verticil_mode=:none`: `verticil_term = 0`
 
-## 6. Option Impact Examples
+## 8. Option Impact Examples
+
+The examples below show what the main options actually change in the reconstructed geometry.
+
+Read them selectively:
+
+- `InsertionMode` if organs attach on the wrong side of the bearer
+- `verticil_mode` if sibling organs all overlap when azimuth is missing
+- order overrides if your architecture should differ by branching order
+- `explicit_coordinate_mode` if your MTG contains `XX/YY/ZZ` or endpoints
 
 ```@setup amapref
 using PlantGeom
@@ -989,7 +1184,7 @@ function _plot_modes(
 end
 ```
 
-### 6.1 `InsertionMode`: `BORDER` (default) vs `CENTER` vs `WIDTH` vs `HEIGHT`
+### `InsertionMode`: `BORDER` (default) vs `CENTER` vs `WIDTH` vs `HEIGHT`
 
 `InsertionMode` mainly changes where the organ base sits on the bearer cross-section. In practice, this changes self-shading and apparent clumping even if all angles stay identical.
 
@@ -1030,7 +1225,7 @@ _plot_modes(
 )
 ```
 
-### 6.2 `verticil_mode`: sibling spread when `XInsertionAngle` is missing
+### `verticil_mode`: sibling spread when `XInsertionAngle` is missing
 
 When insertion azimuth is missing, `verticil_mode` controls how sibling organs are separated. `:rotation360` reduces overlap by design; `:none` keeps siblings close to the same fallback azimuth.
 
@@ -1062,7 +1257,7 @@ _plot_modes(
 )
 ```
 
-### 6.3 Order-map overrides (`:override` vs `:missing_only`)
+### Order-map overrides (`:override` vs `:missing_only`)
 
 Order maps are useful for calibrated architecture classes. `:override` enforces class-level values everywhere; `:missing_only` preserves measured node attributes and only fills gaps.
 
@@ -1091,7 +1286,7 @@ _plot_modes(
 )
 ```
 
-### 6.4 Stiffness propagation (`StiffnessApply=false` vs `true`)
+### Stiffness propagation (`StiffnessApply=false` vs `true`)
 
 This option controls whether node-level `Stifness`/`StifnessTapering` are converted into propagated `StiffnessAngle` values for `/`-linked component children.
 
@@ -1134,7 +1329,7 @@ _plot_modes(
 )
 ```
 
-### 6.5 `GeometricalConstraint`: unconstrained vs constrained axis
+### `GeometricalConstraint`: unconstrained vs constrained axis
 
 This shows the practical role of `GeometricalConstraint`.
 
@@ -1155,7 +1350,7 @@ _plot_modes(
 )
 ```
 
-### 6.6 Explicit-coordinate handling mode (`explicit_coordinate_mode`)
+### Explicit-coordinate handling mode (`explicit_coordinate_mode`)
 
 This option controls how explicit start coordinates (`XX/YY/ZZ`) are used during reconstruction. `explicit_coordinate_mode` is the recommended API name, and `coordinate_delegate_mode` is kept as a compatible alias.
 

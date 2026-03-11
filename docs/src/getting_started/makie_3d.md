@@ -6,9 +6,7 @@
     - **Time:** 12 minutes
     - **Output:** Interactive and static 3D plant renders
 
-`PlantGeom` uses [`Makie.jl`](https://makie.juliaplots.org/stable/) to make 3d mesh plots. It also uses [MeshViz.jl](https://github.com/JuliaGeometry/MeshViz.jl) that is also based on Makie.
-
-This way the plots you make using `PlantGeom` support all the nice possibilities offered by Makie, such as making sub-plots, interactive plots...
+`PlantGeom` uses [`Makie.jl`](https://makie.juliaplots.org/stable/) to make the 3d plots. This way the plots you make using `PlantGeom` support all the nice possibilities offered by Makie, such as making sub-plots, interactive plots...
 
 ## Interactive plot
 

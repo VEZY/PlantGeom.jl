@@ -1,54 +1,75 @@
-```@meta
-CurrentModule = PlantGeom
+```@raw html
+---
+# https://vitepress.dev/reference/default-theme-home-page
+layout: home
+
+hero:
+  name: "PlantGeom.jl"
+  text: "Everything 3D for plants 🌱"
+  tagline: Read, build, reconstruct, and visualize 3D scenes with plants.
+  image:
+    src: /logo.png
+    alt: "Coffee plant"
+  actions:
+    - theme: brand
+      text: Showcase
+      link: /getting_started/showcase
+    - theme: alt
+      text: View on Github
+      link: https://github.com/VEZY/PlantGeom.jl
+    - theme: alt
+      text: API
+      link: /API
+
+features:
+  - icon: <img width="64" height="64" src="folder-plus.png" alt="folder icon"/>
+    title: Read & write 3D files
+    details: Compatible with `.opf`, `.ops`, `.mtg` files and any standard format using MeshIO.jl
+    link: /io
+  - icon: <img width="64" height="64" src="growth_api.png" alt="simulated plant"/>
+    title: Build and simulate plants
+    details: Simulate plant growth using our growth API, also compatible with PlantSimEngine.jl
+    link: /build_and_simulate_3d_plants/growth_api
+  - icon: <img width="64" height="64" src="visualize.png" alt="3d plant"/>
+    title: Visualize 3D plants
+    details: Color by attributes, add legends, customize the visualization and integrate with other plots using Makie.jl
+    link: /getting_started/makie_3d
+---
 ```
 
-# PlantGeom
+````@raw html
+<p style="margin-bottom:2cm"></p>
 
-PlantGeom lets you build, reconstruct, and visualize 3D plants from MTG topology and mesh prototypes.
+<div class="vp-doc" style="width:80%; margin:auto">
+````
 
-## If You Just Want X, Go Here
+# PlantGeom.jl
 
-- See impressive results immediately: [`Getting Started / Showcase`](getting_started/showcase.md)
-- Reconstruct a plant from attributes: [`Quickstart: Reconstruct a Plant`](getting_started/quickstart_reconstruct.md)
-- Build a plant in a Julia loop: [`Quickstart: Grow a Plant`](getting_started/quickstart_grow.md)
-- Advanced geometry internals: [`Geometry Concepts (advanced)`](geometry/refmesh.md)
-- AMAP conventions and parity: [`AMAP Reference`](geometry/amap_quickstart.md)
+PlantGeom lets you build, reconstruct, and visualize 3D plants powered by [`Makie.jl`](https://docs.makie.org/stable/).
 
-## Choose Your Workflow
+## Basic usage
 
-| Your goal | Start here | Next |
-| --- | --- | --- |
-| Render an existing `.opf` file | [`Showcase`](getting_started/showcase.md) | [`3D Plant Plots`](makie_3d.md) |
-| Reconstruct geometry from an `.mtg` file | [`Quickstart: Reconstruct a Plant`](getting_started/quickstart_reconstruct.md) | [`Build & Simulate Plants`](geometry/building_plant_models.md) |
-| Simulate growth with explicit Julia loops | [`Quickstart: Grow a Plant`](getting_started/quickstart_grow.md) | [`Growth API`](geometry/growth_api.md) |
-| Tune advanced reconstruction behavior | [`AMAP Quickstart`](geometry/amap_quickstart.md) | [`AMAP Conventions Reference`](geometry/amap_conventions_reference.md) |
+1. Import the package and one of Makie's backends (e.g. `CairoMakie` or `GLMakie`)
+2. Read a plant or scene from a file or build one with PlantGeom's API
+3. Visualize it with `plantviz`
 
-```@setup home
+### Read 3D files and visualize
+
+We can read a plant from an OpenPlantFormat file (`.opf`) and visualize it with `plantviz`:
+
+```@example coffee
 using PlantGeom
 using CairoMakie
-
-CairoMakie.activate!()
-
 files_dir = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files")
-hero_opf = read_opf(joinpath(files_dir, "coffee.opf"))
-include(joinpath(pkgdir(PlantGeom), "docs", "src", "getting_started", "tree_demo_helpers.jl"))
+coffee = read_opf(joinpath(files_dir, "coffee.opf"))
+plantviz(coffee, figure=(size=(980, 720),))
 ```
 
-## Quick example
+## Simulate growth
 
-A coffee plant rendered from an `.opf` file:
+We can build a plant with PlantGeom's growth API, and we can also color it with any attribute, e.g. height:
 
-```@example home
-using PlantGeom
-using CairoMakie
-files_dir = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files")
-hero_opf = read_opf(joinpath(files_dir, "coffee.opf"))
-plantviz(hero_opf, figure=(size=(980, 720),))
-```
-
-A tree built with PlantGeom's growth API and colored by height:
-
-```@example home
+```@example tree
 using PlantGeom
 using CairoMakie
 include(joinpath(pkgdir(PlantGeom), "docs", "src", "getting_started", "tree_demo_helpers.jl"))
@@ -58,38 +79,37 @@ colorbar(f[1, 2], p, label="Height")
 f
 ```
 
-## 15-Line Quickstart
+### Build geometry from a Multi-scale Tree Graph
 
-```julia
+You can also read an MTG (Multi-Scale Tree Graph) and PlantGeom will automatically build its geometry based on the standard MTG's topology and attributes along with reference meshes for organs:
+
+```@example mtgplot
 using PlantGeom
 using MultiScaleTreeGraph
 using GeometryBasics
 using Colors
 using CairoMakie
-CairoMakie.activate!()
 
 mtg = read_mtg(joinpath(pkgdir(PlantGeom), "test", "files", "reconstruction_standard.mtg"))
-stem = RefMesh("stem", GeometryBasics.mesh(GeometryBasics.Cylinder(Point(0,0,0), Point(1,0,0), 0.5)), RGB(0.5, 0.38, 0.26))
-leaf = lamina_refmesh("leaf"; length=1.0, max_width=1.0, material=RGB(0.2, 0.62, 0.30))
-prototypes = Dict(:Internode => RefMeshPrototype(stem), :Leaf => RefMeshPrototype(leaf))
+stem_reference_mesh = RefMesh("stem", GeometryBasics.mesh(GeometryBasics.Cylinder(Point(0,0,0), Point(1,0,0), 0.5)), RGB(0.5, 0.38, 0.26))
+leaf_reference_mesh = lamina_refmesh("leaf"; length=1.0, max_width=1.0, material=RGB(0.2, 0.62, 0.30))
+prototypes = Dict(:Internode => RefMeshPrototype(stem_reference_mesh), :Leaf => RefMeshPrototype(leaf_reference_mesh))
 set_geometry_from_attributes!(mtg, prototypes; convention=default_amap_geometry_convention())
 plantviz(mtg, figure=(size=(900, 620),))
 ```
 
 ## Mini Glossary
 
+Here's a mini glossary of some of the terms used in PlantGeom.jl documentation:
+
 | Term | Practical meaning |
 | --- | --- |
-| `Node` | one organ instance (stem segment, leaf, etc.) |
-| `MTG` | graph storing topology + attributes |
-| `RefMesh` | reusable unit organ mesh |
+| `Node` | A node (computer-graphics node, not botanic) representing one organ instance (stem segment, leaf, etc.) |
+| `MTG` | graph made of connected `Node`s storing topology + attributes |
+| `RefMesh` | reusable normalized reference mesh for organs, e.g. the mesh used for the leaves |
 | `Prototype` | rule for turning node attributes into geometry |
 | `rebuild_geometry!` | explicit geometry generation/update step |
 
-## Learning Path
-
-1. [`Showcase`](getting_started/showcase.md)
-2. [`Quickstart: Reconstruct a Plant`](getting_started/quickstart_reconstruct.md)
-3. [`Quickstart: Grow a Plant`](getting_started/quickstart_grow.md)
-4. [`Build & Simulate Plants`](geometry/building_plant_models.md)
-5. [`Geometry Concepts (advanced)`](geometry/prototype_mesh_api.md)
+````@raw html
+</div>
+````
