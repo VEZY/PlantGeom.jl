@@ -2,7 +2,7 @@
 
 !!! info "Page Info"
     - **Audience:** Beginner to Intermediate
-    - **Prerequisites:** [`MTG Reconstruction Tutorial`](build_and_simulate_3d_plants/reconstructing_an_mtg/amap_quickstart.md)
+    - **Prerequisites:** [`MTG Reconstruction Tutorial`](@ref "MTG Reconstruction Tutorial")
     - **Time:** 8 minutes
     - **Output:** Clear choice of explicit-coordinate option in `AmapReconstructionOptions`
 
@@ -26,7 +26,7 @@ set_geometry_from_attributes!(
 Use this page **only if your MTG contains explicit coordinates** such as `XX`, `YY`, `ZZ`, `EndX`, `EndY`, `EndZ`.
 
 If your MTG only contains sizes and angles (`Length`, `Width`, `YInsertionAngle`, `XEuler`, ...), you do **not** need this page yet.  
-Stay with the default reconstruction from [`MTG Reconstruction Tutorial`](build_and_simulate_3d_plants/reconstructing_an_mtg/amap_quickstart.md).
+Stay with the default reconstruction from [`MTG Reconstruction Tutorial`](@ref "MTG Reconstruction Tutorial").
 
 ## What This Option Controls
 
@@ -145,8 +145,3 @@ opts = AmapReconstructionOptions(
     explicit_coordinate_mode=:explicit_start_end_required,
 )
 ```
-
-## What To Read Next
-
-- If you want to know **which MTG columns you can measure**, read [`AMAP Conventions Reference`](build_and_simulate_3d_plants/reconstructing_an_mtg/amap_conventions_reference.md).
-- If you want the first complete reconstruction workflow, go back to [`MTG Reconstruction Tutorial`](build_and_simulate_3d_plants/reconstructing_an_mtg/amap_quickstart.md).

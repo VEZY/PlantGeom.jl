@@ -36,9 +36,9 @@ makedocs(;
                 "Workflow Tutorial" => "build_and_simulate_3d_plants/choose_a_workflow.md",
                 "Growth API" => "build_and_simulate_3d_plants/growth_api.md",
                 "Reconstructing an MTG" => [
-                    "Tutorial" => "build_and_simulate_3d_plants/reconstructing_an_mtg/amap_quickstart.md",
-                    "Reconstruction Decision Guide" => "build_and_simulate_3d_plants/reconstructing_an_mtg/amap_reconstruction_decision_guide.md",
-                    "Conventions Reference" => "build_and_simulate_3d_plants/reconstructing_an_mtg/amap_conventions_reference.md",
+                    "Tutorial" => "build_and_simulate_3d_plants/reconstruct_from_mtg/amap_quickstart.md",
+                    "Reconstruction Decision Guide" => "build_and_simulate_3d_plants/reconstruct_from_mtg/amap_reconstruction_decision_guide.md",
+                    "Conventions Reference" => "build_and_simulate_3d_plants/reconstruct_from_mtg/amap_conventions_reference.md",
                 ],
             ],
             "Geometry Concepts (advanced)" => [

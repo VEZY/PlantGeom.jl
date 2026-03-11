@@ -38,7 +38,7 @@ prototypes = Dict(:Internode => RefMeshPrototype(stem), :Leaf => PointMapPrototy
 We can visualize the prototypes to make sure they look right:
 
 ```@example gs_grow
-f = Figure(size=(400, 200))
+f = Figure(size=(600, 300))
 ax1 = Axis3(f[1, 1], title="Stem Prototype", perspectiveness=0.5)
 mesh!(ax1, stem.mesh, color=stem.material)
 ax2 = Axis3(f[1, 2], title="Leaf Prototype", perspectiveness=0.5)
@@ -138,7 +138,7 @@ rebuild_geometry!(plant, prototypes)
 plantviz(plant, figure=(size=(980, 700),))
 ```
 
-## Why It Works
+## How It Works
 
 The growth loop only updates topology and node attributes.  
 `rebuild_geometry!` is called once, so geometry generation stays explicit and easy to debug.
@@ -146,7 +146,3 @@ The growth loop only updates topology and node attributes.
 !!! details "Troubleshooting"
     - If your leaf shapes do not change, verify the leaf prototype key and override names.
     - If plotting is slow, keep geometry rebuild explicit and lower its frequency.
-
-## Next Step
-
-Go to [`Workflow Tutorial`](../geometry/choose_a_workflow.md) for a complete build-and-simulate workflow and links to advanced geometry and AMAP references.

@@ -406,7 +406,7 @@ fig
 
 This deforms the blade itself. If you instead want topology-driven component
 bending across segmented organs, use the AMAP stiffness/orthotropy pipeline from
-[`Conventions Reference`](build_and_simulate_3d_plants/reconstructing_an_mtg/amap_conventions_reference.md).
+[`Conventions Reference`](@ref "AMAP Conventions Reference").
 
 ## Node-Level Procedural Geometry
 
@@ -656,8 +656,3 @@ fig
 - Repeated geometry: use cached procedural `RefMesh` constructors.
 - Unique per-node geometry: use `ExtrudedTubeGeometry` directly on nodes.
 - In both cases, render with the same `plantviz` pipeline.
-
-See also:
-
-- [`Reference Meshes`](refmesh.md)
-- [`Building Plant Models`](building_plant_models.md)

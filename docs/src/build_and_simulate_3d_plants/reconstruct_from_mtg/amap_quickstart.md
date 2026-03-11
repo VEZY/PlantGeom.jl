@@ -50,7 +50,7 @@ You do **not** need every possible AMAP variable to begin.
 | `EndX`, `EndY`, `EndZ` | explicit node end position |
 
 If you measure explicit coordinates, read
-[`Explicit Coordinates: Which Option Should I Use?`](build_and_simulate_3d_plants/reconstructing_an_mtg/amap_reconstruction_decision_guide.md)
+[Explicit Coordinates: Which Option Should I Use?](@ref)
 after this tutorial.
 
 ```@setup amapquick
@@ -226,9 +226,9 @@ This gives a useful reconstruction without measuring every advanced AMAP variabl
 ## Where To Go Next
 
 - To decide which **explicit coordinate mode** to use:
-  [`Explicit Coordinates: Which Option Should I Use?`](build_and_simulate_3d_plants/reconstructing_an_mtg/amap_reconstruction_decision_guide.md)
+  [Explicit Coordinates: Which Option Should I Use?](@ref)
 - To see the full list of MTG columns you can define:
-  [`AMAP Conventions Reference`](build_and_simulate_3d_plants/reconstructing_an_mtg/amap_conventions_reference.md)
+  [AMAP Conventions Reference](@ref)
 
 !!! details "Troubleshooting"
     - If nothing appears, check that your MTG contains at least `Length` and `Width` on the organs you want to reconstruct.
