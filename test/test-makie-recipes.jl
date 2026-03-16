@@ -36,6 +36,24 @@ mtg_coffee = read_opf(file_coffee)
     @test_reference "reference_images/coffee_area.png" f
 end
 
+@testset "Makie recipes: whole MTG -> color-valued attributes" begin
+    colored_opf = deepcopy(opf)
+    palette = Any[:red, colorant"mediumseagreen", :peachpuff4, colorant"blanchedalmond"]
+    i = Ref(0)
+    traverse!(colored_opf; filter_fun=PlantGeom.has_geometry) do node
+        i[] += 1
+        node[:plot_color] = palette[mod1(i[], length(palette))]
+    end
+
+    fig, ax, p = plantviz(colored_opf, color=:plot_color)
+    @test p.colorrange_resolved[] === nothing
+    @test length(p.vertex_colors[]) == PlantGeom.nvertices(p.merged_mesh[])
+
+    mktempdir() do tmp
+        @test_nowarn save(joinpath(tmp, "color_attr.png"), fig)
+    end
+end
+
 
 opf = read_opf(file)
 meshes = get_ref_meshes(opf)
