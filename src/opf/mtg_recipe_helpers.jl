@@ -167,6 +167,9 @@ function mtg_coordinates_df!(mtg, attr=:YY; force=false)
     )
 end
 
+_attr_is_color_like(x) = x isa Symbol || x isa Colorant
+_attr_is_color_like(xs::AbstractVector) = all(_attr_is_color_like, Iterators.filter(x -> x !== nothing, xs))
+
 function attribute_range(mtg, attr; ustrip=false)
     attr_name = attr_colorant_name(attr)
     vals =
@@ -178,12 +181,10 @@ function attribute_range(mtg, attr; ustrip=false)
 
     isempty(vals) && error("No value found for attribute $attr_name (or all values are nothing).")
 
-    elem_type = eltype(vals)
-
-    if elem_type <: Symbol || elem_type <: Colorant
+    if all(_attr_is_color_like, vals)
         # If the attribute value is already a colorant or a symbol, no numeric range is needed.
         return nothing
-    elseif elem_type <: AbstractVector
+    elseif any(x -> x isa AbstractVector, vals)
         # vals is a vector of vectors, compute the range from flattened non-nothing entries.
         range_val = extrema(Iterators.filter(x -> x !== nothing, Iterators.flatten(vals)))
     else
