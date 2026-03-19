@@ -10,6 +10,8 @@ using LinearAlgebra
 using Tables
 using Unitful
 using PlantGeom
+using PlantSimEngine
+
 @testset "Read OPF" begin
     include("test-refmesh.jl")
 end
@@ -49,6 +51,7 @@ include("test-topology-reconstruction.jl")
 include("test-amap-reconstruction-core.jl")
 include("test-amap-visual-regression.jl")
 include("test-growth-plantsimengine-ext.jl")
+include("test-growth-plantsimengine-run.jl")
 
 @testset "Meshes interop" begin
     include("test-meshes-interop.jl")

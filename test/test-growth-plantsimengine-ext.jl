@@ -1,3 +1,8 @@
+const _plantsimengine_repo = normpath(joinpath(pkgdir(PlantGeom), "..", "PlantSimEngine"))
+if Base.find_package("PlantSimEngine") === nothing && isdir(_plantsimengine_repo)
+    pushfirst!(LOAD_PATH, _plantsimengine_repo)
+end
+
 if Base.find_package("PlantSimEngine") === nothing
     @testset "Growth API PlantSimEngine extension" begin
         @test true
