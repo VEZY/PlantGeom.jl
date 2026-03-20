@@ -31,13 +31,10 @@ This example is fully runnable as shown.
 ```@setup psegrowth
 using PlantGeom
 using PlantSimEngine
-using PlantSimEngine.Examples
 using MultiScaleTreeGraph
 using GeometryBasics
 using CairoMakie
 using Colors
-
-CairoMakie.activate!()
 ```
 
 ## 1. Load packages
@@ -45,13 +42,10 @@ CairoMakie.activate!()
 ```@example psegrowth
 using PlantGeom
 using PlantSimEngine
-using PlantSimEngine.Examples
 using MultiScaleTreeGraph
 using GeometryBasics
 using CairoMakie
 using Colors
-
-CairoMakie.activate!()
 ```
 
 ## 2. Define geometry prototypes
@@ -127,8 +121,9 @@ function PlantSimEngine.run!(
     sim_object=nothing,
 )
     if status.emitted == 0 && status.TT_cu - status.TT_cu_emergence >= m.TT_emergence
-        phase = isodd(MultiScaleTreeGraph.node_id(status.node)) ? 0.0 : 180.0
-
+        # Count the number of internodes already emitted to alternate phyllotaxy:
+        phase = isodd(length(sim_object.statuses[:Internode])) ? 180.0 : 0.0
+        println("Emitting new phytomer at node $(status.node) with phase $phase")
         new_organs = emit_phytomer!(
             status,
             sim_object;
@@ -214,10 +209,6 @@ mapping = PlantSimEngine.ModelMapping(
     :Scene => (
         ToyDegreeDaysCumulModel(),
     ),
-    :Plant => (
-        Process1Model(0.0),
-        PlantSimEngine.Status(var1=0.0, var2=0.0),
-    ),
     :Internode => (
         MultiScaleModel(
             model=PlantGeomDocsEmergenceModel(TT_emergence=10.0),
@@ -231,24 +222,14 @@ mapping = PlantSimEngine.ModelMapping(
             Width=0.0,
             Thickness=0.0,
         ),
-    ),
-    :Leaf => (
-        Process1Model(0.0),
-        PlantSimEngine.Status(
-            var1=0.0,
-            var2=0.0,
-            Length=0.0,
-            Width=0.0,
-            Thickness=0.0,
-        ),
-    ),
+    )
 )
 ```
 
 Important detail:
 
 - the growth model is attached to `:Internode`
-- new internodes and leaves created during the simulation receive their status templates from this mapping
+- new internodes and leaves created during the simulation receive their status templates from this mapping. In this example, no model is attached to `:Leaf`, but you could add one if you wanted to simulate leaf growth dynamics instead of just emergence.
 
 ## 6. Define meteo and run the simulation
 
@@ -276,11 +257,9 @@ sim = PlantSimEngine.GraphSimulation(
 )
 
 outputs = run!(sim, meteo, executor=PlantSimEngine.SequentialEx())
-
 (
     scene_TT_cu=sim.statuses[:Scene][1].TT_cu,
     n_internodes=length(sim.statuses[:Internode]),
-    n_leaves=length(sim.statuses[:Leaf]),
     emergence_times=[st.TT_cu_emergence for st in sim.statuses[:Internode]],
 )
 ```
@@ -292,11 +271,7 @@ At this stage, the simulation has changed the plant topology and initialized the
 ```@example psegrowth
 rebuild_geometry!(mtg, prototypes)
 
-f = Figure(size=(760, 420))
-ax = Axis3(f[1, 1], title="PlantSimEngine-driven growth with PlantGeom", perspectiveness=0.45)
-plantviz!(ax, mtg)
-hidedecorations!(ax)
-f
+plantviz(mtg)
 ```
 
 ## What to remember
