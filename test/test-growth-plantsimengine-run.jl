@@ -22,7 +22,8 @@
         sim_object=nothing,
     )
         if status.emitted == 0 && status.TT_cu - status.TT_cu_emergence >= m.TT_emergence
-            phase = isodd(MultiScaleTreeGraph.node_id(status.node)) ? 0.0 : 180.0
+            # Count the number of internodes already emitted to alternate phyllotaxy:
+            phase = isodd(length(sim_object.statuses[:Internode])) ? 180.0 : 0.0
             new_organs = emit_phytomer!(
                 status,
                 sim_object;
