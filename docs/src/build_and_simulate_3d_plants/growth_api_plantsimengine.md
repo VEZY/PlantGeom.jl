@@ -28,20 +28,12 @@ We build a very small dynamic plant model where:
 
 This example is fully runnable as shown.
 
-```@setup psegrowth
-using PlantGeom
-using PlantSimEngine
-using MultiScaleTreeGraph
-using GeometryBasics
-using CairoMakie
-using Colors
-```
-
 ## 1. Load packages
 
 ```@example psegrowth
 using PlantGeom
 using PlantSimEngine
+using PlantSimEngine.Examples
 using MultiScaleTreeGraph
 using GeometryBasics
 using CairoMakie
