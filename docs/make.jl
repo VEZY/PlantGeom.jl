@@ -3,10 +3,11 @@ using PlantGeom
 using Statistics
 using Documenter
 using DocumenterVitepress
+using PlantSimEngine
 
 # Run this with hot-reload from docs: `npm run docs:dev`
 # Kill the server: `pkill -f vitepress`
-DocMeta.setdocmeta!(PlantGeom, :DocTestSetup, :(using PlantGeom; using MultiScaleTreeGraph; using Bonito; using Statistics); recursive=true)
+DocMeta.setdocmeta!(PlantGeom, :DocTestSetup, :(using PlantGeom; using MultiScaleTreeGraph; using Bonito; using Statistics; using PlantSimEngine); recursive=true)
 
 makedocs(;
     modules=[PlantGeom],
@@ -35,6 +36,7 @@ makedocs(;
             "Build & Simulate Plants" => [
                 "Workflow Tutorial" => "build_and_simulate_3d_plants/choose_a_workflow.md",
                 "Growth API" => "build_and_simulate_3d_plants/growth_api.md",
+                "Growth API with PlantSimEngine" => "build_and_simulate_3d_plants/growth_api_plantsimengine.md",
                 "Reconstructing an MTG" => [
                     "Tutorial" => "build_and_simulate_3d_plants/reconstruct_from_mtg/amap_quickstart.md",
                     "Conventions Reference" => "build_and_simulate_3d_plants/reconstruct_from_mtg/amap_conventions_reference.md",

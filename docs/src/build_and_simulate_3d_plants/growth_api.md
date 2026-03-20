@@ -398,6 +398,16 @@ set_growth_attributes!(new_leaf; leaf_stage=:expanding, age=1)
 
 PlantGeom still handles topology and geometry metadata, while PlantSimEngine still owns status initialization through `add_organ!` (called inside `emit_*`).
 
+For a complete runnable example with:
+
+- a custom PlantSimEngine growth model
+- a `ModelMapping`
+- meteorological forcing
+- a call to `run!`
+- and a final 3D reconstruction
+
+see [`Growth API with PlantSimEngine`](growth_api_plantsimengine.md).
+
 ## Copy-Paste Example
 
 If you want one block to paste into a Julia session, this is the shortest complete example from this page:
