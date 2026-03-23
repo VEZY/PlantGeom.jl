@@ -94,7 +94,7 @@ function read_opf(
 
         if node.name == "topology"
             ref_meshes = parse_ref_meshes(opf_attr)
-            
+
             # Handle missing attributeBDD by creating an empty one that will be populated dynamically
             if !haskey(opf_attr, :attributeBDD)
                 opf_attr[:attributeBDD] = Dict{String,String}()
@@ -106,7 +106,7 @@ function read_opf(
                 features[attr_name] = type_
                 opf_attr[:attributeBDD][attr_name] = _julia_attr_type_to_opf_class(type_)
             end
-            
+
             mtg = parse_opf_topology!(
                 node,
                 nothing,
@@ -231,7 +231,7 @@ end
     out = Vector{GeometryBasics.Point{3,Float64}}(undef, length(values) ÷ 3)
     j = 1
     @inbounds for i in 1:3:length(values)
-        out[j] = point3(values[i] * scale_factor, values[i + 1] * scale_factor, values[i + 2] * scale_factor)
+        out[j] = point3(values[i] * scale_factor, values[i+1] * scale_factor, values[i+2] * scale_factor)
         j += 1
     end
     return out
@@ -242,7 +242,7 @@ end
     out = Vector{GeometryBasics.Vec{3,Float64}}(undef, length(values) ÷ 3)
     j = 1
     @inbounds for i in 1:3:length(values)
-        out[j] = vec3(values[i], values[i + 1], values[i + 2])
+        out[j] = vec3(values[i], values[i+1], values[i+2])
         j += 1
     end
     return out
@@ -253,7 +253,7 @@ end
     out = Vector{GeometryBasics.Point{2,Float64}}(undef, length(values) ÷ 2)
     j = 1
     @inbounds for i in 1:2:length(values)
-        out[j] = GeometryBasics.Point{2,Float64}(values[i] * scale_factor, values[i + 1] * scale_factor)
+        out[j] = GeometryBasics.Point{2,Float64}(values[i] * scale_factor, values[i+1] * scale_factor)
         j += 1
     end
     return out
@@ -469,7 +469,7 @@ end
  Parse the opf attributes as a Dict.
 """
 function parse_opf_attributeBDD!(node)
-    elem_dict = Dict()
+    elem_dict = Dict{String,String}()
     for m in eachelement(node)
         push!(elem_dict, m["name"] => m["class"])
     end
