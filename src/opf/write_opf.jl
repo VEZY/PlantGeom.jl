@@ -10,6 +10,7 @@ Write an MTG with explicit geometry to disk as an OPF file.
 @inline _opf_join_values(values) = join((_opf_scalar_string(v) for v in values), "\t")
 @inline _opf_attr_string(val::AbstractArray) = _opf_join_values(val)
 @inline _opf_attr_string(val) = _opf_scalar_string(val)
+@inline _opf_skip_attribute(key::Symbol) = key in (:ref_meshes, :geometry, :source_topology_id, :description) || startswith(String(key), "_scene_")
 
 @inline _opf_geometry_material(geom::Geometry) = geom.ref_mesh.material
 @inline _opf_geometry_material(geom::PointMappedGeometry) = geom.ref_mesh.material
@@ -154,7 +155,7 @@ function write_opf(file, mtg)
     for i in eachindex(attrs.NAME)
         attr_name = attrs.NAME[i]
         attr_type = attrs.TYPE[i]
-        (attr_name == :ref_meshes || attr_name == :geometry || attr_name == :source_topology_id || attr_name == :description) && continue
+        _opf_skip_attribute(attr_name) && continue
 
         shape_elm = addelement!(attrBDD, "attribute")
         shape_elm["name"] = string(attr_name)
@@ -258,7 +259,7 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, serialized_geometries
             )
             addelement!(geom, "dUp", _opf_scalar_string(serialized_geom.dUp))
             addelement!(geom, "dDwn", _opf_scalar_string(serialized_geom.dDwn))
-        elseif key == :ref_meshes || key == :source_topology_id || key == :description
+        elseif _opf_skip_attribute(key)
             continue
         else
             val = node[key]

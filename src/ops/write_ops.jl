@@ -59,6 +59,8 @@ function _strip_scene_metadata!(object_root::MultiScaleTreeGraph.Node)
         :functional_group,
         :plantID,
         :filePath,
+        :_scene_cache,
+        :_scene_version,
         :pos,
         :scale,
         :inclinationAzimut,

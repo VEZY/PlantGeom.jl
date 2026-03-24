@@ -31,6 +31,8 @@ end
     include("test-write_ops.jl")
 end
 
+include("test-write-cache-sanitization.jl")
+
 @testset "Makie recipes" begin
     include("test-makie-recipes.jl")
 end
