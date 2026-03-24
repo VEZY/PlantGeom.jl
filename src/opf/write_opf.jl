@@ -11,6 +11,7 @@ Write an MTG with explicit geometry to disk as an OPF file.
 @inline _opf_attr_string(val::AbstractArray) = _opf_join_values(val)
 @inline _opf_attr_string(val) = _opf_scalar_string(val)
 @inline _opf_skip_attribute(key::Symbol) = key in (:ref_meshes, :geometry, :source_topology_id, :description) || startswith(String(key), "_scene_")
+@inline _opf_topology_id(node) = (haskey(node, :source_topology_id) && node[:source_topology_id] !== nothing && !ismissing(node[:source_topology_id])) ? node[:source_topology_id] : node_id(node)
 
 @inline _opf_geometry_material(geom::Geometry) = geom.ref_mesh.material
 @inline _opf_geometry_material(geom::PointMappedGeometry) = geom.ref_mesh.material
@@ -228,7 +229,7 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, serialized_geometries
 
     xml_node["class"] = string(symbol(node))
     xml_node["scale"] = scale(node)
-    xml_node["id"] = hasproperty(node, :source_topology_id) ? node.source_topology_id : node_id(node)
+    xml_node["id"] = _opf_topology_id(node)
 
     for key in keys(node)
         if key == :geometry

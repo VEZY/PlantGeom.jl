@@ -1,26 +1,3 @@
-function _ops_inclination_linear_map(inclination_azimut::Real, inclination_angle::Real)
-    abs(Float64(inclination_angle)) <= eps(Float64) && return nothing
-
-    axis = SVector(
-        -sin(Float64(inclination_azimut)),
-        cos(Float64(inclination_azimut)),
-        0.0,
-    )
-    axis_norm = norm(axis)
-    axis_norm > eps(Float64) || return nothing
-    axis_u = axis / axis_norm
-
-    LinearMap(RotMatrix(AngleAxis(Float64(inclination_angle), axis_u[1], axis_u[2], axis_u[3])))
-end
-
-function _relabel_node_ids!(root, next_node_id::Base.RefValue{Int})
-    traverse!(root) do node
-        setfield!(node, :id, next_node_id[])
-        next_node_id[] += 1
-    end
-    return nothing
-end
-
 """
     read_ops(file; attr_type=Dict{String,Any}, mtg_type=MutableNodeMTG, attribute_types=Dict(), kwargs...)
 
@@ -86,26 +63,16 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, attribute_types
     for (i, row) in enumerate(Tables.rows(object_table))
         opf = opfs[i]
 
-        scene_transformation = IdentityTransformation()
+        scene_transformation = scene_object_transformation(
+            ;
+            pos=row.pos,
+            scale=row.scale,
+            rotation=row.rotation,
+            inclination_azimut=row.inclinationAzimut,
+            inclination_angle=row.inclinationAngle,
+        )
 
-        if row.rotation != 0.0
-            scene_transformation = LinearMap(RotZ(row.rotation)) ∘ scene_transformation
-        end
-
-        if row.scale != 1.0
-            scene_transformation = LinearMap(Diagonal(SVector(row.scale, row.scale, row.scale))) ∘ scene_transformation
-        end
-
-        inclination_map = _ops_inclination_linear_map(row.inclinationAzimut, row.inclinationAngle)
-        if !isnothing(inclination_map)
-            scene_transformation = inclination_map ∘ scene_transformation
-        end
-
-        if row.pos != point3(0.0, 0.0, 0.0)
-            scene_transformation = Translation(row.pos[1], row.pos[2], row.pos[3]) ∘ scene_transformation
-        end
-
-        traverse!(opf, filter_fun=node -> !isnothing(node.geometry)) do node
+        traverse!(opf, filter_fun=has_geometry) do node
             scene_transformation != IdentityTransformation() && transform_mesh!(node, scene_transformation)
         end
 

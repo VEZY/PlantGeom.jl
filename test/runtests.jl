@@ -32,6 +32,7 @@ end
 end
 
 include("test-write-cache-sanitization.jl")
+include("test-scene-placement.jl")
 
 @testset "Makie recipes" begin
     include("test-makie-recipes.jl")
