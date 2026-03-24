@@ -108,7 +108,7 @@ function write_opf(file, mtg)
     for i in eachindex(attrs.NAME)
         attr_name = attrs.NAME[i]
         attr_type = attrs.TYPE[i]
-        (attr_name == :ref_meshes || attr_name == :geometry || attr_name == :source_topology_id) && continue
+        (attr_name == :ref_meshes || attr_name == :geometry || attr_name == :source_topology_id || attr_name == :description) && continue
 
         shape_elm = addelement!(attrBDD, "attribute")
         shape_elm["name"] = string(attr_name)
@@ -212,7 +212,7 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
             )
             addelement!(geom, "dUp", _opf_scalar_string(geom_val.dUp))
             addelement!(geom, "dDwn", _opf_scalar_string(geom_val.dDwn))
-        elseif key == :ref_meshes || key == :source_topology_id
+        elseif key == :ref_meshes || key == :source_topology_id || key == :description
             continue
         else
             val = node[key]
