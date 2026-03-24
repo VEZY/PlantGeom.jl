@@ -11,25 +11,73 @@ Write an MTG with explicit geometry to disk as an OPF file.
 @inline _opf_attr_string(val::AbstractArray) = _opf_join_values(val)
 @inline _opf_attr_string(val) = _opf_scalar_string(val)
 
-function _normalized_ref_meshes_dict(mtg)
-    ref_meshes_attr = mtg[:ref_meshes]
-    if ref_meshes_attr === nothing
-        meshes_vec = get_ref_meshes(mtg)
-        return Dict(i - 1 => mesh_ for (i, mesh_) in enumerate(meshes_vec))
-    elseif ref_meshes_attr isa AbstractVector
-        return Dict(i - 1 => mesh_ for (i, mesh_) in enumerate(ref_meshes_attr))
-    elseif ref_meshes_attr isa AbstractDict
-        return Dict{Int,RefMesh}(Int(k) => v for (k, v) in ref_meshes_attr)
-    end
-    error("Unsupported `:ref_meshes` container type $(typeof(ref_meshes_attr)) in OPF writer.")
+@inline _opf_geometry_material(geom::Geometry) = geom.ref_mesh.material
+@inline _opf_geometry_material(geom::PointMappedGeometry) = geom.ref_mesh.material
+@inline _opf_geometry_material(geom::ExtrudedTubeGeometry) = geom.material
+@inline _opf_geometry_material(geom) = geometry_display_color(geom)
+
+@inline _opf_geometry_texture_coords(::Any) = nothing
+@inline _opf_geometry_texture_coords(geom::PointMappedGeometry) = geom.ref_mesh.texture_coords
+
+function _materialized_geometry_ref_mesh(node, geom)
+    mesh_ = geometry_to_mesh(geom)
+    RefMesh(
+        string(get_ref_mesh_name(geom), "_node_", node_id(node)),
+        mesh_,
+        normals_vertex(mesh_),
+        _opf_geometry_texture_coords(geom),
+        _opf_geometry_material(geom),
+        false,
+    )
 end
 
-function _ref_mesh_id_lookup(ref_meshes::AbstractDict{Int,<:RefMesh})
-    lookup = IdDict{Any,Int}()
-    for (id, mesh_) in ref_meshes
-        lookup[mesh_] = id
+function _opf_serialization_context(mtg)
+    root = get_root(mtg)
+    ref_meshes = Dict{Int,RefMesh}()
+    ref_mesh_lookup = IdDict{Any,Int}()
+    materialized_lookup = IdDict{Any,Int}()
+    serialized_geometries = IdDict{Any,NamedTuple{(:shape_index, :transformation, :dUp, :dDwn),Tuple{Int,Transformation,Float64,Float64}}}()
+    next_id = 0
+
+    traverse!(root) do node
+        has_geometry(node) || return
+
+        geom = node[:geometry]
+        if geom isa Geometry
+            mesh_id = get(ref_mesh_lookup, geom.ref_mesh, nothing)
+            if isnothing(mesh_id)
+                mesh_id = next_id
+                ref_meshes[mesh_id] = geom.ref_mesh
+                ref_mesh_lookup[geom.ref_mesh] = mesh_id
+                next_id += 1
+            end
+
+            serialized_geometries[node] = (
+                shape_index=mesh_id,
+                transformation=geom.transformation,
+                dUp=Float64(geom.dUp),
+                dDwn=Float64(geom.dDwn),
+            )
+            return
+        end
+
+        mesh_id = get(materialized_lookup, geom, nothing)
+        if isnothing(mesh_id)
+            mesh_id = next_id
+            ref_meshes[mesh_id] = _materialized_geometry_ref_mesh(node, geom)
+            materialized_lookup[geom] = mesh_id
+            next_id += 1
+        end
+
+        serialized_geometries[node] = (
+            shape_index=mesh_id,
+            transformation=IdentityTransformation(),
+            dUp=1.0,
+            dDwn=1.0,
+        )
     end
-    return lookup
+
+    return ref_meshes, serialized_geometries
 end
 
 function write_opf(file, mtg)
@@ -43,9 +91,7 @@ function write_opf(file, mtg)
 
     meshBDD = addelement!(opf_elm, "meshBDD")
 
-    ref_meshes = _normalized_ref_meshes_dict(mtg)
-    mtg[:ref_meshes] = ref_meshes
-    ref_meshes_lookup = _ref_mesh_id_lookup(ref_meshes)
+    ref_meshes, serialized_geometries = _opf_serialization_context(mtg)
 
     for (id, mesh_) in ref_meshes
         mesh_elm = addelement!(meshBDD, "mesh")
@@ -128,7 +174,7 @@ function write_opf(file, mtg)
         shape_elm["class"] = attr_type_opf
     end
 
-    mtg_topology_to_xml!(mtg, opf_elm, nothing, ref_meshes_lookup)
+    mtg_topology_to_xml!(mtg, opf_elm, nothing, serialized_geometries)
 
     write(file, doc)
 
@@ -156,15 +202,15 @@ end
 
 Write the MTG topology, attributes and geometry into XML format.
 """
-function mtg_topology_to_xml!(node, xml_parent, xml_gtparent=nothing, ref_meshes=_ref_mesh_id_lookup(_normalized_ref_meshes_dict(get_root(node))))
+function mtg_topology_to_xml!(node, xml_parent, xml_gtparent=nothing, serialized_geometries=IdDict{Any,NamedTuple{(:shape_index, :transformation, :dUp, :dDwn),Tuple{Int,Transformation,Float64,Float64}}}())
     if isroot(node)
-        xml_parent = attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
+        xml_parent = attributes_to_xml(node, xml_parent, xml_gtparent, serialized_geometries)
     end
 
     if !isleaf(node)
         for chnode in children(node)
-            xml_node = attributes_to_xml(chnode, xml_parent, xml_gtparent, ref_meshes)
-            mtg_topology_to_xml!(chnode, xml_node, xml_parent, ref_meshes)
+            xml_node = attributes_to_xml(chnode, xml_parent, xml_gtparent, serialized_geometries)
+            mtg_topology_to_xml!(chnode, xml_node, xml_parent, serialized_geometries)
         end
     end
 end
@@ -174,7 +220,7 @@ end
 
 Write an MTG node into an XML node.
 """
-function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
+function attributes_to_xml(node, xml_parent, xml_gtparent, serialized_geometries)
     opf_link = isroot(node) ? "topology" : mtg_to_opf_link(link(node))
 
     xml_node = addelement!(xml_parent, opf_link)
@@ -187,15 +233,15 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
         if key == :geometry
             geom_val = node[key]
             (geom_val === nothing || ismissing(geom_val)) && continue
+            serialized_geom = get(serialized_geometries, node, nothing)
+            isnothing(serialized_geom) && error("Geometry serialization context not found for node $(node_id(node)).")
 
             geom = addelement!(xml_node, string(key))
             geom["class"] = "Mesh"
 
-            ref_mesh_index = get(ref_meshes, geom_val.ref_mesh, nothing)
-            isnothing(ref_mesh_index) && error("Reference mesh not found in OPF writer lookup: $(geom_val.ref_mesh.name)")
-            addelement!(geom, "shapeIndex", string(ref_mesh_index))
+            addelement!(geom, "shapeIndex", string(serialized_geom.shape_index))
 
-            mat4x4 = get_transformation_matrix(geom_val.transformation)
+            mat4x4 = get_transformation_matrix(serialized_geom.transformation)
 
             addelement!(
                 geom,
@@ -210,8 +256,8 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, ref_meshes)
                     "\n"
                 )
             )
-            addelement!(geom, "dUp", _opf_scalar_string(geom_val.dUp))
-            addelement!(geom, "dDwn", _opf_scalar_string(geom_val.dDwn))
+            addelement!(geom, "dUp", _opf_scalar_string(serialized_geom.dUp))
+            addelement!(geom, "dDwn", _opf_scalar_string(serialized_geom.dDwn))
         elseif key == :ref_meshes || key == :source_topology_id || key == :description
             continue
         else

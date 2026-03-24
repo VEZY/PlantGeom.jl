@@ -21,6 +21,7 @@ end
     include("test-read_gwa.jl")
     include("test-write_gwa.jl")
     include("test-write_opf.jl")
+    include("test-write_opf-growth-roundtrip.jl")
 end
 
 @testset "OPS files" begin
