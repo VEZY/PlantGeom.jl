@@ -164,6 +164,54 @@ rm(tmp_ops_rows; force=true)
 summary
 ```
 
+## Writing A Scene Properly
+
+There are two supported ways to write an OPS scene:
+
+- `write_ops_file(file, scene_dimensions, object_table)` if you already have a
+  table of scene rows
+- `write_ops(file, scene)` if you already assembled a scene MTG in memory
+
+### Required scene contract for `write_ops(file, scene)`
+
+For `write_ops(file, scene)`, PlantGeom expects:
+
+- a scene root whose children are object roots
+- optional `scene.scene_dimensions` stored as
+  `(Point3(xmin, ymin, z), Point3(xmax, ymax, z))`
+- optional placement metadata on each child object root:
+  `sceneID`, `plantID`, `functional_group`, `pos`, `scale`,
+  `inclinationAzimut`, `inclinationAngle`, `rotation`, `filePath`
+
+Defaults are used when these attributes are missing, but if you want a scene
+that is both:
+
+- correct in memory for `plantviz(scene)`
+- and correct when exported with `write_ops(scene)`
+
+then the recommended workflow is to place each object with
+[`place_in_scene!`](build_and_simulate_3d_plants/scene_assembly.md).
+
+### Required row contract for `write_ops_file(file, scene_dimensions, object_table)`
+
+For `write_ops_file`, each row in `object_table` can provide:
+
+- `sceneID`
+- `plantID`
+- `filePath`
+- `pos`
+- `scale`
+- `inclinationAzimut`
+- `inclinationAngle`
+- `rotation`
+- `functional_group`
+
+All are optional and default to the same values used by `write_ops`.
+
+For a complete scene-building workflow mixing generated plants and imported
+objects, see:
+[Assemble a Mixed Scene](build_and_simulate_3d_plants/scene_assembly.md).
+
 ## OPF Reference Mesh IDs
 
 `read_opf` stores reference meshes on the MTG root as `opf[:ref_meshes]`, a
