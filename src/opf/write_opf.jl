@@ -1,10 +1,5 @@
 using Printf: @sprintf
 
-"""
-    write_opf(file, opf)
-
-Write an MTG with explicit geometry to disk as an OPF file.
-"""
 @inline _opf_scalar_string(x::AbstractFloat) = @sprintf("%.17g", Float64(x))
 @inline _opf_scalar_string(x) = string(x)
 @inline _opf_join_values(values) = join((_opf_scalar_string(v) for v in values), "\t")
@@ -82,6 +77,12 @@ function _opf_serialization_context(mtg)
     return ref_meshes, serialized_geometries
 end
 
+
+"""
+    write_opf(file, opf)
+
+Write an MTG with explicit geometry to disk as an OPF file.
+"""
 function write_opf(file, mtg)
     clean_cache!(mtg)
 
