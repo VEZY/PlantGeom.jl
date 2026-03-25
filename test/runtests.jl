@@ -1,4 +1,5 @@
 using CairoMakie
+using Bonito
 using Test
 using ReferenceTests
 using Documenter # for doctests
@@ -47,6 +48,7 @@ end
 include("test-simplify_geometry.jl")
 include("test-extrusion-mesh.jl")
 include("test-procedural-geometry.jl")
+include("test-manual-transform-helpers.jl")
 include("test-procedural-visual-regression.jl")
 include("test-growth-api.jl")
 include("test-prototype-api.jl")

@@ -295,19 +295,34 @@ The low-level API is still available and unchanged.
 
 If you want full manual control, you can still write:
 
-```julia
-node[:geometry] = Geometry(
+```@example protoapi
+manual_debug_plant = Node(NodeMTG(:/, :Plant, 20, 1))
+manual_affine_leaf = Node(manual_debug_plant, NodeMTG(:/, :Leaf, 1, 2))
+manual_pointmapped_leaf = Node(manual_debug_plant, NodeMTG(:/, :Leaf, 2, 2))
+
+manual_affine_leaf[:geometry] = PlantGeom.Geometry(
     ref_mesh=leaf_ref,
-    transformation=compose(Translation(0.0, 0.0, 0.8), LinearMap(RotZ(pi / 4))),
+    transformation=pose(
+        rotate=(z=45.0,),
+        translate=(0.0, -0.22, 0.8),
+        deg=true,
+    ),
 )
 
-node[:geometry] = PointMappedGeometry(
+manual_pointmapped_leaf[:geometry] = PlantGeom.PointMappedGeometry(
     leaf_ref,
     compose_point_maps(
         LaminaTwistRollMap(tip_twist_deg=12.0, roll_strength=0.25),
         LaminaMidribMap(base_angle_deg=42.0, bend=0.40, tip_drop=0.12),
+    );
+    transformation=pose(
+        rotate=(z=-18.0,),
+        translate=(0.0, 0.24, 0.8),
+        deg=true,
     ),
 )
+
+plantviz(manual_debug_plant)
 ```
 
 That remains the right choice when:
@@ -326,10 +341,12 @@ So the recommended split is:
 If a mesh already has the final physical dimensions you want, and scaling from
 `Length`, `Width`, and `Thickness` would be wrong, use `RawMeshPrototype`.
 
-```julia
-prototypes = Dict(
+```@example protoapi
+raw_prototypes = Dict(
     :Leaf => RawMeshPrototype(leaf_ref),
 )
+
+raw_prototypes[:Leaf]
 ```
 
 With `RawMeshPrototype`:

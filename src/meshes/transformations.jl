@@ -463,6 +463,151 @@ end
     end
 end
 
+function _manual_transform_triplet(values::NTuple{3,<:Real}, label::AbstractString)
+    SVector{3,Float64}(Float64(values[1]), Float64(values[2]), Float64(values[3]))
+end
+
+function _manual_transform_triplet(values::AbstractVector{<:Real}, label::AbstractString)
+    length(values) == 3 || error("`$label` must have exactly 3 values, got $(length(values)).")
+    SVector{3,Float64}(Float64(values[1]), Float64(values[2]), Float64(values[3]))
+end
+
+@inline function _manual_transform_triplet(values::StaticArrays.StaticVector{3,<:Real}, label::AbstractString)
+    SVector{3,Float64}(Float64(values[1]), Float64(values[2]), Float64(values[3]))
+end
+
+@inline function _manual_transform_triplet(values::GeometryBasics.AbstractPoint{3}, label::AbstractString)
+    SVector{3,Float64}(Float64(values[1]), Float64(values[2]), Float64(values[3]))
+end
+
+function _manual_scale_triplet(scale)
+    if scale isa Real
+        s = Float64(scale)
+        return SVector{3,Float64}(s, s, s)
+    end
+    return _manual_transform_triplet(scale, "scale")
+end
+
+function _manual_rotation_triplet(rotate)
+    if rotate isa NamedTuple
+        return SVector{3,Float64}(
+            Float64(get(rotate, :x, 0.0)),
+            Float64(get(rotate, :y, 0.0)),
+            Float64(get(rotate, :z, 0.0)),
+        )
+    elseif rotate === nothing
+        return SVector{3,Float64}(0.0, 0.0, 0.0)
+    end
+    return _manual_transform_triplet(rotate, "rotate")
+end
+
+@inline _manual_angle_rad(angle::Real, deg::Bool) = deg ? deg2rad(Float64(angle)) : Float64(angle)
+
+"""
+    scale3(scale)
+    scale3(sx, sy, sz)
+
+Build a 3D scaling transformation for manual mesh placement.
+
+`scale` can be either a scalar for uniform scaling or a 3-tuple / 3-vector for
+anisotropic scaling.
+"""
+function scale3(scale)
+    s = _manual_scale_triplet(scale)
+    LinearMap(Diagonal(s))
+end
+
+function scale3(sx::Real, sy::Real, sz::Real)
+    LinearMap(Diagonal(SVector{3,Float64}(Float64(sx), Float64(sy), Float64(sz))))
+end
+
+"""
+    rotate_x(angle; deg=false)
+
+Rotate around the local X axis.
+"""
+rotate_x(angle::Real; deg::Bool=false) = _rotation_linear_map(:x, _manual_angle_rad(angle, deg))
+
+"""
+    rotate_y(angle; deg=false)
+
+Rotate around the local Y axis.
+"""
+rotate_y(angle::Real; deg::Bool=false) = _rotation_linear_map(:y, _manual_angle_rad(angle, deg))
+
+"""
+    rotate_z(angle; deg=false)
+
+Rotate around the local Z axis.
+"""
+rotate_z(angle::Real; deg::Bool=false) = _rotation_linear_map(:z, _manual_angle_rad(angle, deg))
+
+"""
+    pose(; scale=1.0, rotate=(x=0.0, y=0.0, z=0.0), translate=(0.0, 0.0, 0.0), deg=false)
+
+Build a manual affine transform for placing a mesh.
+
+The returned transform always applies operations in this order:
+
+1. scale
+2. rotate around local X
+3. rotate around local Y
+4. rotate around local Z
+5. translate
+
+This helper is intended for hand-authored `RefMesh` placement where using
+`LinearMap`, `AngleAxis`, and explicit composition would be unnecessarily low-level.
+
+# Examples
+
+```jldoctest
+julia> t = pose(
+           scale=(1.8, 1.0, 0.04),
+           rotate=(y=30.0, z=12.0),
+           translate=(2.0, 0.0, 1.4),
+           deg=true,
+       );
+
+julia> round.(collect(t(PlantGeom.GeometryBasics.Point(1.0, 0.0, 0.0))); digits=3)
+3-element Vector{Float64}:
+ 3.525
+ 0.324
+ 0.5
+```
+"""
+function pose(;
+    scale=1.0,
+    rotate=(x=0.0, y=0.0, z=0.0),
+    translate=(0.0, 0.0, 0.0),
+    deg::Bool=false,
+)
+    scale_vals = _manual_scale_triplet(scale)
+    rotate_vals = _manual_rotation_triplet(rotate)
+    translate_vals = _manual_transform_triplet(translate, "translate")
+
+    transformation = IdentityTransformation()
+
+    if !(scale_vals[1] == 1.0 && scale_vals[2] == 1.0 && scale_vals[3] == 1.0)
+        transformation = scale3(scale_vals)
+    end
+
+    if rotate_vals[1] != 0.0
+        transformation = rotate_x(rotate_vals[1]; deg=deg) ∘ transformation
+    end
+    if rotate_vals[2] != 0.0
+        transformation = rotate_y(rotate_vals[2]; deg=deg) ∘ transformation
+    end
+    if rotate_vals[3] != 0.0
+        transformation = rotate_z(rotate_vals[3]; deg=deg) ∘ transformation
+    end
+
+    if !(translate_vals[1] == 0.0 && translate_vals[2] == 0.0 && translate_vals[3] == 0.0)
+        transformation = Translation(translate_vals[1], translate_vals[2], translate_vals[3]) ∘ transformation
+    end
+
+    transformation
+end
+
 """
     transform_mesh!(node::Node, transformation)
 
