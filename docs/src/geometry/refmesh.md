@@ -11,6 +11,8 @@ For the procedural extrusion counterpart (`ExtrudedTubeGeometry`,
 `extrude_*`, `lathe_*`), see [`Procedural / Extrusion Geometry`](procedural_geometry.md).
 For the high-level attribute-driven realization layer, see
 [`Prototype Mesh API`](prototype_mesh_api.md).
+If your main question is "I have one mesh and I just want to place it",
+start with the manual placement section below.
 
 ```@setup refmesh
 using PlantGeom
@@ -34,6 +36,14 @@ end
 
 cyl = cylinder_mesh()
 cylinder_refmesh = RefMesh("cylinder_1", cyl)
+leaf_refmesh = lamina_refmesh(
+    "leaf_refmesh";
+    length=1.0,
+    max_width=0.35,
+    n_long=24,
+    n_half=5,
+    material=RGB(0.20, 0.62, 0.30),
+)
 ```
 
 
@@ -80,21 +90,39 @@ This means:
 
 Manual / low-level:
 
-```julia
-node[:geometry] = Geometry(
+```@example refmesh
+mtg_compare = Node(NodeMTG(:/, :Plant, 1, 1))
+manual_leaf = Node(mtg_compare, NodeMTG(:/, :Leaf, 1, 2))
+
+manual_leaf[:geometry] = PlantGeom.Geometry(
     ref_mesh=leaf_refmesh,
-    transformation=compose(Translation(0.0, 0.0, 0.8), LinearMap(RotZ(pi / 4))),
+    transformation=pose(
+        rotate=(z=45.0,),
+        translate=(0.0, 0.0, 0.8),
+        deg=true,
+    ),
 )
+
+plantviz(mtg_compare)
 ```
 
 High-level / attribute-driven:
 
-```julia
+```@example refmesh
 prototypes = Dict(
     :Leaf => RefMeshPrototype(leaf_refmesh),
 )
 
-rebuild_geometry!(mtg, prototypes)
+mtg_proto = Node(NodeMTG(:/, :Plant, 2, 1))
+leaf_proto = Node(mtg_proto, NodeMTG(:/, :Leaf, 1, 2))
+leaf_proto[:Length] = 1.1
+leaf_proto[:Width] = 0.30
+leaf_proto[:Thickness] = 0.03
+leaf_proto[:ZEuler] = -20.0
+leaf_proto[:zz] = 0.7
+
+set_geometry_from_attributes!(mtg_proto, prototypes)
+plantviz(mtg_proto)
 ```
 
 Both are valid, but they solve different problems:
@@ -126,9 +154,17 @@ A `RefMesh` contains:
 
 Geometries in PlantGeom are attached to nodes in a Multi-scale Tree Graph (MTG) that represents plant topology:
 
-```julia
+```@example refmesh
+node = Node(NodeMTG(:/, :Plant, 10, 1))
+child = Node(node, NodeMTG(:/, :Leaf, 10, 2))
+
 # Attaching geometry to an MTG node
-node.geometry = Geometry(ref_mesh=some_ref_mesh, transformation=some_transformation)
+child.geometry = PlantGeom.Geometry(
+    ref_mesh=cylinder_refmesh,
+    transformation=pose(translate=(0.0, 0.0, 0.4)),
+)
+
+(geometry_type=typeof(child[:geometry]),)
 ```
 
 This is the direct/manual path.  
@@ -140,10 +176,10 @@ If instead you want the MTG attributes themselves to drive geometry realization,
 
 ```@example refmesh
 mesh_vertices = [
-    Point(0.0, 0.0, -0.5),
-    Point(1.0, 0.0, -0.5),
-    Point(1.0, 0.0, 0.5),
-    Point(0.0, 0.0, 0.5),
+    Point(0.0, 0.0, 0.0),
+    Point(1.0, 0.0, 0.0),
+    Point(1.0, 1.0, 0.0),
+    Point(0.0, 1.0, 0.0),
 ]
 
 mesh_faces = [
@@ -155,6 +191,43 @@ plane = GeometryBasics.Mesh(mesh_vertices, mesh_faces)
 ref_mesh = RefMesh("plane", plane, RGB(0.2, 0.7, 0.3))
 plantviz(ref_mesh)
 ```
+
+### Rotate, Scale, and Place a Hand-Made Mesh
+
+Once you have a `RefMesh`, the usual manual workflow is:
+
+1. keep the mesh in local coordinates
+2. attach it to a node with `PlantGeom.Geometry`
+3. place it with [`pose`](@ref)
+
+`pose` is the recommended helper for hand-authored meshes because it fixes the
+transform order:
+
+1. scale
+2. rotate around local `x`
+3. rotate around local `y`
+4. rotate around local `z`
+5. translate
+
+```@example refmesh
+mtg_manual = Node(NodeMTG(:/, :Plant, 1, 1))
+panel_node = Node(mtg_manual, NodeMTG(:/, :Panel, 1, 2))
+
+panel_node[:geometry] = PlantGeom.Geometry(
+    ref_mesh=ref_mesh,
+    transformation=pose(
+        scale=(1.8, 0.9, 1.0),
+        rotate=(x=65.0, z=18.0),
+        translate=(0.0, 0.0, 0.6),
+        deg=true,
+    ),
+)
+
+plantviz(mtg_manual)
+```
+
+If you need full low-level control, you can still use `Translation`,
+`LinearMap`, `AngleAxis`, and explicit composition directly.
 
 ### From a Generated Mesh
 
@@ -333,7 +406,7 @@ tube[:geometry] = ExtrudedTubeGeometry(
     torsion=false,
     cap_ends=true,
     material=RGB(0.35, 0.50, 0.70),
-    transformation=PlantGeom.Translation(1.25, 0.0, 0.0),
+    transformation=pose(translate=(1.25, 0.0, 0.0)),
 )
 
 plantviz(mtg_proc)

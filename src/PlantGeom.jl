@@ -86,6 +86,7 @@ export taper
 export refmesh_to_mesh, get_ref_meshes_color
 export xmax, ymax, zmax, xmin, ymin, zmin
 export transform_mesh!
+export pose, scale3, rotate_x, rotate_y, rotate_z
 export extrude_profile_mesh, extrude_profile_refmesh, extrude_tube_mesh
 export ExtrudedTubeGeometry
 export PointMappedGeometry

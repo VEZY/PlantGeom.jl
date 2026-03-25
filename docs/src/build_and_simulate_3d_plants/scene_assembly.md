@@ -1,10 +1,6 @@
-+++
-title = "Assemble a Mixed Scene"
-+++
+# Manually Assemble a Scene
 
-# Assemble a Mixed Scene
-
-This page shows the recommended way to build a proper scene MTG from a mix of:
+This page shows the recommended way to build a proper scene MTG from:
 
 - plants imported from files (`.opf` or `.gwa`)
 - plants generated in Julia with the growth API
