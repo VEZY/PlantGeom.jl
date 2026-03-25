@@ -52,6 +52,7 @@ include("opf/write_opf.jl")
 include("gwa/read_gwa.jl")
 include("gwa/write_gwa.jl")
 include("ops/read_ops_file.jl")
+include("ops/scene_helpers.jl")
 include("ops/read_ops.jl")
 include("ops/write_ops.jl")
 include("meshes/summary_coordinates.jl")
@@ -80,6 +81,7 @@ export diagram, diagram!
 # export nvertices, nelements
 export read_opf, read_gwa, write_opf, write_gwa
 export read_ops_file, read_ops, write_ops, write_ops_file
+export scene_object_transformation, place_in_scene!
 export taper
 export refmesh_to_mesh, get_ref_meshes_color
 export xmax, ymax, zmax, xmin, ymin, zmin

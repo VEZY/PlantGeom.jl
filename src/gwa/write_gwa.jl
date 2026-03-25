@@ -1,14 +1,15 @@
 using Printf: @sprintf
 
+@inline _gwa_scalar_string(x::AbstractFloat) = @sprintf("%.17g", Float64(x))
+@inline _gwa_scalar_string(x) = string(x)
+@inline _gwa_join_values(values) = join((_gwa_scalar_string(v) for v in values), "\t")
+@inline _gwa_topology_id(node) = (haskey(node, :source_topology_id) && node[:source_topology_id] !== nothing && !ismissing(node[:source_topology_id])) ? node[:source_topology_id] : node_id(node)
+
 """
     write_gwa(file, mtg)
 
 Write an MTG object to disk as a GWA mesh file.
 """
-@inline _gwa_scalar_string(x::AbstractFloat) = @sprintf("%.17g", Float64(x))
-@inline _gwa_scalar_string(x) = string(x)
-@inline _gwa_join_values(values) = join((_gwa_scalar_string(v) for v in values), "\t")
-
 function write_gwa(file, mtg)
     root = isroot(mtg) ? mtg : get_root(mtg)
     clean_cache!(root)
@@ -32,7 +33,7 @@ function write_gwa(file, mtg)
 
     for node in mesh_nodes
         mesh_elm = addelement!(gwa_elm, "mesh")
-        mesh_elm["id"] = hasproperty(node, :source_topology_id) ? node.source_topology_id : node_id(node)
+        mesh_elm["id"] = _gwa_topology_id(node)
         mesh_elm["label"] = node[:geometry].ref_mesh.name
 
         mesh = refmesh_to_mesh(node)

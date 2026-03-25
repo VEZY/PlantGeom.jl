@@ -59,6 +59,8 @@ function _strip_scene_metadata!(object_root::MultiScaleTreeGraph.Node)
         :functional_group,
         :plantID,
         :filePath,
+        :_scene_cache,
+        :_scene_version,
         :pos,
         :scale,
         :inclinationAzimut,
@@ -157,6 +159,30 @@ end
 
 Write only the scene table (`.ops`) from scene dimensions and object rows.
 This does not write referenced `.opf` / `.gwa` object files.
+
+`scene_dimensions` must be either `nothing` or a tuple
+`(origin, opposite_corner)` where:
+
+- `origin` is a 3D point `(x_origin, y_origin, z_origin)`
+- `opposite_corner` is a 3D point `(x_max, y_max, z_origin)`
+
+Only `xOrigin`, `yOrigin`, `zOrigin`, `xSize`, and `ySize` are written to the
+OPS header, matching the OPS `T ... flat` line.
+
+`object_table` can be any Tables.jl-compatible row table. Each row may contain:
+
+- `sceneID::Int` (default `1`)
+- `plantID::Int` (default `1`)
+- `filePath::AbstractString` (default `"object.opf"`)
+- `pos::Point3` or 3-tuple `(x, y, z)` (default `(0, 0, 0)`)
+- `scale::Real` (default `1.0`)
+- `inclinationAzimut::Real` (default `0.0`)
+- `inclinationAngle::Real` (default `0.0`)
+- `rotation::Real` (default `0.0`)
+- `functional_group::AbstractString` (default `""`)
+
+Rows are grouped by `functional_group` in the emitted file using
+`#[Archimed] ...` section headers.
 """
 function write_ops_file(file, scene_dimensions, object_table)
     lines = String[]
@@ -232,11 +258,25 @@ write_ops(file, scene_dimensions, object_table) = write_ops_file(file, scene_dim
 Write a scene MTG to an `.ops` file. By default this writes one object file per
 scene child (`.opf` / `.gwa`) and emits an OPS row pointing to each object.
 
+- `scene` is expected to be a scene root whose children are object roots
+  (plants or standalone geometry objects).
+- The scene root may store `scene_dimensions` as
+  `(Point3(xmin, ymin, z), Point3(xmax, ymax, z))`. If missing, no `T ... flat`
+  header is written.
+- Each child object root may store the following placement metadata, all optional:
+  `sceneID`, `plantID`, `functional_group`, `pos`, `scale`,
+  `inclinationAzimut`, `inclinationAngle`, `rotation`, and `filePath`.
+- If these metadata are absent, defaults compatible with OPS are used.
+- The recommended way to prepare such a scene is [`place_in_scene!`](@ref),
+  which stores the metadata and applies the corresponding transform in memory.
 - `write_objects=true`: also write object files next to the `.ops` file.
 - `objects_subdir="objects"`: target subdirectory for generated object files when
   `preserve_file_paths=false`.
 - `preserve_file_paths=false`: when `true`, reuse each child `filePath` (sanitized
   to remain relative) for emitted object paths.
+
+When `write_objects=true`, the exporter writes one emitted object file per scene
+child and removes scene-level placement metadata from those emitted object files.
 """
 function write_ops(
     file,

@@ -21,6 +21,7 @@ end
     include("test-read_gwa.jl")
     include("test-write_gwa.jl")
     include("test-write_opf.jl")
+    include("test-write_opf-growth-roundtrip.jl")
 end
 
 @testset "OPS files" begin
@@ -29,6 +30,9 @@ end
     include("test-read_ops_gwa.jl")
     include("test-write_ops.jl")
 end
+
+include("test-write-cache-sanitization.jl")
+include("test-scene-placement.jl")
 
 @testset "Makie recipes" begin
     include("test-makie-recipes.jl")

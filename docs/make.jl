@@ -36,6 +36,7 @@ makedocs(;
             "Build & Simulate Plants" => [
                 "Workflow Tutorial" => "build_and_simulate_3d_plants/choose_a_workflow.md",
                 "Growth API" => "build_and_simulate_3d_plants/growth_api.md",
+                "Assemble a Mixed Scene" => "build_and_simulate_3d_plants/scene_assembly.md",
                 "Growth API with PlantSimEngine" => "build_and_simulate_3d_plants/growth_api_plantsimengine.md",
                 "Reconstructing an MTG" => [
                     "Tutorial" => "build_and_simulate_3d_plants/reconstruct_from_mtg/amap_quickstart.md",
