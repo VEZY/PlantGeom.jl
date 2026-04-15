@@ -77,18 +77,80 @@ meshes = get_ref_meshes(opf)
     @test_reference "reference_images/opf_color_attribute.png" plantviz(opf, color=:z_max)
 
     transform!(opf, (x -> [p[3] for p in GeometryBasics.coordinates(refmesh_to_mesh(x))]) => :z, filter_fun=node -> hasproperty(node, :geometry))
-    @test_reference "reference_images/opf_color_attribute_vertex.png" plantviz(opf, color=:z)
+    @test_reference "reference_images/opf_color_attribute_vertex.png" plantviz(opf, color=:z, color_mode=:vertex)
 
-    fig2, ax2, p2 = plantviz(opf, color=:z)
+    fig2, ax2, p2 = plantviz(opf, color=:z, color_mode=:vertex)
     colorbar(fig2[1, 2], p2)
     @test_reference "reference_images/opf_color_attribute_colorbar.png" fig2
     #! note: the reference image is not good, it should be colored by vertex, with a colorbar range from 0 to 0.3
     #! The package produces the right one outside of the tests. I tried everything I could but can't figure out 
     #! why the tests are producing a wrong one... I will leave it like this for now.
 
-    fig3, ax3, p3 = plantviz(opf, color=:z, colorrange=(0.0u"m", 0.5u"m"))
+    fig3, ax3, p3 = plantviz(opf, color=:z, color_mode=:vertex, colorrange=(0.0u"m", 0.5u"m"))
     colorbar(fig3[1, 2], p3)
     @test_reference "reference_images/opf_color_attribute_colorbar_range.png" fig3
+end
+
+@testset "Makie recipes: explicit attribute color modes" begin
+    opf_modes = read_opf(file)
+
+    transform!(opf_modes, :Length => (x -> [x, 2x, 3x]) => :length_steps, ignore_nothing=true)
+    transform!(
+        opf_modes,
+        (x -> [p[3] for p in GeometryBasics.coordinates(refmesh_to_mesh(x))]) => :z_vertex,
+        filter_fun=node -> hasproperty(node, :geometry),
+    )
+    transform!(
+        opf_modes,
+        :z_vertex => (x -> hcat(x, x .+ 0.1)) => :z_vertex_steps,
+        filter_fun=node -> hasproperty(node, :z_vertex),
+        ignore_nothing=true,
+    )
+
+    fig_node, ax_node, p_node = plantviz(opf_modes, color=:length_steps, color_mode=:node)
+    @test length(p_node.vertex_colors[]) == PlantGeom.nvertices(p_node.merged_mesh[])
+    expected_node_colors = Colorant[]
+    MultiScaleTreeGraph.traverse!(opf_modes; filter_fun=PlantGeom.has_geometry) do node
+        nverts = PlantGeom.nvertices(PlantGeom.refmesh_to_mesh(node))
+        color = PlantGeom.get_color(node[:length_steps][1], p_node.colorrange_resolved[]; colormap=p_node.colormap_resolved[])
+        append!(expected_node_colors, fill(color, nverts))
+    end
+    @test p_node.vertex_colors[] == expected_node_colors
+
+    fig_vertex, ax_vertex, p_vertex = plantviz(opf_modes, color=:z_vertex, color_mode=:vertex)
+    @test length(p_vertex.vertex_colors[]) == PlantGeom.nvertices(p_vertex.merged_mesh[])
+    expected_vertex_colors = Colorant[]
+    MultiScaleTreeGraph.traverse!(opf_modes; filter_fun=PlantGeom.has_geometry) do node
+        zvals = node[:z_vertex]
+        append!(expected_vertex_colors, PlantGeom.get_color(zvals, p_vertex.colorrange_resolved[], nothing; colormap=p_vertex.colormap_resolved[]))
+    end
+    @test p_vertex.vertex_colors[] == expected_vertex_colors
+
+    fig_vertex_steps, ax_vertex_steps, p_vertex_steps = plantviz(opf_modes, color=:z_vertex_steps, color_mode=:vertex, index=2)
+    @test length(p_vertex_steps.vertex_colors[]) == PlantGeom.nvertices(p_vertex_steps.merged_mesh[])
+    expected_vertex_step_colors = Colorant[]
+    MultiScaleTreeGraph.traverse!(opf_modes; filter_fun=PlantGeom.has_geometry) do node
+        zvals = node[:z_vertex_steps][:, 2]
+        append!(expected_vertex_step_colors, PlantGeom.get_color(zvals, p_vertex_steps.colorrange_resolved[], nothing; colormap=p_vertex_steps.colormap_resolved[]))
+    end
+    @test p_vertex_steps.vertex_colors[] == expected_vertex_step_colors
+
+    @test_throws Exception begin
+        fig, ax, p = plantviz(opf_modes, color=:z_vertex)
+        p.vertex_colors[]
+    end
+    @test_throws Exception begin
+        fig, ax, p = plantviz(opf_modes, color=:length_steps)
+        p.vertex_colors[]
+    end
+    @test_throws Exception begin
+        fig, ax, p = plantviz(opf_modes, color=:z_vertex_steps, color_mode=:node)
+        p.vertex_colors[]
+    end
+    @test_throws Exception begin
+        fig, ax, p = plantviz(opf_modes, color=:z_vertex, color_mode=:vertex, index=1)
+        p.vertex_colors[]
+    end
 end
 
 @testset "Makie recipes: observables, change color" begin

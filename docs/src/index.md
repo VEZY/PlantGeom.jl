@@ -12,7 +12,7 @@ hero:
     alt: "Coffee plant"
   actions:
     - theme: brand
-      text: Showcase
+      text: "Quickstart: 3D Plot"
       link: /getting_started/showcase
     - theme: alt
       text: View on Github
@@ -33,7 +33,7 @@ features:
   - icon: <img width="64" height="64" src="visualize.png" alt="3d plant"/>
     title: Visualize 3D plants
     details: Color by attributes, add legends, customize the visualization and integrate with other plots using Makie.jl
-    link: /getting_started/makie_3d
+    link: /getting_started/showcase
 ---
 ```
 

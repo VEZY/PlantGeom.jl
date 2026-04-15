@@ -5,6 +5,7 @@ import PlantGeom: RefMeshColorant, DictRefMeshColorant, DictVertexRefMeshColoran
 import PlantGeom: material_single_color, get_color_range, get_colormap
 import PlantGeom: merge_simple_meshes, get_ref_mesh_name, nvertices
 import PlantGeom: plantviz, plantviz!
+import PlantGeom: attribute_color_values, attribute_color_values_for_value, attribute_range, normalize_color_mode
 import Makie
 import GeometryBasics
 import Colors: RGBA, Colorant, RGB

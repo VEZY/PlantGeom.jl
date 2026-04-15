@@ -10,16 +10,12 @@ Actual workhorse function for plotting an OPF / MTG with geometry.
 The plot object can have the following optional arguments:
 
 - `color`: The color to be used for the plot. Can be a colorant, an attribute of the MTG, or a dictionary of colors for each reference mesh.
+- `color_mode`: How to interpret array-valued attributes. Use `:node` for per-node/timestep values and `:vertex` for per-vertex values. `:auto` only works for scalar attributes.
 - `alpha`: The alpha value to be used for the plot. Should be a float between 0 and 1.
 - `colormap`: The colorscheme to be used for the plot. Can be a Symbol or a ColorScheme.
 - `colorrange`: The range of values to be used for the colormap. Should be a tuple of floats (optionally with units if *e.g.* z position).
-- `segmentcolor`: The color to be used for the facets. Should be a colorant or a symbol of color.
-- `showsegments`: A boolean indicating whether the facets should be shown or not.
-- `segmentsize`: The size of the segments. Should be a float.
-- `showpoints`: A boolean indicating whether the points should be shown or not.
 - `color_missing`: The color to be used for missing values. Should be a colorant or a symbol of color.
-- `pointsize`: The size of the points. Should be a float.
-- `index`: An integer giving the index of the attribute value to be vizualised. This is useful when the attribute is a vector of values for *e.g.* each timestep.
+- `index`: An integer giving the index of the attribute value to be vizualised. Use it with `color_mode=:node` for per-timestep node values, or with `color_mode=:vertex` for per-vertex values stored as matrices or vectors of vectors.
 - `color_cache_name`: The name of the color cache. Should be a string (default to a random string).
 - `filter_fun`: A function to filter the nodes to be plotted. Should be a function taking a node as argument and returning a boolean.
 - `symbol`: Plot only nodes with this symbol. Prefer `Symbol` (or vector/tuple of symbols).
@@ -37,7 +33,7 @@ file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant
 opf = read_opf(file)
 
 f, a, plot = plantviz(opf)
-plot_opf(p)
+plot_opf(plot)
 
 f, a, plot = plantviz(opf, color=:red)
 plot_opf(plot)
@@ -45,17 +41,22 @@ plot_opf(plot)
 f, a, plot = plantviz(opf, color=:Length)
 plot_opf(plot)
 
-plot_opf(opf; color=Dict(1=>RGB(0.1,0.5,0.1), 2=>RGB(0.1,0.1,0.5)))
-
-plot_opf(opf; color=:red, colormap=:viridis)
-
-plot_opf(opf; color=:red, colormap=:viridis, segmentcolor=:red, showsegments=true)
+transform!(
+    opf,
+    (x -> [v[3] for v in GeometryBasics.coordinates(refmesh_to_mesh(x))]) => :z_vertex,
+    filter_fun=node -> hasproperty(node, :geometry),
+)
+f, a, plot = plantviz(opf, color=:z_vertex, color_mode=:vertex)
+plot_opf(plot)
 ```
 """
 function plot_opf(plot, mtg_name=:mtg)
     # Register derived nodes on the ComputeGraph for clarity and reuse
     Makie.map!(plot.attributes, [:color, mtg_name], :colorant) do col, mtg
         PlantGeom.get_mtg_color(col, mtg)
+    end
+    Makie.map!(plot.attributes, [:color_mode], :color_mode_resolved) do color_mode
+        PlantGeom.normalize_color_mode(color_mode)
     end
     Makie.map!(plot.attributes, [:colormap], :colormap_resolved) do cm
         get_colormap(cm)
@@ -64,8 +65,12 @@ function plot_opf(plot, mtg_name=:mtg)
         isnothing(idx) ? 1 : idx
     end
 
-    Makie.map!(plot.attributes, [:colorrange, mtg_name, :colorant], :colorrange_resolved) do cr, mtg, colorant
-        get_color_range(cr, mtg, colorant)
+    Makie.map!(plot.attributes, [:colorrange, mtg_name, :colorant, :color_mode_resolved, :index], :colorrange_resolved) do cr, mtg, colorant, color_mode, index
+        if isnothing(cr) && colorant isa PlantGeom.AttributeColorant
+            PlantGeom.attribute_range(mtg, colorant; ustrip=true, color_mode=color_mode, index=index)
+        else
+            get_color_range(cr, mtg, colorant)
+        end
     end
 
     Makie.map!(plot.attributes, [:filter_fun], :filter_fun_resolved) do filter_fun
@@ -145,25 +150,63 @@ function compute_vertex_colors!(::AttributeColorant, plot, mtg_name)
     # Then, compute the colors (this one uses Makie's compute graph):
     map!(
         plot.attributes,
-        [:colorant, :color_missing, :colormap_resolved, :colorrange_resolved, :index_resolved, mtg_name, :filter_fun_resolved, :symbol, :scale, :link],
+        [:colorant, :color_missing, :colormap_resolved, :colorrange_resolved, :color_mode_resolved, :index, mtg_name, :filter_fun_resolved, :symbol, :scale, :link],
         :vertex_colors
-    ) do colorant, color_missing, colormap, color_range, index, opf, filter_fun, symbol, scale, link
+    ) do colorant, color_missing, colormap, color_range, color_mode, index, opf, filter_fun, symbol, scale, link
         color_attribute = colorant.color
         vertex_colors = Vector{Colorant}()
         MultiScaleTreeGraph.traverse!(opf; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
             m = PlantGeom.refmesh_to_mesh(node)
             nverts = PlantGeom.nvertices(m)
-            # Colors for this mesh's vertices
             val = node[color_attribute]
-            cols_any = isnothing(val) ? nothing : get_color(val, color_range, index; colormap=colormap)
-            # Function barrier to ensure a stable Vector{Colorant}
-            append!(vertex_colors, _coerce_vertex_colors(cols_any, nverts, color_missing))
+            values = PlantGeom.attribute_color_values_for_value(val, color_attribute; color_mode=color_mode, index=index)
+            cols_any = _attribute_values_to_colors(values, color_range, colormap)
+            append!(vertex_colors, _coerce_attribute_vertex_colors(cols_any, nverts, color_missing, color_attribute, color_mode))
         end
 
         return vertex_colors
     end
 
     return plot
+end
+
+@inline _attribute_is_color_like(x) = x isa Symbol || x isa Colorant
+
+@inline _attribute_as_colorant(color::Colorant) = color
+@inline _attribute_as_colorant(color) = parse(Colorant, color)
+
+function _attribute_values_to_colors(values, color_range, colormap)
+    isempty(values) && return nothing
+
+    if length(values) == 1
+        return get_color(only(values), color_range; colormap=colormap)
+    elseif all(_attribute_is_color_like, values)
+        return _attribute_as_colorant.(values)
+    else
+        return get_color(values, color_range, nothing; colormap=colormap)
+    end
+end
+
+function _coerce_attribute_vertex_colors(cols_any, nverts::Int, color_missing, attr_name, color_mode::Symbol)
+    if cols_any === nothing
+        return fill(color_missing, nverts)
+    elseif cols_any isa AbstractVector{<:Colorant}
+        if color_mode === :vertex
+            length(cols_any) == nverts || error(
+                "Attribute $attr_name in `color_mode=:vertex` produced $(length(cols_any)) values, ",
+                "but the mesh has $nverts vertices."
+            )
+            return Vector{Colorant}(cols_any)
+        else
+            length(cols_any) == 1 || error(
+                "Attribute $attr_name in `color_mode=:node` produced $(length(cols_any)) values. ",
+                "Use `color_mode=:vertex` for per-vertex data."
+            )
+            return fill(only(cols_any), nverts)
+        end
+    else
+        return fill(cols_any, nverts)
+    end
 end
 
 # Ensure a stable Vector{Colorant} regardless of whether `cols_any` is a single
