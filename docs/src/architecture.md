@@ -82,7 +82,7 @@ Per-node color values (or per-refmesh/per-vertex inputs)
   - `scene_version`, `bump_scene_version!`: version the scene to invalidate cache.
   - `scene_cache_key`: builds a stable key for the current selection/options.
   - `get_cached_scene`, `set_cached_scene!`: retrieve/store a single cached scene `(hash, mesh, face2node)` on the MTG root.
-- PlantViz recipe (Makie): defines attributes (`color`, `colormap`, `colorrange`, etc.) and derives compute nodes with `map!` (`:colorant`, `:colormap_resolved`, `:colorrange_resolved`, `:index_resolved`). The plot calls into a helper that computes or retrieves the merged scene and computes vertex colors as needed.
+- PlantViz recipe (Makie): defines attributes (`color`, `color_mode`, `colormap`, `colorrange`, etc.) and derives compute nodes with `map!` (`:colorant`, `:color_mode_resolved`, `:colormap_resolved`, `:colorrange_resolved`, `:index_resolved`). The plot calls into a helper that computes or retrieves the merged scene and computes vertex colors as needed.
 
 ## Performance Notes
 

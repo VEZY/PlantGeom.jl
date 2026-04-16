@@ -1,4 +1,4 @@
-# Showcase
+# Quickstart: 3D Plot
 
 !!! info "Page Info"
     - **Audience:** Beginner
@@ -6,8 +6,9 @@
     - **Time:** 3 minutes
     - **Output:** Full-plant 3D visualizations from existing files
 
-If you are new to programming, you can treat this page as "copy-paste and run" first.  
-You can understand details later in the quickstarts.
+If you want to make a 3D plot quickly, start here and copy-paste the examples.
+You can customize colors, legends, and interactivity later in the full
+[3D Plotting with Makie.jl](makie_3d.md) guide.
 
 ```@setup gs_showcase
 using PlantGeom
@@ -20,7 +21,7 @@ coffee_opf = read_opf(joinpath(files_dir, "coffee.opf"))
 include(joinpath(pkgdir(PlantGeom), "docs", "src", "getting_started", "tree_demo_helpers.jl"))
 ```
 
-## Plant Visualization Showcase
+## Plot Existing Plants Fast
 
 A simple plant read from an OPF file and visualized with `plantviz`. The plant has explicit geometry in the file, so we can visualize it immediately without any additional steps. It is made of two internodes, each with one leaf:
 
@@ -51,7 +52,7 @@ And an even more complex plant: a palm generated with the VPalm module from [XPa
 
 ![3D palm generated with XPalm and rendered with RayMakie](https://raw.githubusercontent.com/SimonDanisch/RayDemo/refs/heads/main/Plants/plants.png)
 
-## How It Works
+## What You Just Used
 
 - `read_opf` gives you topology + geometry from existing plant files.
 - `build_demo_tree_with_growth_api()` shows a generated plant using explicit growth + rebuild steps.

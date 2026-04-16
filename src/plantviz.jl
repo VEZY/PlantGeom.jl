@@ -11,11 +11,10 @@ reference meshes and the associated transformation matrix.
 - `mtg`: The MTG to be vizualised.
 - `kwargs`: Additional arguments to be passed to `plantviz!`, wich includes: 
     - `color`: The color to be used for the plot. Can be a colorant, an attribute of the MTG (given as a Symbol), or a dictionary of colors for each reference mesh.
+    - `color_mode=:auto`: How to interpret array-valued attributes. Use `:node` for per-node/timestep values and `:vertex` for per-vertex values. `:auto` only works for scalar attributes.
     - `colormap`: The colorscheme to be used for the plot. Can be a Symbol or a ColorScheme. 
-    - `segmentcolor`: The color to be used for the facets. Should be a colorant or a symbol of color.
-    - `showsegments`: A boolean indicating whether the facets should be shown or not.
     - `color_missing=RGBA(0, 0, 0, 0.3)`: The color to be used for missing values. Should be a colorant or a symbol of color.
-    - `index`: An integer giving the index of the attribute value to be vizualised. This is useful when the attribute is a vector of values for *e.g.* each timestep.
+    - `index`: An integer giving the index of the attribute value to be vizualised. Use it with `color_mode=:node` for per-timestep node values, or with `color_mode=:vertex` for per-vertex values stored as matrices or vectors of vectors.
     - `color_cache_name`: The name of the color cache. Should be a string (default to a random string).
     - `filter_fun`: A function to filter the nodes to be plotted. Should be a function taking a node as argument and returning a boolean.
     - `symbol`: Plot only nodes with this symbol. Prefer `Symbol` (or vector/tuple of symbols).
@@ -59,9 +58,9 @@ transform!(
     (x -> [v[3] for v in GeometryBasics.coordinates(refmesh_to_mesh(x))]) => :z_vertex,
     filter_fun=node -> hasproperty(node, :geometry)
 )
-plantviz(mtg, color = :z, showsegments = true)
+plantviz(mtg, color = :z_vertex, color_mode = :vertex)
 
-f,a,p = plantviz(mtg, color = :z, showsegments = true)
+f,a,p = plantviz(mtg, color = :z_vertex, color_mode = :vertex)
 p[:color] = :Length
 ```
 
@@ -87,13 +86,13 @@ plantviz(meshes, color = Dict(1 => :burlywood4, 2 => :springgreen4, 3 => :burlyw
 # Or just changing the color of some:
 plantviz(meshes, color = Dict(1 => :burlywood4, 3 => :burlywood4))
 # One color for each vertex of the refmesh 0:
-plantviz(meshes, color = Dict(2 => 1:nvertices(meshes)[2]))
+plantviz(meshes, color = Dict(2 => 1:nvertices(meshes[2].mesh)))
 ```
 """
 function plantviz end
 
 """
-    viplantviz!(mtg; [options])
+    plantviz!(mtg; [options])
 
 Visualize the 3D meshes of an MTG using GeometryBasics and Makie.
 This function adds the plot to an existing scene with `options` forwarded to [`plantviz`](@ref).

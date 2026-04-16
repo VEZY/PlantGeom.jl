@@ -170,7 +170,81 @@ end
 _attr_is_color_like(x) = x isa Symbol || x isa Colorant
 _attr_is_color_like(xs::AbstractVector) = all(_attr_is_color_like, Iterators.filter(x -> x !== nothing, xs))
 
-function attribute_range(mtg, attr; ustrip=false)
+function normalize_color_mode(color_mode::Symbol)
+    color_mode in (:auto, :node, :vertex) ||
+        error("Unsupported `color_mode=$(repr(color_mode))`. Expected one of `:auto`, `:node`, or `:vertex`.")
+    return color_mode
+end
+
+normalize_color_mode(color_mode::AbstractString) = normalize_color_mode(Symbol(color_mode))
+
+function normalize_color_mode(color_mode)
+    error("Unsupported `color_mode` of type $(typeof(color_mode)). Expected a Symbol or String.")
+end
+
+_has_nested_arrays(xs::AbstractVector) = any(x -> x isa AbstractArray, xs)
+
+function _resolve_color_index(index, nvalues::Integer, attr_name, context::AbstractString)
+    idx = isnothing(index) ? 1 : index
+    1 <= idx <= nvalues || error(
+        "Index $idx is out of bounds for attribute $attr_name in $context mode. ",
+        "Expected a value between 1 and $nvalues."
+    )
+    return idx
+end
+
+function attribute_color_values_for_value(value, attr_name; color_mode=:auto, index=nothing)
+    mode = normalize_color_mode(color_mode)
+
+    if value === nothing
+        return Any[]
+    elseif mode === :auto
+        value isa AbstractArray && error(
+            "Attribute $attr_name is array-valued and ambiguous for `color_mode=:auto`. ",
+            "Pass `color_mode=:node` for per-node or timestep values, or `color_mode=:vertex` for per-vertex values."
+        )
+        return Any[value]
+    elseif mode === :node
+        if value isa AbstractMatrix
+            error(
+                "Attribute $attr_name is matrix-valued and cannot be colored in `color_mode=:node`. ",
+                "Use `color_mode=:vertex` for per-vertex values across timesteps."
+            )
+        elseif value isa AbstractVector && _has_nested_arrays(value)
+            error(
+                "Attribute $attr_name is a nested array and cannot be colored in `color_mode=:node`. ",
+                "Use `color_mode=:vertex` for per-vertex values across timesteps."
+            )
+        elseif value isa AbstractVector
+            idx = _resolve_color_index(index, length(value), attr_name, "node")
+            return Any[value[idx]]
+        end
+
+        return Any[value]
+    else
+        if value isa AbstractMatrix
+            idx = _resolve_color_index(index, size(value, 2), attr_name, "vertex")
+            return collect(view(value, :, idx))
+        elseif value isa AbstractVector && _has_nested_arrays(value)
+            idx = _resolve_color_index(index, length(value), attr_name, "vertex")
+            selected = value[idx]
+            selected isa AbstractVector || error(
+                "Attribute $attr_name uses an unsupported nested container in `color_mode=:vertex`."
+            )
+            return collect(selected)
+        elseif value isa AbstractVector
+            isnothing(index) || error(
+                "`index` cannot be used with `color_mode=:vertex` when attribute $attr_name is a single per-vertex vector. ",
+                "Use a matrix or vector of vectors to represent multiple timesteps."
+            )
+            return collect(value)
+        end
+
+        return Any[value]
+    end
+end
+
+function attribute_color_values(mtg, attr; color_mode=:auto, index=nothing)
     attr_name = attr_colorant_name(attr)
     vals =
         MultiScaleTreeGraph.descendants(
@@ -181,14 +255,27 @@ function attribute_range(mtg, attr; ustrip=false)
 
     isempty(vals) && error("No value found for attribute $attr_name (or all values are nothing).")
 
+    color_values = Any[]
+    for val in vals
+        append!(color_values, attribute_color_values_for_value(val, attr_name; color_mode=color_mode, index=index))
+    end
+
+    isempty(color_values) &&
+        error("No value found for attribute $attr_name after resolving `color_mode=$(normalize_color_mode(color_mode))`.")
+
+    return color_values
+end
+
+function attribute_range(mtg, attr; ustrip=false, color_mode=:auto, index=nothing)
+    vals = attribute_color_values(mtg, attr; color_mode=color_mode, index=index)
+    vals = collect(Iterators.filter(x -> x !== nothing && x !== missing, vals))
+
+    isempty(vals) && error("No numeric value found for attribute $(attr_colorant_name(attr)).")
+
     if all(_attr_is_color_like, vals)
         # If the attribute value is already a colorant or a symbol, no numeric range is needed.
         return nothing
-    elseif any(x -> x isa AbstractVector, vals)
-        # vals is a vector of vectors, compute the range from flattened non-nothing entries.
-        range_val = extrema(Iterators.filter(x -> x !== nothing, Iterators.flatten(vals)))
     else
-        # vals is a vector of scalar values.
         range_val = extrema(vals)
     end
 

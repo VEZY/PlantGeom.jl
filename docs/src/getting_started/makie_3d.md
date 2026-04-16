@@ -1,4 +1,4 @@
-# 3D plots (meshes)
+# 3D Plotting with Makie.jl
 
 !!! info "Page Info"
     - **Audience:** Beginner to Intermediate
@@ -7,6 +7,9 @@
     - **Output:** Interactive and static 3D plant renders
 
 `PlantGeom` uses [`Makie.jl`](https://makie.juliaplots.org/stable/) to make the 3d plots. This way the plots you make using `PlantGeom` support all the nice possibilities offered by Makie, such as making sub-plots, interactive plots...
+
+If you only want the shortest path to a first plot, start with
+[Quickstart: 3D Plot](showcase.md). This page is the more detailed plotting guide.
 
 ## Interactive plot
 
@@ -173,7 +176,7 @@ transform!(
     (x -> [v[3] for v in GeometryBasics.coordinates(refmesh_to_mesh(x))]) => :z_vertex,
     filter_fun=node -> hasproperty(node, :geometry),
 )
-plantviz(mtg, color = :z_vertex, showsegments = true)
+plantviz(mtg, color = :z_vertex, color_mode = :vertex)
 ```
 
 !!! note
@@ -187,10 +190,10 @@ The MTG attributes can have several values, for example a value for each time st
 transform!(mtg, :Area => (x -> [x*i for i in 1:12]) => :dummy_var, ignore_nothing = true)
 ```
 
-Now we can plot the plant with the color of each organ being the value of the dummy variable at time step 1 using the `index` keyword argument:
+Now we can plot the plant with the color of each organ being the value of the dummy variable at time step 1 using `color_mode = :node` together with the `index` keyword argument:
 
 ```@example 2
-f, ax, p = plantviz(mtg, color = :dummy_var, index = 1)
+f, ax, p = plantviz(mtg, color = :dummy_var, color_mode = :node, index = 1)
 colorbar(f[1, 2], p)
 f
 ```
@@ -198,13 +201,19 @@ f
 We can even make a video out of it:
 
 ```@example 2
-f, ax, p = plantviz(mtg, color = :dummy_var, index = 1)
+f, ax, p = plantviz(mtg, color = :dummy_var, color_mode = :node, index = 1)
 colorbar(f[1, 2], p)
 
 record(f, "coffee_steps.mp4", 1:12, framerate=2) do timestep
     p.index[] = timestep
 end
 ```
+
+`color_mode` is explicit to avoid ambiguity:
+
+- `:node`: scalar per node, or one value per timestep with `index`
+- `:vertex`: one value per vertex, or one vertex field per timestep with `index`
+- `:auto`: only scalar attributes; array-valued attributes must opt into `:node` or `:vertex`
 
 ![](coffee_steps.mp4)
 

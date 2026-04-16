@@ -1,6 +1,8 @@
 # Implementing our own plot recipe for PlantViz (plantviz and plantviz!):
 Makie.@recipe PlantViz (mtg,) begin
     color = nothing
+    "How to interpret attribute arrays: `:auto`, `:node`, or `:vertex`."
+    color_mode = :auto
     colormap = nothing
     colorrange = nothing
     colorscale = identity
@@ -38,7 +40,12 @@ function Makie.extract_colormap(plot::PlantViz{<:Tuple{MultiScaleTreeGraph.Node}
     mtg_name = hasproperty(plot, :mtg) ? :mtg : :object
     attr_value = plot.colorant[].color
 
-    attribute_values = _collect_plot_attribute_values(plot[mtg_name][], attr_value, plot.index_resolved[])
+    attribute_values = _collect_plot_attribute_values(
+        plot[mtg_name][],
+        attr_value,
+        plot.color_mode_resolved[],
+        plot.index[],
+    )
 
     return Makie.ColorMapping(
         attribute_values,
@@ -57,10 +64,10 @@ end
 @inline _colorbar_value(x::Unitful.Quantity) = Unitful.ustrip(x)
 
 function _collect_plot_attribute_values(mtg, attr_name::Symbol, index::Integer)
-    attribute_values = descendants(mtg, attr_name; ignore_nothing=true, self=true)
-    if eltype(attribute_values) <: AbstractVector
-        attribute_values = _colorbar_value.(map(x -> getindex(x, index), attribute_values))
-    else
-        attribute_values = _colorbar_value.(attribute_values)
-    end
+    error("`_collect_plot_attribute_values` now requires a color mode.")
+end
+
+function _collect_plot_attribute_values(mtg, attr_name::Symbol, color_mode, index)
+    attribute_values = PlantGeom.attribute_color_values(mtg, attr_name; color_mode=color_mode, index=index)
+    attribute_values = _colorbar_value.(attribute_values)
 end

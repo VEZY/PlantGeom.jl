@@ -29,9 +29,13 @@ makedocs(;
         "Home" => "index.md",
         "Manual" => [
             "Getting Started" => [
-                "Showcase" => "getting_started/showcase.md",
-                "Quickstart: 3D Plot" => "getting_started/makie_3d.md",
                 "Quickstart: Grow a Plant" => "getting_started/quickstart_grow.md",
+                "Quickstart: 3D Plot" => "getting_started/showcase.md",
+            ],
+            "Plotting" => [
+                "3D Plotting with Makie.jl" => "getting_started/makie_3d.md",
+                "Diagram with Makie.jl" => "plot_diagram/makie_diagram.md",
+                "Diagram with Plots.jl" => "plot_diagram/plots_diagram.md",
             ],
             "Build & Simulate Plants" => [
                 "Workflow Tutorial" => "build_and_simulate_3d_plants/choose_a_workflow.md",
@@ -51,10 +55,6 @@ makedocs(;
                 "Merging Meshes" => "geometry/merging_geometry.md",
             ],
             "IO and File Formats" => "io.md",
-            "Plotting the MTG" => [
-                "Diagram with Makie.jl" => "plot_diagram/makie_diagram.md",
-                "Diagram with Plots.jl" => "plot_diagram/plots_diagram.md",
-            ],
         ],
         "API" => "API.md",
         "For developers" => "architecture.md",
