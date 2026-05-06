@@ -544,21 +544,21 @@ end
 
 Rotate around the local X axis.
 """
-rotate_x(angle::Real; deg::Bool=false) = _rotation_linear_map(:x, _manual_angle_rad(angle, deg))
+rotate_x(angle::Real; deg::Bool=false) = LinearMap(RotX(_manual_angle_rad(angle, deg)))
 
 """
     rotate_y(angle; deg=false)
 
 Rotate around the local Y axis.
 """
-rotate_y(angle::Real; deg::Bool=false) = _rotation_linear_map(:y, _manual_angle_rad(angle, deg))
+rotate_y(angle::Real; deg::Bool=false) = LinearMap(RotY(_manual_angle_rad(angle, deg)))
 
 """
     rotate_z(angle; deg=false)
 
 Rotate around the local Z axis.
 """
-rotate_z(angle::Real; deg::Bool=false) = _rotation_linear_map(:z, _manual_angle_rad(angle, deg))
+rotate_z(angle::Real; deg::Bool=false) = LinearMap(RotZ(_manual_angle_rad(angle, deg)))
 
 """
     pose(; scale=1.0, rotate=(x=0.0, y=0.0, z=0.0), at=(0.0, 0.0, 0.0), deg=false)
