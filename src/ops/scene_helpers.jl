@@ -6,9 +6,9 @@ end
     point3(Float64(pos[1]), Float64(pos[2]), Float64(pos[3]))
 end
 
-function _scene_point3(pos::AbstractVector{<:Real})
-    length(pos) == 3 || error("`pos` must have exactly 3 coordinates, got $(length(pos)).")
-    point3(Float64(pos[1]), Float64(pos[2]), Float64(pos[3]))
+function _scene_point3(at::AbstractVector{<:Real})
+    length(at) == 3 || error("`at` must have exactly 3 coordinates, got $(length(at)).")
+    point3(Float64(at[1]), Float64(at[2]), Float64(at[3]))
 end
 
 function _scene_object_root(node::MultiScaleTreeGraph.Node)
@@ -45,23 +45,23 @@ function _ops_inclination_linear_map(inclination_azimut::Real, inclination_angle
 end
 
 """
-    scene_object_transformation(; pos=point3(0.0, 0.0, 0.0), scale=1.0, rotation=0.0,
+    scene_object_transformation(; at=point3(0.0, 0.0, 0.0), scale=1.0, rotation=0.0,
                                   inclination_azimut=0.0, inclination_angle=0.0)
 
 Build the placement transform used by OPS scenes.
 
 The transform order matches [`read_ops`](@ref): local object geometry is first
 rotated around `Z`, then uniformly scaled, then inclined, and finally translated
-to `pos`.
+to `at`.
 """
 function scene_object_transformation(;
-    pos=point3(0.0, 0.0, 0.0),
+    at=point3(0.0, 0.0, 0.0),
     scale::Real=1.0,
     rotation::Real=0.0,
     inclination_azimut::Real=0.0,
     inclination_angle::Real=0.0,
 )
-    pos_pt = _scene_point3(pos)
+    at_pt = _scene_point3(at)
     transformation = IdentityTransformation()
 
     if rotation != 0.0
@@ -77,8 +77,8 @@ function scene_object_transformation(;
         transformation = inclination_map ∘ transformation
     end
 
-    if pos_pt != point3(0.0, 0.0, 0.0)
-        transformation = Translation(pos_pt[1], pos_pt[2], pos_pt[3]) ∘ transformation
+    if at_pt != point3(0.0, 0.0, 0.0)
+        transformation = Translation(at_pt[1], at_pt[2], at_pt[3]) ∘ transformation
     end
 
     return transformation
@@ -97,7 +97,7 @@ end
         scene_id=nothing,
         plant_id=nothing,
         functional_group=nothing,
-        pos=nothing,
+        at=nothing,
         scale=nothing,
         rotation=nothing,
         inclination_azimut=nothing,
@@ -120,7 +120,7 @@ function place_in_scene!(
     scene_id=nothing,
     plant_id=nothing,
     functional_group=nothing,
-    pos=nothing,
+    at=nothing,
     scale=nothing,
     rotation=nothing,
     inclination_azimut=nothing,
@@ -158,7 +158,7 @@ function place_in_scene!(
         Int(plant_id)
     end
 
-    pos_val = isnothing(pos) ? (haskey(attrs, :pos) ? _scene_point3(attrs[:pos]) : point3(0.0, 0.0, 0.0)) : _scene_point3(pos)
+    pos_val = isnothing(at) ? (haskey(attrs, :pos) ? _scene_point3(attrs[:pos]) : point3(0.0, 0.0, 0.0)) : _scene_point3(at)
     scale_val = isnothing(scale) ? (haskey(attrs, :scale) ? Float64(attrs[:scale]) : 1.0) : Float64(scale)
     rotation_val = isnothing(rotation) ? (haskey(attrs, :rotation) ? Float64(attrs[:rotation]) : 0.0) : Float64(rotation)
     inclination_azimut_val = isnothing(inclination_azimut) ? (haskey(attrs, :inclinationAzimut) ? Float64(attrs[:inclinationAzimut]) : 0.0) : Float64(inclination_azimut)
@@ -181,7 +181,7 @@ function place_in_scene!(
     if apply_transform
         transformation = scene_object_transformation(
             ;
-            pos=pos_val,
+            at=pos_val,
             scale=scale_val,
             rotation=rotation_val,
             inclination_azimut=inclination_azimut_val,

@@ -501,6 +501,24 @@ function _manual_rotation_triplet(rotate)
     return _manual_transform_triplet(rotate, "rotate")
 end
 
+function _manual_rotation_sequence(rotate)
+    if rotate isa NamedTuple
+        out = Pair{Symbol,Float64}[]
+        seen = Set{Symbol}()
+        for axis in propertynames(rotate)
+            axis in (:x, :y, :z) || error("Rotation axis `$(axis)` is not supported. Use only `x`, `y`, and `z`.")
+            axis in seen && error("Rotation axis `$(axis)` is repeated.")
+            push!(seen, axis)
+            push!(out, axis => Float64(getproperty(rotate, axis)))
+        end
+        return out
+    elseif rotate === nothing
+        return Pair{Symbol,Float64}[]
+    end
+    x, y, z = _manual_transform_triplet(rotate, "rotate")
+    return Pair{Symbol,Float64}[:x => x, :y => y, :z => z]
+end
+
 @inline _manual_angle_rad(angle::Real, deg::Bool) = deg ? deg2rad(Float64(angle)) : Float64(angle)
 
 """
@@ -543,17 +561,16 @@ Rotate around the local Z axis.
 rotate_z(angle::Real; deg::Bool=false) = _rotation_linear_map(:z, _manual_angle_rad(angle, deg))
 
 """
-    pose(; scale=1.0, rotate=(x=0.0, y=0.0, z=0.0), translate=(0.0, 0.0, 0.0), deg=false)
+    pose(; scale=1.0, rotate=(x=0.0, y=0.0, z=0.0), at=(0.0, 0.0, 0.0), deg=false)
 
 Build a manual affine transform for placing a mesh.
 
-The returned transform always applies operations in this order:
+The returned transform always applies scale first, rotations second, and
+translation last.
 
-1. scale
-2. rotate around local X
-3. rotate around local Y
-4. rotate around local Z
-5. translate
+Tuple rotations use fixed X, then Y, then Z order. Named-tuple rotations
+preserve field order, so `rotate=(y=30, z=10, x=5)` rotates around Y, then Z,
+then X.
 
 This helper is intended for hand-authored `RefMesh` placement where using
 `LinearMap`, `AngleAxis`, and explicit composition would be unnecessarily low-level.
@@ -564,7 +581,7 @@ This helper is intended for hand-authored `RefMesh` placement where using
 julia> t = pose(
            scale=(1.8, 1.0, 0.04),
            rotate=(y=30.0, z=12.0),
-           translate=(2.0, 0.0, 1.4),
+           at=(2.0, 0.0, 1.4),
            deg=true,
        );
 
@@ -578,12 +595,11 @@ julia> round.(collect(t(PlantGeom.GeometryBasics.Point(1.0, 0.0, 0.0))); digits=
 function pose(;
     scale=1.0,
     rotate=(x=0.0, y=0.0, z=0.0),
-    translate=(0.0, 0.0, 0.0),
+    at=(0.0, 0.0, 0.0),
     deg::Bool=false,
 )
     scale_vals = _manual_scale_triplet(scale)
-    rotate_vals = _manual_rotation_triplet(rotate)
-    translate_vals = _manual_transform_triplet(translate, "translate")
+    translate_vals = _manual_transform_triplet(at, "at")
 
     transformation = IdentityTransformation()
 
@@ -591,14 +607,17 @@ function pose(;
         transformation = scale3(scale_vals)
     end
 
-    if rotate_vals[1] != 0.0
-        transformation = rotate_x(rotate_vals[1]; deg=deg) ∘ transformation
-    end
-    if rotate_vals[2] != 0.0
-        transformation = rotate_y(rotate_vals[2]; deg=deg) ∘ transformation
-    end
-    if rotate_vals[3] != 0.0
-        transformation = rotate_z(rotate_vals[3]; deg=deg) ∘ transformation
+    for (axis, angle) in _manual_rotation_sequence(rotate)
+        angle == 0.0 && continue
+        if axis === :x
+            transformation = rotate_x(angle; deg=deg) ∘ transformation
+        elseif axis === :y
+            transformation = rotate_y(angle; deg=deg) ∘ transformation
+        elseif axis === :z
+            transformation = rotate_z(angle; deg=deg) ∘ transformation
+        else
+            error("Rotation axis `$(axis)` is not supported. Use only `x`, `y`, and `z`.")
+        end
     end
 
     if !(translate_vals[1] == 0.0 && translate_vals[2] == 0.0 && translate_vals[3] == 0.0)

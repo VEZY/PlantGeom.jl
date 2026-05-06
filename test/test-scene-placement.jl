@@ -71,7 +71,7 @@ end
         scene_id=1,
         plant_id=1,
         functional_group="imported",
-        pos=GeometryBasics.Point{3,Float64}(1.0, 2.0, 0.0),
+        at=GeometryBasics.Point{3,Float64}(1.0, 2.0, 0.0),
         rotation=0.25,
     )
     place_in_scene!(
@@ -80,7 +80,7 @@ end
         scene_id=1,
         plant_id=2,
         functional_group="generated",
-        pos=GeometryBasics.Point{3,Float64}(4.0, 1.5, 0.0),
+        at=GeometryBasics.Point{3,Float64}(4.0, 1.5, 0.0),
         scale=1.4,
         rotation=-0.15,
         inclination_angle=0.2,

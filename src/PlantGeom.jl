@@ -59,6 +59,7 @@ include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
 include("meshes/extrusion.jl")
 include("meshes/scene_merge.jl")
+include("ops/scene_geometry.jl")
 include("plots_recipes/plots_recipe.jl")
 include("colors/get_color_type.jl")
 include("colors/get_mtg_color.jl")
@@ -82,6 +83,9 @@ export diagram, diagram!
 export read_opf, read_gwa, write_opf, write_gwa
 export read_ops_file, read_ops, write_ops, write_ops_file
 export scene_object_transformation, place_in_scene!
+export SceneGeometry, SceneNodeData, SceneBuilder
+export make_scene, prepare_scene, add_plant!, add_object!, add_ground!
+export scene_node, scene_node_ids, node_areas, node_barycenters
 export taper
 export refmesh_to_mesh, get_ref_meshes_color
 export xmax, ymax, zmax, xmin, ymin, zmin

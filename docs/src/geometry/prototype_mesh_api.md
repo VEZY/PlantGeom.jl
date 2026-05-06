@@ -304,7 +304,7 @@ manual_affine_leaf[:geometry] = PlantGeom.Geometry(
     ref_mesh=leaf_ref,
     transformation=pose(
         rotate=(z=45.0,),
-        translate=(0.0, -0.22, 0.8),
+        at=(0.0, -0.22, 0.8),
         deg=true,
     ),
 )
@@ -317,7 +317,7 @@ manual_pointmapped_leaf[:geometry] = PlantGeom.PointMappedGeometry(
     );
     transformation=pose(
         rotate=(z=-18.0,),
-        translate=(0.0, 0.24, 0.8),
+        at=(0.0, 0.24, 0.8),
         deg=true,
     ),
 )

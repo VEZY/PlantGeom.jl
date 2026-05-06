@@ -98,7 +98,7 @@ manual_leaf[:geometry] = PlantGeom.Geometry(
     ref_mesh=leaf_refmesh,
     transformation=pose(
         rotate=(z=45.0,),
-        translate=(0.0, 0.0, 0.8),
+        at=(0.0, 0.0, 0.8),
         deg=true,
     ),
 )
@@ -161,7 +161,7 @@ child = Node(node, NodeMTG(:/, :Leaf, 10, 2))
 # Attaching geometry to an MTG node
 child.geometry = PlantGeom.Geometry(
     ref_mesh=cylinder_refmesh,
-    transformation=pose(translate=(0.0, 0.0, 0.4)),
+    transformation=pose(at=(0.0, 0.0, 0.4)),
 )
 
 (geometry_type=typeof(child[:geometry]),)
@@ -218,7 +218,7 @@ panel_node[:geometry] = PlantGeom.Geometry(
     transformation=pose(
         scale=(1.8, 0.9, 1.0),
         rotate=(x=65.0, z=18.0),
-        translate=(0.0, 0.0, 0.6),
+        at=(0.0, 0.0, 0.6),
         deg=true,
     ),
 )
@@ -406,7 +406,7 @@ tube[:geometry] = ExtrudedTubeGeometry(
     torsion=false,
     cap_ends=true,
     material=RGB(0.35, 0.50, 0.70),
-    transformation=pose(translate=(1.25, 0.0, 0.0)),
+    transformation=pose(at=(1.25, 0.0, 0.0)),
 )
 
 plantviz(mtg_proc)

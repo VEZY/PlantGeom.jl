@@ -10,7 +10,7 @@
         t = PlantGeom.pose(
             scale=(2.0, 1.0, 1.0),
             rotate=(z=90.0,),
-            translate=(1.0, 0.0, 0.0),
+            at=(1.0, 0.0, 0.0),
             deg=true,
         )
 
@@ -32,7 +32,7 @@
             transformation=PlantGeom.pose(
                 scale=(2.0, 1.0, 0.1),
                 rotate=(y=90.0,),
-                translate=(0.0, 0.0, 1.0),
+                at=(0.0, 0.0, 1.0),
                 deg=true,
             ),
         )
@@ -43,5 +43,14 @@
         @test pts[1] ≈ Point(0.0, 0.0, 1.0)
         @test pts[2] ≈ Point(0.0, 0.0, -1.0) atol = 1e-12
         @test pts[3] ≈ Point(0.0, 1.0, 1.0) atol = 1e-12
+    end
+
+    @testset "pose preserves named rotation order" begin
+        xy = PlantGeom.pose(; rotate=(x=90.0, y=90.0), deg=true)
+        yx = PlantGeom.pose(; rotate=(y=90.0, x=90.0), deg=true)
+        point = SVector(1.0, 1.0, 1.0)
+
+        @test !(xy(point) ≈ yx(point))
+        @test PlantGeom.pose(; rotate=(90.0, 90.0, 0.0), deg=true)(point) ≈ xy(point) atol = 1e-12
     end
 end

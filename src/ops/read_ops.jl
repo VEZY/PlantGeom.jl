@@ -65,7 +65,7 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, attribute_types
 
         scene_transformation = scene_object_transformation(
             ;
-            pos=row.pos,
+            at=row.pos,
             scale=row.scale,
             rotation=row.rotation,
             inclination_azimut=row.inclinationAzimut,
