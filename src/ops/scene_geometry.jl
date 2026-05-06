@@ -63,9 +63,12 @@ function _set_scene_dimensions!(mtg, bounds::NTuple{4,Float64})
     return mtg
 end
 
-function _scene_root(domain::Union{Nothing,NTuple{4,Float64}})
+function _scene_root(
+    domain::Union{Nothing,NTuple{4,Float64}};
+    mtg_type=MultiScaleTreeGraph.NodeMTG,
+)
     root = MultiScaleTreeGraph.Node(
-        MultiScaleTreeGraph.NodeMTG(:/, :Scene, 1, 0),
+        mtg_type(:/, :Scene, 1, 0),
         Dict{Symbol,Any}(),
     )
     domain === nothing || _set_scene_dimensions!(root, domain)
@@ -439,16 +442,35 @@ function add_ground!(
     return builder
 end
 
+"""
+    make_scene(f; domain, mtg_type=NodeMTG, source_path="interactive.scene", ...)
+    make_scene(; domain, mtg_type=NodeMTG, source_path="interactive.scene", ...)
+
+Create a scene root, run the builder callback `f`, and return a prepared
+[`SceneGeometry`](@ref).
+
+`mtg_type` controls the MTG encoding type used for the scene root. Keep it
+consistent with the objects added to the scene, e.g. `NodeMTG` with `NodeMTG`
+objects or `MutableNodeMTG` with `MutableNodeMTG` objects.
+"""
 function make_scene(
     f::Function;
     domain,
+    mtg_type=MultiScaleTreeGraph.NodeMTG,
     source_path::AbstractString="interactive.scene",
     compute_area::Bool=true,
     compute_barycenter::Bool=true,
     source_topology_id::Bool=true,
 )
     bounds = _coerce_scene_domain(domain)
-    builder = SceneBuilder(_scene_root(bounds), bounds, String(source_path), compute_area, compute_barycenter, source_topology_id)
+    builder = SceneBuilder(
+        _scene_root(bounds; mtg_type=mtg_type),
+        bounds,
+        String(source_path),
+        compute_area,
+        compute_barycenter,
+        source_topology_id,
+    )
     f(builder)
     return prepare_scene(
         builder.mtg;
@@ -463,10 +485,19 @@ end
 
 function make_scene(;
     domain,
+    mtg_type=MultiScaleTreeGraph.NodeMTG,
     source_path::AbstractString="interactive.scene",
     compute_area::Bool=true,
     compute_barycenter::Bool=true,
     source_topology_id::Bool=true,
 )
-    make_scene(identity; domain=domain, source_path=source_path, compute_area=compute_area, compute_barycenter=compute_barycenter, source_topology_id=source_topology_id)
+    make_scene(
+        identity;
+        domain=domain,
+        mtg_type=mtg_type,
+        source_path=source_path,
+        compute_area=compute_area,
+        compute_barycenter=compute_barycenter,
+        source_topology_id=source_topology_id,
+    )
 end

@@ -1,44 +1,174 @@
-# Manually Assemble a Scene
+# Assemble a Scene
 
-This page shows the recommended way to build a proper scene MTG from:
+This page shows the recommended way to build a scene from:
 
 - plants imported from files (`.opf` or `.gwa`)
 - plants generated in Julia with the growth API
+- optional ground geometry
 
-The key rule is:
+TLDR: Use the [`make_scene`](@ref) function. It creates the scene root, places objects, relabels node ids, and returns a prepared
+[`SceneGeometry`](@ref).
 
-- keep each object in its own local coordinates
-- place it in the scene with [`place_in_scene!`](@ref)
-
-That helper stores the OPS placement metadata on the object root and, by default,
-also applies the corresponding transform to the geometry in memory. This keeps
-`plantviz(scene)` and `write_ops(scene, ...)` consistent.
-
-## Important constraint: use the same MTG type for all scene children
-
-Manual scene assembly attaches multiple independent MTG roots under one `:Scene`
-root. Those roots must use the same MTG encoding type.
-
-Today, the simplest mixed-scene workflow is:
-
-- create the scene root with `NodeMTG`
-- read imported OPF/GWA objects with `mtg_type=NodeMTG`
-- build generated plants with the growth API (which already uses `NodeMTG`)
-
-If you mix `NodeMTG` and `MutableNodeMTG` roots in the same manual scene,
-`addchild!` will fail.
-
-## Example
+## Recommended API
 
 ```@example mixedscene
 using PlantGeom
 using MultiScaleTreeGraph
-using GeometryBasics
 using CairoMakie
 
 include(joinpath(pkgdir(PlantGeom), "docs", "src", "getting_started", "tree_demo_helpers.jl"))
 
 files_dir = joinpath(pkgdir(PlantGeom), "test", "files")
+
+imported = read_opf(joinpath(files_dir, "simple_plant.opf"); mtg_type=NodeMTG)
+generated = build_demo_tree_with_growth_api()
+
+scene = make_scene(domain=(0.0, 0.0, 8.0, 4.0)) do sc
+    add_plant!(
+        sc,
+        imported;
+        group="imported",
+        id=1,
+        at=(1.0, 1.0, 0.0),
+        rotation=0.25,
+    )
+
+    add_plant!(
+        sc,
+        generated;
+        group="generated",
+        id=2,
+        at=(4.7, 1.4, 0.0),
+        scale=1.15,
+        rotation=-0.35,
+        inclination_angle=0.12,
+    )
+
+    add_ground!(sc; nx=8, ny=4, group="ground", type="Ground")
+end
+
+f, ax, p = plantviz(scene.mtg, figure=(size=(920, 620),))
+f
+```
+
+The `domain` is `(xmin, ymin, xmax, ymax)` in scene coordinates. It is also used
+as the default ground extent when you call [`add_ground!`](@ref) inside the
+builder block.
+
+## Add Objects
+
+Use [`add_plant!`](@ref) for plant-like MTGs and [`add_object!`](@ref) for
+standalone objects (like solar panels, or buildings).
+
+```julia
+oak = read_opf("plants/oak.opf"; mtg_type=NodeMTG)
+bench = read_gwa("objects/bench.gwa"; mtg_type=NodeMTG)
+
+scene = make_scene(domain=(0.0, 0.0, 10.0, 6.0)) do sc
+    add_plant!(
+        sc,
+        oak;
+        group="trees",
+        id=1,
+        at=(2.0, 2.0, 0.0),
+        rotate=(z=20.0,),
+        deg=true,
+    )
+
+    add_object!(
+        sc,
+        bench;
+        group="furniture",
+        id=10,
+        type="Bench",
+        at=(6.0, 1.5, 0.0),
+        scale=0.8,
+    )
+end
+```
+
+In mixed scenes, use the same MTG encoding type for the scene root and imported objects.
+By default, [`make_scene`](@ref) creates a `NodeMTG` scene root. If your objects
+use `MutableNodeMTG`, pass the same type to `make_scene`:
+
+```julia
+oak = read_opf("plants/oak.opf"; mtg_type=MutableNodeMTG)
+
+scene = make_scene(domain=(0.0, 0.0, 10.0, 6.0); mtg_type=MutableNodeMTG) do sc
+    add_plant!(sc, oak; group="trees", id=1)
+end
+```
+
+Placement (*e.g.* `add_plant!`) can use the simple transform API:
+
+- `at=(x, y, z)`
+- `scale=s` or `scale=(sx, sy, sz)`
+- `rotate=(x=..., y=..., z=...)`
+- `deg=true` when rotation angles are in degrees
+
+It can also use OPS-style placement:
+
+- `rotation=...`
+- `inclination_azimut=...`
+- `inclination_angle=...`
+
+Do not mix `rotate=` with OPS-style `rotation=` / `inclination_*=` placement in
+the same object call.
+
+## Reusing the Same Object More Than Once
+
+`add_plant!` and `add_object!` copy MTG inputs before attaching them, so the same
+loaded object can be reused safely:
+
+```julia
+base_plant = read_opf("myplant.opf"; mtg_type=NodeMTG)
+
+scene = make_scene(domain=(0.0, 0.0, 5.0, 3.0)) do sc
+    add_plant!(sc, base_plant; group="plants", id=1, at=(0.0, 0.0, 0.0))
+    add_plant!(sc, base_plant; group="plants", id=2, at=(2.0, 0.0, 0.0))
+end
+```
+
+## Export to OPS
+
+`make_scene` returns a [`SceneGeometry`](@ref). The MTG scene root is stored in
+`scene.mtg`:
+
+```julia
+write_ops("mixed_scene.ops", scene.mtg)
+```
+
+This will:
+
+- write the OPS scene table
+- emit one object file per child of the scene root
+- preserve the final placed geometry when you read the OPS back with [`read_ops`](@ref)
+
+## Inspect Prepared Scene Geometry
+
+The returned [`SceneGeometry`](@ref) also contains a merged mesh and per-node
+geometry summaries:
+
+```julia
+scene.merged_mesh
+scene_node_ids(scene)
+node_areas(scene)
+node_barycenters(scene)
+```
+
+This representation is useful when a downstream model needs one mesh plus a map
+from faces back to MTG node ids.
+
+## Advanced: Manual Scene Roots
+
+A lower-level API is also available when you need explicit control over the
+scene root or want to work directly with OPS placement metadata. In that case,
+create a `:Scene` root yourself and attach objects with [`place_in_scene!`](@ref).
+
+```julia
+using PlantGeom
+using MultiScaleTreeGraph
+using GeometryBasics
 
 scene = Node(NodeMTG(:/, :Scene, 1, 0))
 scene.scene_dimensions = (
@@ -46,8 +176,7 @@ scene.scene_dimensions = (
     Point{3,Float64}(8.0, 4.0, 0.0),
 )
 
-imported = read_opf(joinpath(files_dir, "simple_plant.opf"); mtg_type=NodeMTG)
-generated = build_demo_tree_with_growth_api()
+imported = read_opf("simple_plant.opf"; mtg_type=NodeMTG)
 
 place_in_scene!(
     imported;
@@ -58,26 +187,10 @@ place_in_scene!(
     at=(1.0, 1.0, 0.0),
     rotation=0.25,
 )
-
-place_in_scene!(
-    generated;
-    scene=scene,
-    scene_id=1,
-    plant_id=2,
-    functional_group="generated",
-    at=(4.7, 1.4, 0.0),
-    scale=1.15,
-    rotation=-0.35,
-    inclination_angle=0.12,
-)
-
-f, ax, p = plantviz(scene, figure=(size=(920, 620),))
-f
 ```
 
-## What `place_in_scene!` does
-
-For each object root, it writes scene metadata attributes compatible with OPS:
+For each object root, [`place_in_scene!`](@ref) writes scene metadata compatible
+with OPS:
 
 - `sceneID`
 - `plantID`
@@ -96,53 +209,31 @@ And by default it also:
 - stores that transform as `scene_transformation`
 - relabels node ids when attaching the object to a scene so independent trees do not collide
 
-That last point matters when you manually assemble a scene from several roots:
-two separate plants often both start at node id `1`.
+Two separate objects often both start at node id `1`, so relabeling matters when
+you attach multiple roots under one scene.
 
-## Reusing the same object more than once
+## MTG Type Constraint
 
-If you want several copies of the same imported or generated object, duplicate
-the object root before placing it:
+Scene assembly attaches multiple independent MTG roots under one `:Scene` root.
+Those roots must use the same MTG encoding type.
 
-```julia
-base_plant = read_opf("myplant.opf"; mtg_type=NodeMTG)
+The simplest mixed-scene workflow is:
 
-copy_1 = deepcopy(base_plant)
-copy_2 = deepcopy(base_plant)
+- create or let `make_scene` create a `NodeMTG` scene root
+- read imported OPF/GWA objects with `mtg_type=NodeMTG`
+- build generated plants with the growth API, which already uses `NodeMTG`
 
-place_in_scene!(copy_1; scene=scene, plant_id=1, at=(0.0, 0.0, 0.0))
-place_in_scene!(copy_2; scene=scene, plant_id=2, at=(2.0, 0.0, 0.0))
-```
+If your input objects use `MutableNodeMTG`, call
+`make_scene(...; mtg_type=MutableNodeMTG)` and load all imported objects with
+`mtg_type=MutableNodeMTG`.
 
-Do not attach the exact same node object twice.
+If you mix `NodeMTG` and `MutableNodeMTG` roots in the same manual scene,
+`addchild!` will fail.
 
-## Export to OPS
-
-Once the scene is assembled, export it with:
-
-```julia
-write_ops("mixed_scene.ops", scene)
-```
-
-This will:
-
-- write the OPS scene table
-- emit one object file per child of the scene root
-- undo each child's `scene_transformation` before writing the object file
-- preserve the final placed geometry when you read the OPS back with [`read_ops`](@ref)
-
-## Imported files other than OPF
-
-The same pattern works for imported `.gwa` objects too:
-
-```julia
-obj = read_gwa("object.gwa"; mtg_type=NodeMTG)
-place_in_scene!(obj; scene=scene, plant_id=3, at=(6.0, 1.0, 0.0))
-```
-
-## When not to use `place_in_scene!`
+## When Not To Build A Scene
 
 If you only want a single standalone plant/object, keep it as an object-local
 MTG and write it directly with [`write_opf`](@ref) or [`write_gwa`](@ref).
 
-Use `place_in_scene!` only when the object is meant to live inside a scene.
+Build a scene only when the object is meant to live inside a larger spatial
+assembly.

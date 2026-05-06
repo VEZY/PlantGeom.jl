@@ -5,6 +5,18 @@ function _approx_scene_value(a::AbstractArray, b::AbstractArray; atol=1e-10)
     all(_approx_scene_value(x, y; atol=atol) for (x, y) in zip(a, b))
 end
 
+@testset "make_scene: configurable MTG encoding type" begin
+    imported = read_opf("files/simple_plant.opf", attr_type=Dict, mtg_type=MutableNodeMTG)
+
+    scene = make_scene(domain=(0.0, 0.0, 2.0, 2.0); mtg_type=MutableNodeMTG) do builder
+        add_plant!(builder, imported; group="imported", id=1)
+    end
+
+    @test MultiScaleTreeGraph.node_mtg(scene.mtg) isa MutableNodeMTG
+    @test all(child -> MultiScaleTreeGraph.node_mtg(child) isa MutableNodeMTG, children(scene.mtg))
+    @test length(children(scene.mtg)) == 1
+end
+
 _approx_scene_value(a, b; atol=1e-10) = a == b
 
 function _approx_scene_mesh(a, b; atol=1e-10)
