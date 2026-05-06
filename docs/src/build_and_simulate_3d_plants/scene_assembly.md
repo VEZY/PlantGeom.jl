@@ -55,7 +55,7 @@ place_in_scene!(
     scene_id=1,
     plant_id=1,
     functional_group="imported",
-    pos=(1.0, 1.0, 0.0),
+    at=(1.0, 1.0, 0.0),
     rotation=0.25,
 )
 
@@ -65,7 +65,7 @@ place_in_scene!(
     scene_id=1,
     plant_id=2,
     functional_group="generated",
-    pos=(4.7, 1.4, 0.0),
+    at=(4.7, 1.4, 0.0),
     scale=1.15,
     rotation=-0.35,
     inclination_angle=0.12,
@@ -110,8 +110,8 @@ base_plant = read_opf("myplant.opf"; mtg_type=NodeMTG)
 copy_1 = deepcopy(base_plant)
 copy_2 = deepcopy(base_plant)
 
-place_in_scene!(copy_1; scene=scene, plant_id=1, pos=(0.0, 0.0, 0.0))
-place_in_scene!(copy_2; scene=scene, plant_id=2, pos=(2.0, 0.0, 0.0))
+place_in_scene!(copy_1; scene=scene, plant_id=1, at=(0.0, 0.0, 0.0))
+place_in_scene!(copy_2; scene=scene, plant_id=2, at=(2.0, 0.0, 0.0))
 ```
 
 Do not attach the exact same node object twice.
@@ -137,7 +137,7 @@ The same pattern works for imported `.gwa` objects too:
 
 ```julia
 obj = read_gwa("object.gwa"; mtg_type=NodeMTG)
-place_in_scene!(obj; scene=scene, plant_id=3, pos=(6.0, 1.0, 0.0))
+place_in_scene!(obj; scene=scene, plant_id=3, at=(6.0, 1.0, 0.0))
 ```
 
 ## When not to use `place_in_scene!`

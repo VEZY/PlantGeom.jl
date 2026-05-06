@@ -226,13 +226,6 @@ function _resolve_value(node, aliases::Vector{Symbol}, label::Symbol; default=0.
     return value
 end
 
-function _rotation_linear_map(axis::Symbol, angle_rad::Float64)
-    axis == :x && return LinearMap(RotMatrix(AngleAxis(angle_rad, 1.0, 0.0, 0.0)))
-    axis == :y && return LinearMap(RotMatrix(AngleAxis(angle_rad, 0.0, 1.0, 0.0)))
-    axis == :z && return LinearMap(RotMatrix(AngleAxis(angle_rad, 0.0, 0.0, 1.0)))
-    error("Invalid rotation axis '$axis'.")
-end
-
 function _pivot_from_attributes(pivot, node; warn_missing=false)
     if pivot === :origin
         return SVector{3,Float64}(0.0, 0.0, 0.0)
@@ -287,17 +280,18 @@ function transformation_from_attributes(node; convention=default_geometry_conven
     end
 
     for angle in convention.angle_map
-        value, found = _resolve_alias(node, angle.names)
-        if found === nothing
-            warn_missing && @warn "No mapped value found for angle. Skipping." axis = angle.axis aliases = angle.names
-            continue
-        elseif value === nothing
-            warn_missing && @warn "Mapped angle value is not numeric. Skipping." attr = found axis = angle.axis
-            continue
-        end
+        angle_rad, has_angle = _resolve_angle_rad(node, angle; warn_missing=warn_missing)
+        has_angle || continue
 
-        angle_rad = angle.unit == :deg ? deg2rad(value) : value
-        rot = _rotation_linear_map(angle.axis, angle_rad)
+        rot = if angle.axis == :x
+            LinearMap(RotX(angle_rad))
+        elseif angle.axis == :y
+            LinearMap(RotY(angle_rad))
+        elseif angle.axis == :z
+            LinearMap(RotZ(angle_rad))
+        else
+            error("Invalid rotation axis '$(angle.axis)'.")
+        end
 
         if angle.frame == :local
             t = t ∘ rot
@@ -1391,28 +1385,25 @@ function _angles_transform(
 
     t = IdentityTransformation()
     for angle in angles
-        value, found = _resolve_alias(node, angle.names)
-        has_value = found !== nothing && value !== nothing
+        angle_rad, has_value = _resolve_angle_rad(
+            node,
+            angle;
+            warn_missing=warn_missing,
+            override_axis_deg=override_axis_deg,
+            override_mode=override_mode,
+        )
+        has_value || continue
 
-        if haskey(override_axis_deg, angle.axis) && (override_mode == :override || !has_value)
-            value = override_axis_deg[angle.axis]
-            has_value = true
-            found = :override
-        end
-
-        if !has_value
-            warn_missing && @warn "No mapped value found for angle. Skipping." axis = angle.axis aliases = angle.names
-            continue
-        end
-
-        # Override map values are always specified in degrees.
-        angle_rad = if found === :override
-            deg2rad(value)
+        rot = if angle.axis == :x
+            LinearMap(RotX(angle_rad))
+        elseif angle.axis == :y
+            LinearMap(RotY(angle_rad))
+        elseif angle.axis == :z
+            LinearMap(RotZ(angle_rad))
         else
-            angle.unit == :deg ? deg2rad(value) : value
+            error("Invalid rotation axis '$(angle.axis)'.")
         end
 
-        rot = _rotation_linear_map(angle.axis, angle_rad)
         if angle.frame == :local
             t = t ∘ rot
         else
@@ -1422,6 +1413,40 @@ function _angles_transform(
     end
 
     return t
+end
+
+function _resolve_angle_rad(
+    node,
+    angle::AngleConvention;
+    warn_missing=false,
+    override_axis_deg::Dict{Symbol,Float64}=Dict{Symbol,Float64}(),
+    override_mode::Symbol=:override,
+)
+    value, found = _resolve_alias(node, angle.names)
+    has_value = found !== nothing && value !== nothing
+
+    if haskey(override_axis_deg, angle.axis) && (override_mode == :override || !has_value)
+        value = override_axis_deg[angle.axis]
+        has_value = true
+        found = :override
+    end
+
+    if !has_value && found === nothing
+        warn_missing && @warn "No mapped value found for angle. Skipping." axis = angle.axis aliases = angle.names
+        return 0.0, false
+    elseif !has_value
+        warn_missing && @warn "Mapped angle value is not numeric. Skipping." attr = found axis = angle.axis
+        return 0.0, false
+    end
+
+    # Override map values are always specified in degrees.
+    angle_rad = if found === :override
+        deg2rad(value)
+    else
+        angle.unit == :deg ? deg2rad(value) : value
+    end
+
+    return angle_rad, true
 end
 
 @inline function _compose_aliases(a::Vector{Symbol}, b::Vector{Symbol})
@@ -1521,8 +1546,8 @@ function _apply_azimuth_elevation_stage(node, rot::SMatrix{3,3,Float64,9}, optio
         return rot
     end
 
-    raz = SMatrix{3,3,Float64}(RotMatrix(RotZ(deg2rad(azimuth))))
-    rey = SMatrix{3,3,Float64}(RotMatrix(AngleAxis(deg2rad(-elevation), 0.0, 1.0, 0.0)))
+    raz = SMatrix{3,3,Float64}(RotZ(deg2rad(azimuth)))
+    rey = SMatrix{3,3,Float64}(RotY(deg2rad(-elevation)))
     return raz * rey
 end
 
@@ -2197,7 +2222,7 @@ function reconstruct_geometry_from_attributes!(mtg, prototypes::AbstractDict;
     _prepare_amap_allometry!(mtg, convention, conventions, amap_cfg)
 
     root_rotation = if root_align && convention.length_axis == :x
-        SMatrix{3,3,Float64}(RotMatrix(AngleAxis(-pi / 2, 0.0, 1.0, 0.0)))
+        SMatrix{3,3,Float64}(RotY(-pi / 2))
     else
         _I3
     end
@@ -2375,7 +2400,7 @@ function reconstruct_geometry_from_attributes!(mtg, prototypes::AbstractDict;
             if extra_x_deg != 0.0
                 # Keep fallback XInsertionAngle in the same stage/order as insertion angles.
                 # Appending on the right applies it first and can cancel azimuth spread.
-                local_insertion_t = _rotation_linear_map(:x, deg2rad(extra_x_deg)) ∘ local_insertion_t
+                local_insertion_t = LinearMap(RotX(deg2rad(extra_x_deg))) ∘ local_insertion_t
             end
         end
 

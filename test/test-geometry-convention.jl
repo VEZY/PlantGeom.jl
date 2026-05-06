@@ -23,7 +23,7 @@
 
         expected = PlantGeom.IdentityTransformation()
         expected = expected ∘ PlantGeom.LinearMap(Diagonal(SVector(0.5, 0.5, 2.0)))
-        expected = expected ∘ PlantGeom.LinearMap(PlantGeom.RotMatrix(PlantGeom.AngleAxis(pi / 2, 1.0, 0.0, 0.0)))
+        expected = expected ∘ PlantGeom.LinearMap(PlantGeom.RotX(pi / 2))
         expected = PlantGeom.Translation(1.0, 2.0, 3.0) ∘ expected
 
         got_mat = PlantGeom.transformation_matrix4(got)
@@ -45,7 +45,7 @@
 
         expected = PlantGeom.IdentityTransformation()
         expected = expected ∘ PlantGeom.LinearMap(Diagonal(SVector(2.0, 2.0, 3.0)))
-        expected = expected ∘ PlantGeom.LinearMap(PlantGeom.RotMatrix(PlantGeom.AngleAxis(pi / 2, 0.0, 0.0, 1.0)))
+        expected = expected ∘ PlantGeom.LinearMap(PlantGeom.RotZ(pi / 2))
         expected = PlantGeom.Translation(1.0, -1.0, 0.5) ∘ expected
 
         got_mat = PlantGeom.transformation_matrix4(got)
