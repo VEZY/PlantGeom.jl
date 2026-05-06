@@ -404,6 +404,57 @@ function _add_ground_nodes!(
     return mtg
 end
 
+"""
+    add_ground!(builder::SceneBuilder; z=0.0, nx=9, ny=9, xy_bounds=nothing,
+                group="pavement", type="Cobblestone", id=-1, kwargs...)
+    add_ground!(scene::SceneGeometry; z=0.0, nx=9, ny=9, xy_bounds=nothing,
+                group="pavement", type="Cobblestone", id=-1, kwargs...)
+
+Add a rectangular ground mesh to a scene.
+
+The ground is represented as a regular `nx` by `ny` grid of quadrilateral cells,
+triangulated as two faces per cell. The grid is inserted directly in the scene
+MTG as geometry-bearing child nodes. Each cell receives a `Geometry` with a
+single `RefMesh`, plus the following attributes:
+
+- `group` and `functional_group`: set from `group`
+- `type`: set from `type`
+- `id` and `object_id`: set from `id`
+- `source_topology_id`: set to the generated node id
+- any extra keyword arguments passed through `kwargs...`
+
+By default, the ground extent comes from the scene domain:
+
+- for a `SceneBuilder`, from `make_scene(domain=...)`
+- for a `SceneGeometry`, from `scene.scene_xy_bounds`
+
+Pass `xy_bounds=(xmin, ymin, xmax, ymax)` to override that extent. The `z`
+keyword sets the elevation of all ground vertices.
+
+When called inside a `make_scene do builder ... end` block, this method mutates
+the builder and returns it. When called on an already prepared `SceneGeometry`,
+it mutates the backing MTG, refreshes the merged scene geometry, and returns the
+updated `SceneGeometry`.
+
+# Examples
+
+```julia
+scene = make_scene(domain=(0.0, 0.0, 8.0, 4.0)) do builder
+    add_ground!(builder; nx=8, ny=4, group="ground", type="Ground")
+end
+```
+
+```julia
+add_ground!(
+    scene;
+    xy_bounds=(-1.0, -1.0, 1.0, 1.0),
+    z=-0.02,
+    nx=2,
+    ny=2,
+    material=:soil,
+)
+```
+"""
 function add_ground!(
     scene::SceneGeometry;
     z::Real=0.0,
