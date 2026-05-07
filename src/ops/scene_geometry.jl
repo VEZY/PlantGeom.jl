@@ -7,6 +7,16 @@ The data is intentionally geometry-only. Semantic attributes such as `group`,
 `type`, cultivar, treatment, or material class stay on the source MTG nodes.
 Downstream models can read and compile those attributes during their own
 preparation step.
+
+Fields:
+
+- `area`: total triangle area associated with one MTG node, or `nothing` when
+  area computation was disabled.
+- `barycenter`: area-weighted 3D barycenter `(x, y, z)`, or `nothing` when
+  barycenter computation was disabled.
+- `source_topology_id`: original topology id copied from the source object when
+  available. If no explicit source id exists, [`prepare_scene`](@ref) falls back
+  to the current node id when `source_topology_id=true`.
 """
 struct SceneNodeData{T}
     area::Union{Nothing,T}
@@ -21,6 +31,18 @@ Prepared generic scene representation.
 
 It stores the source MTG, a merged mesh, a face-to-node map, optional per-node
 geometry summaries, the source path, and the scene XY domain.
+
+Fields:
+
+- `mtg`: scene MTG root. Its children are placed object roots or generated
+  ground cells.
+- `merged_mesh`: one mesh built from all geometry-bearing nodes in the scene.
+- `face2node`: vector mapping each face in `merged_mesh` to the MTG node id that
+  produced it.
+- `nodes`: dictionary from MTG node id to [`SceneNodeData`](@ref).
+- `source_path`: descriptive path or label for provenance.
+- `scene_xy_bounds`: scene domain as `(xmin, ymin, xmax, ymax)`, or `nothing`
+  when no domain is known.
 """
 mutable struct SceneGeometry{MTG,Mesh,T}
     mtg::MTG
@@ -31,6 +53,30 @@ mutable struct SceneGeometry{MTG,Mesh,T}
     scene_xy_bounds::Union{Nothing,NTuple{4,T}}
 end
 
+"""
+    SceneBuilder
+
+Mutable builder passed to [`make_scene`](@ref) callback blocks.
+
+Users normally do not construct `SceneBuilder` directly. Instead, use:
+
+```julia
+scene = make_scene(domain=(0.0, 0.0, 10.0, 5.0)) do builder
+    add_plant!(builder, plant; group="plants", id=1)
+    add_ground!(builder)
+end
+```
+
+Fields:
+
+- `mtg`: scene root being assembled.
+- `domain`: scene XY domain as `(xmin, ymin, xmax, ymax)`.
+- `source_path`: provenance label forwarded to [`SceneGeometry`](@ref).
+- `compute_area`: whether prepared node summaries should include surface area.
+- `compute_barycenter`: whether summaries should include area-weighted
+  barycenters.
+- `source_topology_id`: whether summaries should preserve source topology ids.
+"""
 mutable struct SceneBuilder
     mtg
     domain::Union{Nothing,NTuple{4,Float64}}
@@ -40,9 +86,43 @@ mutable struct SceneBuilder
     source_topology_id::Bool
 end
 
+"""
+    scene_node(scene::SceneGeometry, node_id)
+
+Return the [`SceneNodeData`](@ref) summary for `node_id`, or `nothing` if that
+node has no prepared geometry summary.
+"""
 scene_node(scene::SceneGeometry, node_id::Integer) = get(scene.nodes, Int(node_id), nothing)
+
+"""
+    scene_node_ids(scene::SceneGeometry)
+
+Return the sorted MTG node ids present in the prepared scene summaries.
+
+These are the ids used in `scene.face2node`, [`scene_node`](@ref),
+[`node_areas`](@ref), and [`node_barycenters`](@ref).
+"""
 scene_node_ids(scene::SceneGeometry) = sort!(collect(keys(scene.nodes)))
+
+"""
+    node_areas(scene::SceneGeometry)
+
+Return a dictionary mapping each prepared MTG node id to its surface area.
+
+Values are `nothing` when the scene was prepared with `compute_area=false`.
+"""
 node_areas(scene::SceneGeometry) = Dict(nid => node.area for (nid, node) in scene.nodes)
+
+"""
+    node_barycenters(scene::SceneGeometry)
+
+Return a dictionary mapping each prepared MTG node id to its area-weighted
+barycenter `(x, y, z)`.
+
+Values are `nothing` when the scene was prepared with
+`compute_barycenter=false`. Degenerate zero-area nodes receive `(NaN, NaN, NaN)`
+when barycenter computation is enabled.
+"""
 node_barycenters(scene::SceneGeometry) = Dict(nid => node.barycenter for (nid, node) in scene.nodes)
 
 function _coerce_scene_domain(domain)
@@ -123,6 +203,39 @@ function _source_topology_id(node)
     return nothing
 end
 
+"""
+    prepare_scene(mtg; source_path="interactive.scene", domain=nothing,
+                  scene_xy_bounds=nothing, relabel_ids=false,
+                  compute_area=true, compute_barycenter=true,
+                  source_topology_id=true)
+
+Prepare an MTG scene root for geometry-level downstream work.
+
+`prepare_scene` expects an MTG whose geometry-bearing descendants already live
+in scene coordinates. It merges all geometry nodes into one mesh and builds a
+face-to-node map so every face in the merged mesh can be traced back to the MTG
+node that produced it.
+
+Keyword arguments:
+
+- `source_path`: provenance label stored on the returned [`SceneGeometry`](@ref).
+- `domain`: explicit scene XY domain `(xmin, ymin, xmax, ymax)`. When provided,
+  it takes precedence over `scene_xy_bounds` and over `mtg[:scene_dimensions]`.
+- `scene_xy_bounds`: fallback scene XY domain `(xmin, ymin, xmax, ymax)`.
+- `relabel_ids`: when `true`, relabel MTG node ids before merging. This is
+  useful after assembling independent object roots that may have overlapping
+  ids.
+- `compute_area`: compute total triangle area per MTG node.
+- `compute_barycenter`: compute area-weighted barycenter per MTG node.
+- `source_topology_id`: preserve original topology ids in node summaries when
+  nodes carry a `:source_topology_id` attribute.
+
+The function mutates `mtg` when `relabel_ids=true` or when a domain is written
+back as `mtg[:scene_dimensions]`. It returns a [`SceneGeometry`](@ref).
+
+Use [`make_scene`](@ref) for new scene construction; use `prepare_scene`
+directly when you already have a scene MTG.
+"""
 function prepare_scene(
     mtg;
     source_path::AbstractString="interactive.scene",
@@ -231,10 +344,19 @@ function _mesh_object_mtg(mesh; type::AbstractString, name::AbstractString="obje
     return root
 end
 
-function _read_scene_object(path::AbstractString; type::AbstractString="object")
+function _read_scene_object(
+    path::AbstractString;
+    type::AbstractString="object",
+    mtg_type=MultiScaleTreeGraph.MutableNodeMTG,
+)
     ext = lowercase(splitext(path)[2])
-    ext == ".opf" && return read_opf(path, attr_type=Dict, attribute_types=Dict("pos" => Float64))
-    ext == ".gwa" && return read_gwa(path)
+    ext == ".opf" && return read_opf(
+        path,
+        attr_type=Dict,
+        mtg_type=mtg_type,
+        attribute_types=Dict("pos" => Float64),
+    )
+    ext == ".gwa" && return read_gwa(path; mtg_type=mtg_type)
     error("add_object! accepts `.opf` and `.gwa` paths directly. For mesh files such as `.obj` or `.ply`, load them with MeshIO/FileIO first, then pass the mesh to add_object!. Use read_ops for `.ops` scenes.")
 end
 
@@ -300,6 +422,56 @@ function _placement_transform(;
     return transform === nothing ? p : p ∘ transform
 end
 
+"""
+    add_object!(builder::SceneBuilder, object; group, id, type="object",
+                at=(0, 0, 0), scale=1.0, rotate=(0, 0, 0), deg=false,
+                rotation=nothing, inclination_azimut=0.0,
+                inclination_angle=0.0, transform=nothing,
+                file_path="", kwargs...)
+    add_object!(builder::SceneBuilder, path::AbstractString; type="object", kwargs...)
+
+Add an object to a scene being assembled with [`make_scene`](@ref).
+
+`object` can be:
+
+- an MTG root containing geometry, such as an object read from `.opf` or `.gwa`
+- a `GeometryBasics.AbstractMesh`, which is wrapped in a minimal object MTG
+
+The path overload accepts `.opf` and `.gwa` files and reads them before adding
+the object. It uses the same MTG encoding type as `builder.mtg`, so it works with
+both `NodeMTG` and `MutableNodeMTG` scenes. For mesh formats such as `.obj` or
+`.ply`, load the mesh yourself with a suitable IO package and pass the mesh
+object directly.
+
+Required metadata:
+
+- `group`: semantic group name. Stored as both `:group` and
+  `:functional_group`.
+- `id`: object id. Stored as `:id`, `:object_id`, and `:plantID`.
+
+Placement options:
+
+- `at=(x, y, z)`: final translation.
+- `scale=s` or `scale=(sx, sy, sz)`: uniform or anisotropic scaling for the
+  simple transform path.
+- `rotate=(x=..., y=..., z=...)` or `rotate=(rx, ry, rz)`: simple local-axis
+  rotations used by [`pose`](@ref).
+- `deg=true`: interpret `rotate`, `rotation`, `inclination_azimut`, and
+  `inclination_angle` as degrees.
+- `rotation`, `inclination_azimut`, `inclination_angle`: OPS-style scalar
+  placement. These cannot be mixed with a nonzero `rotate=` value.
+- `transform`: extra `CoordinateTransformations.Transformation` composed after
+  the placement transform.
+
+`add_object!` deep-copies MTG inputs before mutating them, annotates the object
+root with placement metadata, applies the placement transform to all geometry
+nodes, attaches the object under `builder.mtg`, and returns `builder`.
+
+Extra keyword arguments are written as attributes on the copied object root.
+All objects added to one builder must use the same MTG encoding type as the
+scene root, for example `NodeMTG` with `NodeMTG`, or `MutableNodeMTG` with
+`MutableNodeMTG`.
+"""
 function add_object!(
     builder::SceneBuilder,
     object;
@@ -338,9 +510,38 @@ function add_object!(
 end
 
 function add_object!(builder::SceneBuilder, path::AbstractString; type::AbstractString="object", kwargs...)
-    add_object!(builder, _read_scene_object(path; type=type); type=type, file_path=path, kwargs...)
+    mtg_type = typeof(MultiScaleTreeGraph.node_mtg(builder.mtg))
+    add_object!(
+        builder,
+        _read_scene_object(path; type=type, mtg_type=mtg_type);
+        type=type,
+        file_path=path,
+        kwargs...,
+    )
 end
 
+"""
+    add_plant!(builder::SceneBuilder, plant; group, id, kwargs...)
+    add_plant!(builder::SceneBuilder, path::AbstractString; group, id, kwargs...)
+
+Add a plant object to a scene being assembled with [`make_scene`](@ref).
+
+This is a semantic alias for [`add_object!`](@ref) with the same placement and
+metadata keywords. Use it for plant MTGs or plant files when the scene contains
+both biological plants and non-plant objects.
+
+Required keywords:
+
+- `group`: functional group or treatment label, stored on the object root.
+- `id`: plant id, stored as `:id`, `:object_id`, and `:plantID`.
+
+Common placement keywords include `at`, `scale`, `rotate`, `deg`, `rotation`,
+`inclination_azimut`, `inclination_angle`, and `transform`; see
+[`add_object!`](@ref) for the full behavior.
+
+The input MTG is deep-copied before placement, so the same loaded plant can be
+added more than once with different ids or positions.
+"""
 add_plant!(builder::SceneBuilder, plant; group::AbstractString, id::Integer, kwargs...) =
     add_object!(builder, plant; group=group, id=id, kwargs...)
 
@@ -500,9 +701,45 @@ end
 Create a scene root, run the builder callback `f`, and return a prepared
 [`SceneGeometry`](@ref).
 
-`mtg_type` controls the MTG encoding type used for the scene root. Keep it
-consistent with the objects added to the scene, e.g. `NodeMTG` with `NodeMTG`
-objects or `MutableNodeMTG` with `MutableNodeMTG` objects.
+This is the recommended high-level scene assembly API. The callback receives a
+[`SceneBuilder`](@ref); call [`add_plant!`](@ref), [`add_object!`](@ref), and
+[`add_ground!`](@ref) inside the callback to populate the scene.
+
+Keyword arguments:
+
+- `domain`: required scene XY domain `(xmin, ymin, xmax, ymax)`. It is stored as
+  scene dimensions and used as the default extent for [`add_ground!`](@ref).
+- `mtg_type`: MTG encoding type used for the scene root. Keep it consistent
+  with the objects added to the scene, e.g. `NodeMTG` with `NodeMTG` objects or
+  `MutableNodeMTG` with `MutableNodeMTG` objects.
+- `source_path`: provenance label stored in the returned [`SceneGeometry`](@ref).
+- `compute_area`: compute per-node surface areas.
+- `compute_barycenter`: compute per-node area-weighted barycenters.
+- `source_topology_id`: preserve source topology ids when available.
+
+After the callback returns, `make_scene` calls [`prepare_scene`](@ref) with
+`relabel_ids=true`, so independent object roots with overlapping ids can safely
+share one scene. The returned value is a [`SceneGeometry`](@ref); use
+`scene.mtg` when a function expects the scene MTG, for example
+`plantviz(scene.mtg)` or `write_ops(file, scene.mtg)`.
+
+# Examples
+
+```julia
+scene = make_scene(domain=(0.0, 0.0, 8.0, 4.0)) do builder
+    add_plant!(builder, plant; group="plants", id=1, at=(1.0, 1.0, 0.0))
+    add_ground!(builder; nx=8, ny=4)
+end
+```
+
+```julia
+scene = make_scene(
+    domain=(0.0, 0.0, 8.0, 4.0);
+    mtg_type=MutableNodeMTG,
+) do builder
+    add_plant!(builder, mutable_plant; group="plants", id=1)
+end
+```
 """
 function make_scene(
     f::Function;

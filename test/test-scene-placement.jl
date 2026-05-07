@@ -17,6 +17,16 @@ end
     @test length(children(scene.mtg)) == 1
 end
 
+@testset "make_scene: path adders use scene MTG encoding type" begin
+    scene = make_scene(domain=(0.0, 0.0, 2.0, 2.0)) do builder
+        add_plant!(builder, "files/simple_plant.opf"; group="imported", id=1)
+    end
+
+    @test MultiScaleTreeGraph.node_mtg(scene.mtg) isa NodeMTG
+    @test all(child -> MultiScaleTreeGraph.node_mtg(child) isa NodeMTG, children(scene.mtg))
+    @test length(children(scene.mtg)) == 1
+end
+
 _approx_scene_value(a, b; atol=1e-10) = a == b
 
 function _approx_scene_mesh(a, b; atol=1e-10)
