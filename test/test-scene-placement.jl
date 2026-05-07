@@ -70,6 +70,17 @@ function _scene_test_generated_plant()
     return plant
 end
 
+@testset "scene placement: deprecated pos keyword" begin
+    old_transform = scene_object_transformation(; pos=(1.0, 2.0, 0.0), scale=1.2)
+    new_transform = scene_object_transformation(; at=(1.0, 2.0, 0.0), scale=1.2)
+    @test old_transform(GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0)) ==
+          new_transform(GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0))
+
+    plant = _scene_test_generated_plant()
+    place_in_scene!(plant; plant_id=1, pos=(1.0, 1.0, 0.0), apply_transform=false)
+    @test plant.pos == GeometryBasics.Point{3,Float64}(1.0, 1.0, 0.0)
+end
+
 function _scene_object_meshes(scene)
     [
         [refmesh_to_mesh(node) for node in MultiScaleTreeGraph.traverse(child, n -> n, filter_fun=PlantGeom.has_geometry)]

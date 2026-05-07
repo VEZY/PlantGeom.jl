@@ -596,8 +596,15 @@ function pose(;
     scale=1.0,
     rotate=(x=0.0, y=0.0, z=0.0),
     at=(0.0, 0.0, 0.0),
+    translate=nothing,
     deg::Bool=false,
 )
+    if translate !== nothing
+        at != (0.0, 0.0, 0.0) && error("Use either `at=` or deprecated `translate=`, not both.")
+        _deprecate_at_keyword!(:pose, :translate)
+        at = translate
+    end
+
     scale_vals = _manual_scale_triplet(scale)
     translate_vals = _manual_transform_triplet(at, "at")
 
