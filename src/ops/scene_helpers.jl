@@ -56,11 +56,18 @@ to `at`.
 """
 function scene_object_transformation(;
     at=point3(0.0, 0.0, 0.0),
+    pos=nothing,
     scale::Real=1.0,
     rotation::Real=0.0,
     inclination_azimut::Real=0.0,
     inclination_angle::Real=0.0,
 )
+    if pos !== nothing
+        at != point3(0.0, 0.0, 0.0) && error("Use either `at=` or deprecated `pos=`, not both.")
+        _deprecate_at_keyword!(:scene_object_transformation, :pos)
+        at = pos
+    end
+
     at_pt = _scene_point3(at)
     transformation = IdentityTransformation()
 
@@ -121,6 +128,7 @@ function place_in_scene!(
     plant_id=nothing,
     functional_group=nothing,
     at=nothing,
+    pos=nothing,
     scale=nothing,
     rotation=nothing,
     inclination_azimut=nothing,
@@ -129,6 +137,12 @@ function place_in_scene!(
     apply_transform::Bool=true,
     rebind_scene::Bool=true,
 )
+    if pos !== nothing
+        at !== nothing && error("Use either `at=` or deprecated `pos=`, not both.")
+        _deprecate_at_keyword!(:place_in_scene!, :pos)
+        at = pos
+    end
+
     object_root = _scene_object_root(object_root)
     scene_root = isnothing(scene) ? nothing : get_root(scene)
 

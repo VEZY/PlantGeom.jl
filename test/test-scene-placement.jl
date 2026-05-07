@@ -5,6 +5,28 @@ function _approx_scene_value(a::AbstractArray, b::AbstractArray; atol=1e-10)
     all(_approx_scene_value(x, y; atol=atol) for (x, y) in zip(a, b))
 end
 
+@testset "make_scene: configurable MTG encoding type" begin
+    imported = read_opf("files/simple_plant.opf", attr_type=Dict, mtg_type=MutableNodeMTG)
+
+    scene = make_scene(domain=(0.0, 0.0, 2.0, 2.0); mtg_type=MutableNodeMTG) do builder
+        add_plant!(builder, imported; group="imported", id=1)
+    end
+
+    @test MultiScaleTreeGraph.node_mtg(scene.mtg) isa MutableNodeMTG
+    @test all(child -> MultiScaleTreeGraph.node_mtg(child) isa MutableNodeMTG, children(scene.mtg))
+    @test length(children(scene.mtg)) == 1
+end
+
+@testset "make_scene: path adders use scene MTG encoding type" begin
+    scene = make_scene(domain=(0.0, 0.0, 2.0, 2.0)) do builder
+        add_plant!(builder, "files/simple_plant.opf"; group="imported", id=1)
+    end
+
+    @test MultiScaleTreeGraph.node_mtg(scene.mtg) isa NodeMTG
+    @test all(child -> MultiScaleTreeGraph.node_mtg(child) isa NodeMTG, children(scene.mtg))
+    @test length(children(scene.mtg)) == 1
+end
+
 _approx_scene_value(a, b; atol=1e-10) = a == b
 
 function _approx_scene_mesh(a, b; atol=1e-10)
@@ -46,6 +68,17 @@ function _scene_test_generated_plant()
     )
 
     return plant
+end
+
+@testset "scene placement: deprecated pos keyword" begin
+    old_transform = scene_object_transformation(; pos=(1.0, 2.0, 0.0), scale=1.2)
+    new_transform = scene_object_transformation(; at=(1.0, 2.0, 0.0), scale=1.2)
+    @test old_transform(GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0)) ==
+          new_transform(GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0))
+
+    plant = _scene_test_generated_plant()
+    place_in_scene!(plant; plant_id=1, pos=(1.0, 1.0, 0.0), apply_transform=false)
+    @test plant.pos == GeometryBasics.Point{3,Float64}(1.0, 1.0, 0.0)
 end
 
 function _scene_object_meshes(scene)

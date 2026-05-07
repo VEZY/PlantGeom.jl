@@ -1,5 +1,16 @@
 @deprecate geometry(; ref_mesh, ref_mesh_index=nothing, transformation=IdentityTransformation(), dUp=1.0, dDwn=1.0, mesh=nothing) Geometry(; ref_mesh, transformation=IdentityTransformation(), dUp=1.0, dDwn=1.0)
 
+# Placement APIs now use the explicit `at=` keyword. Keyword-only renames cannot
+# be represented safely with `@deprecate` because Julia does not dispatch on
+# keyword names, so the affected methods call this helper directly.
+function _deprecate_at_keyword!(func::Symbol, old::Symbol)
+    Base.depwarn(
+        "`$(func)(; $(old)=...)` is deprecated, use `$(func)(; at=...)` instead.",
+        func,
+    )
+    return nothing
+end
+
 function viz(refmesh::T, args...; kwars...) where {T<:Union{RefMesh,AbstractVector{<:RefMesh}}}
     @warn "The `viz` function is deprecated, use `plantviz` instead."
     plantviz(refmesh, args...; kwars...)
