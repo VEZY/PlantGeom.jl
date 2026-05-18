@@ -9,7 +9,7 @@ function _scene_child_xranges(mtg)
     map(children(mtg)) do child
         xmins = Float64[]
         xmaxs = Float64[]
-        traverse!(child, filter_fun=has_geometry) do node
+        traverse!(child, filter_fun=PlantGeom.has_geometry) do node
             push!(xmins, Float64(xmin(node)))
             push!(xmaxs, Float64(xmax(node)))
             true
