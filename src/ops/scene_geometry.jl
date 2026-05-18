@@ -84,7 +84,25 @@ mutable struct SceneBuilder
     compute_area::Bool
     compute_barycenter::Bool
     source_topology_id::Bool
+    next_node_id::Int
 end
+
+SceneBuilder(
+    mtg,
+    domain::Union{Nothing,NTuple{4,Float64}},
+    source_path::String,
+    compute_area::Bool,
+    compute_barycenter::Bool,
+    source_topology_id::Bool,
+) = SceneBuilder(
+    mtg,
+    domain,
+    source_path,
+    compute_area,
+    compute_barycenter,
+    source_topology_id,
+    MultiScaleTreeGraph.max_id(mtg) + 1,
+)
 
 """
     scene_node(scene::SceneGeometry, node_id)
@@ -378,6 +396,47 @@ function _annotate_object_root!(root; group::AbstractString, id::Integer, file_p
     return root
 end
 
+function _ops_rotation_metadata(rotate, deg::Bool)
+    rotation = 0.0
+    for (axis, angle) in _manual_rotation_sequence(rotate)
+        angle == 0.0 && continue
+        axis === :z || return nothing
+        rotation = _manual_angle_rad(angle, deg)
+    end
+    return rotation
+end
+
+function _store_ops_placement_metadata!(
+    root,
+    scene_transformation;
+    at,
+    scale,
+    rotate,
+    deg::Bool,
+    rotation,
+    inclination_azimut,
+    inclination_angle,
+    transform,
+)
+    transform === nothing || return root
+    scale isa Real || return root
+
+    rotation_val = if rotation === nothing
+        _ops_rotation_metadata(rotate, deg)
+    else
+        _manual_angle_rad(rotation, deg)
+    end
+    rotation_val === nothing && return root
+
+    root[:pos] = _scene_point3(at)
+    root[:scale] = Float64(scale)
+    root[:rotation] = rotation_val
+    root[:inclinationAzimut] = deg ? deg2rad(Float64(inclination_azimut)) : Float64(inclination_azimut)
+    root[:inclinationAngle] = deg ? deg2rad(Float64(inclination_angle)) : Float64(inclination_angle)
+    root[:scene_transformation] = scene_transformation
+    return root
+end
+
 function _transform_object!(mtg, transformation)
     MultiScaleTreeGraph.traverse!(mtg, filter_fun=has_geometry) do node
         transform_mesh!(node, transformation)
@@ -387,12 +446,7 @@ function _transform_object!(mtg, transformation)
 end
 
 function _rotation_is_zero(rotate)
-    if rotate isa NamedTuple
-        return all(axis -> Float64(getproperty(rotate, axis)) == 0.0, propertynames(rotate))
-    end
-    length(rotate) == 3 || error("`rotate` must be a 3-tuple or a named tuple.")
-    x, y, z = ntuple(i -> Float64(rotate[i]), 3)
-    return x == 0.0 && y == 0.0 && z == 0.0
+    return all(pair -> last(pair) == 0.0, _manual_rotation_sequence(rotate))
 end
 
 function _placement_transform(;
@@ -491,20 +545,36 @@ function add_object!(
 )
     obj = object isa GeometryBasics.AbstractMesh ? _mesh_object_mtg(object; type=type) : deepcopy(object)
     _annotate_object_root!(obj; group=group, id=id, file_path=file_path, kwargs...)
+    placement = _placement_transform(
+        ;
+        at=at,
+        scale=scale,
+        rotate=rotate,
+        deg=deg,
+        rotation=rotation,
+        inclination_azimut=inclination_azimut,
+        inclination_angle=inclination_angle,
+        transform=transform,
+    )
     _transform_object!(
         obj,
-        _placement_transform(
-            ;
-            at=at,
-            scale=scale,
-            rotate=rotate,
-            deg=deg,
-            rotation=rotation,
-            inclination_azimut=inclination_azimut,
-            inclination_angle=inclination_angle,
-            transform=transform,
-        ),
+        placement,
     )
+    _store_ops_placement_metadata!(
+        obj,
+        placement;
+        at=at,
+        scale=scale,
+        rotate=rotate,
+        deg=deg,
+        rotation=rotation,
+        inclination_azimut=inclination_azimut,
+        inclination_angle=inclination_angle,
+        transform=transform,
+    )
+    next_node_id = Ref(builder.next_node_id)
+    _relabel_node_ids!(obj, next_node_id)
+    builder.next_node_id = next_node_id[]
     MultiScaleTreeGraph.addchild!(builder.mtg, obj)
     return builder
 end
@@ -691,6 +761,7 @@ function add_ground!(
     bounds === nothing && error("Ground bounds are undefined. Pass `domain=` to `make_scene` or `xy_bounds=` to `add_ground!`.")
     _add_ground_nodes!(builder.mtg, bounds; z=z, nx=nx, ny=ny, group=group, type=type, id=id, kwargs...)
     builder.domain = bounds
+    builder.next_node_id = max(builder.next_node_id, MultiScaleTreeGraph.max_id(builder.mtg) + 1)
     return builder
 end
 
@@ -717,9 +788,11 @@ Keyword arguments:
 - `compute_barycenter`: compute per-node area-weighted barycenters.
 - `source_topology_id`: preserve source topology ids when available.
 
-After the callback returns, `make_scene` calls [`prepare_scene`](@ref) with
-`relabel_ids=true`, so independent object roots with overlapping ids can safely
-share one scene. The returned value is a [`SceneGeometry`](@ref); use
+Objects added through the builder are relabelled as they are inserted, so
+independent object roots with overlapping ids can safely share one scene without
+rebuilding the full attribute store after each insertion. After the callback
+returns, `make_scene` calls [`prepare_scene`](@ref). The returned value is a
+[`SceneGeometry`](@ref); use
 `scene.mtg` when a function expects the scene MTG, for example
 `plantviz(scene.mtg)` or `write_ops(file, scene.mtg)`.
 
@@ -751,20 +824,22 @@ function make_scene(
     source_topology_id::Bool=true,
 )
     bounds = _coerce_scene_domain(domain)
+    root = _scene_root(bounds; mtg_type=mtg_type)
     builder = SceneBuilder(
-        _scene_root(bounds; mtg_type=mtg_type),
+        root,
         bounds,
         String(source_path),
         compute_area,
         compute_barycenter,
         source_topology_id,
+        MultiScaleTreeGraph.max_id(root) + 1,
     )
     f(builder)
     return prepare_scene(
         builder.mtg;
         source_path=builder.source_path,
         scene_xy_bounds=builder.domain,
-        relabel_ids=true,
+        relabel_ids=false,
         compute_area=compute_area,
         compute_barycenter=compute_barycenter,
         source_topology_id=source_topology_id,
