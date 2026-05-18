@@ -5,6 +5,19 @@ function _approx_scene_value(a::AbstractArray, b::AbstractArray; atol=1e-10)
     all(_approx_scene_value(x, y; atol=atol) for (x, y) in zip(a, b))
 end
 
+function _scene_child_xranges(mtg)
+    map(children(mtg)) do child
+        xmins = Float64[]
+        xmaxs = Float64[]
+        traverse!(child, filter_fun=has_geometry) do node
+            push!(xmins, Float64(xmin(node)))
+            push!(xmaxs, Float64(xmax(node)))
+            true
+        end
+        (minimum(xmins), maximum(xmaxs))
+    end
+end
+
 @testset "make_scene: configurable MTG encoding type" begin
     imported = read_opf("files/simple_plant.opf", attr_type=Dict, mtg_type=MutableNodeMTG)
 
@@ -25,6 +38,44 @@ end
     @test MultiScaleTreeGraph.node_mtg(scene.mtg) isa NodeMTG
     @test all(child -> MultiScaleTreeGraph.node_mtg(child) isa NodeMTG, children(scene.mtg))
     @test length(children(scene.mtg)) == 1
+end
+
+@testset "make_scene: repeated objects receive unique node ids" begin
+    imported = read_opf("files/simple_plant.opf", attr_type=Dict, mtg_type=NodeMTG)
+
+    scene = make_scene(domain=(0.0, 0.0, 2.0, 2.0)) do builder
+        add_plant!(builder, imported; group="imported", id=1, at=(0.25, 0.5, 0.0))
+        add_plant!(builder, imported; group="imported", id=2, at=(1.25, 0.5, 0.0), rotate=(z=30.0,), deg=true)
+    end
+
+    ids = MultiScaleTreeGraph.traverse(scene.mtg, MultiScaleTreeGraph.node_id)
+    @test length(unique(ids)) == length(ids)
+    @test [child.object_id for child in children(scene.mtg)] == [1, 2]
+    @test !isempty(scene.nodes)
+
+    child_xranges = _scene_child_xranges(scene.mtg)
+    @test child_xranges[2][1] > child_xranges[1][2]
+    @test all(hasproperty(child, :pos) for child in children(scene.mtg))
+    @test all(hasproperty(child, :scene_transformation) for child in children(scene.mtg))
+    @test children(scene.mtg)[2].rotation ≈ deg2rad(30.0)
+
+    imported_source_ids = descendants(imported, :source_topology_id; ignore_nothing=true, self=true)
+    source_ids = [
+        descendants(child, :source_topology_id; ignore_nothing=true, self=true) for child in children(scene.mtg)
+    ]
+    @test source_ids == [imported_source_ids, imported_source_ids]
+
+    mktempdir() do tmp
+        out_ops = joinpath(tmp, "repeated_objects.ops")
+        @test_nowarn write_ops(out_ops, scene.mtg)
+        reloaded = read_ops(out_ops)
+        reloaded_source_ids = [
+            descendants(child, :source_topology_id; ignore_nothing=true, self=true) for child in children(reloaded)
+        ]
+        @test reloaded_source_ids == source_ids
+        reloaded_xranges = _scene_child_xranges(reloaded)
+        @test reloaded_xranges[2][1] > reloaded_xranges[1][2]
+    end
 end
 
 _approx_scene_value(a, b; atol=1e-10) = a == b
