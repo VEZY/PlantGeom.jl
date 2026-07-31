@@ -127,7 +127,7 @@ mtg_topology = read_mtg(mtg_file)
 
 (
     opf_nodes_with_geometry=length(descendants(opf, :geometry; ignore_nothing=true, self=true)),
-    scene_objects=length(object_table),
+    model_objects=length(object_table),
     scene_children=length(children(scene)),
     mtg_nodes=length(descendants(mtg_topology; self=true)),
 )

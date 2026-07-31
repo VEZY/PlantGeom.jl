@@ -8,56 +8,53 @@
         TT_emergence::Float64
     end
 
-    PlantGeomTestEmergenceModel(; TT_emergence=10.0) = PlantGeomTestEmergenceModel(TT_emergence)
+    PlantGeomTestEmergenceModel(; TT_emergence=10.0) =
+        PlantGeomTestEmergenceModel(TT_emergence)
 
     PlantSimEngine.inputs_(::PlantGeomTestEmergenceModel) = (TT_cu=-Inf,)
-    PlantSimEngine.outputs_(::PlantGeomTestEmergenceModel) = (TT_cu_emergence=0.0, emitted=0,)
+    PlantSimEngine.outputs_(::PlantGeomTestEmergenceModel) =
+        (TT_cu_emergence=0.0, emitted=0,)
 
     function PlantSimEngine.run!(
-        m::PlantGeomTestEmergenceModel,
+        model::PlantGeomTestEmergenceModel,
         models,
         status,
         meteo,
         constants=nothing,
-        sim_object=nothing,
+        context=nothing,
     )
-        if status.emitted == 0 && status.TT_cu - status.TT_cu_emergence >= m.TT_emergence
-            # Count the number of internodes already emitted to alternate phyllotaxy:
-            phase = isodd(length(sim_object.statuses[:Internode])) ? 180.0 : 0.0
-            new_organs = emit_phytomer!(
-                status,
-                sim_object;
-                internode=(
-                    length=0.16,
-                    width=0.015,
-                    thickness=0.015,
-                    prototype=:Internode,
-                ),
-                leaf=(
-                    length=0.24,
-                    width=0.050,
-                    thickness=0.008,
-                    offset=0.12,
-                    phyllotaxy=phase,
-                    y_insertion_angle=54.0,
-                    prototype=:Leaf,
-                    prototype_overrides=(bend=0.32, tip_drop=0.10),
-                ),
-                internode_index=1,
-                leaf_index=1,
-                check=true,
-                bump_scene=false,
-            )
+        status.emitted == 0 || return nothing
+        status.TT_cu - status.TT_cu_emergence >= model.TT_emergence || return nothing
 
-            status.TT_cu_emergence = status.TT_cu
-            status.emitted = 1
+        phase = isodd(length(PlantSimEngine.model_objects(context.compiled.scene; scale=:Internode))) ?
+                180.0 : 0.0
+        emit_phytomer!(
+            status,
+            context;
+            internode=(
+                length=0.16,
+                width=0.015,
+                thickness=0.015,
+                prototype=:Internode,
+                initial_status=(TT_cu_emergence=status.TT_cu, emitted=0),
+            ),
+            leaf=(
+                length=0.24,
+                width=0.050,
+                thickness=0.008,
+                offset=0.12,
+                phyllotaxy=phase,
+                y_insertion_angle=54.0,
+                prototype=:Leaf,
+                prototype_overrides=(bend=0.32, tip_drop=0.10),
+            ),
+            internode_index=1,
+            leaf_index=1,
+            bump_scene=false,
+        )
 
-            if new_organs.internode !== nothing
-                new_organs.internode.TT_cu_emergence = status.TT_cu
-                new_organs.internode.emitted = 0
-            end
-        end
-
+        status.TT_cu_emergence = status.TT_cu
+        status.emitted = 1
         return nothing
     end
 end
@@ -129,79 +126,82 @@ end
 @testset "Growth API PlantSimEngine simulation" begin
     mtg = _plantsimengine_growth_test_graph()
 
-    mapping = PlantSimEngine.ModelMapping(
-        :Scene => (
-            ToyDegreeDaysCumulModel(),
-        ),
-        :Plant => (
-            Process1Model(0.0),
-            PlantSimEngine.Status(var1=0.0, var2=0.0),
-        ),
-        :Internode => (
-            MultiScaleModel(
-                model=PlantGeomTestEmergenceModel(TT_emergence=10.0),
-                mapped_variables=[:TT_cu => (:Scene => :TT_cu)],
-            ),
-            PlantSimEngine.Status(
-                TT_cu=0.0,
-                TT_cu_emergence=0.0,
-                emitted=0,
-                Length=0.0,
-                Width=0.0,
-                Thickness=0.0,
-            ),
-        ),
-        :Leaf => (
-            Process1Model(0.0),
-            PlantSimEngine.Status(
-                var1=0.0,
-                var2=0.0,
-                Length=0.0,
-                Width=0.0,
-                Thickness=0.0,
-            ),
-        ),
-    )
+    function initial_status(node)
+        data = Dict{Symbol,Any}(:node => node)
+        for (key, value) in pairs(MultiScaleTreeGraph.node_attributes(node))
+            data[Symbol(key)] = value
+        end
+        if MultiScaleTreeGraph.symbol(node) == :Internode
+            data[:TT_cu_emergence] = 0.0
+            data[:emitted] = 0
+        end
+        status = PlantSimEngine.Status((; data...))
+        node[:plantsimengine_status] = status
+        return status
+    end
 
     meteo = Weather(
         [
-        Atmosphere(T=20.0, Wind=1.0, Rh=0.65),
-        Atmosphere(T=20.0, Wind=1.0, Rh=0.65),
-        Atmosphere(T=20.0, Wind=1.0, Rh=0.65),
-    ],
+            Atmosphere(T=20.0, Wind=1.0, Rh=0.65),
+            Atmosphere(T=20.0, Wind=1.0, Rh=0.65),
+            Atmosphere(T=20.0, Wind=1.0, Rh=0.65),
+        ],
     )
-
-    sim = PlantSimEngine.GraphSimulation(
-        mtg,
-        mapping;
-        nsteps=PlantSimEngine.get_nsteps(meteo),
-        outputs=Dict(
-            :Scene => (:TT_cu,),
-            :Internode => (:TT_cu_emergence, :emitted),
+    scene = PlantSimEngine.CompositeModel(
+        mtg;
+        status=initial_status,
+        environment=meteo,
+        applications=(
+            PlantSimEngine.ModelSpec(ToyDegreeDaysCumulModel(); name=:degree_days) |>
+            PlantSimEngine.AppliesTo(PlantSimEngine.One(scale=:Scene)),
+            PlantSimEngine.ModelSpec(
+                PlantGeomTestEmergenceModel(TT_emergence=10.0);
+                name=:emergence,
+            ) |>
+            PlantSimEngine.AppliesTo(PlantSimEngine.Many(scale=:Internode)) |>
+            PlantSimEngine.Inputs(
+                :TT_cu => PlantSimEngine.One(
+                    scale=:Scene,
+                    within=PlantSimEngine.SceneScope(),
+                    var=:TT_cu,
+                ),
+            ),
         ),
-        check=true,
+    )
+    simulation = @test_nowarn PlantSimEngine.run!(
+        scene;
+        steps=3,
+        tracked_outputs=PlantSimEngine.OutputRequest(
+            :Internode,
+            :TT_cu_emergence;
+            name=:internode_emergence,
+        ),
     )
 
-    outputs = @test_nowarn run!(sim, meteo, executor=PlantSimEngine.SequentialEx())
-
-    @test length(sim.statuses[:Internode]) == 4
-    @test length(sim.statuses[:Leaf]) == 4
-    @test sim.statuses[:Scene][1].TT_cu ≈ 30.0
-    @test sim.statuses[:Internode][1].emitted == 1
-    emergence_times = [st.TT_cu_emergence for st in sim.statuses[:Internode]]
-    @test issorted(emergence_times)
+    internodes = PlantSimEngine.model_objects(scene; scale=:Internode)
+    leaves = PlantSimEngine.model_objects(scene; scale=:Leaf)
+    @test length(internodes) == 4
+    @test length(leaves) == 4
+    @test only(PlantSimEngine.model_objects(scene; scale=:Scene)).status.TT_cu ≈ 30.0
+    @test first(internodes).status.emitted == 1
+    emergence_times = sort([object.status.TT_cu_emergence for object in internodes])
     @test emergence_times[end] ≈ 30.0
-    @test all(t >= 0.0 for t in emergence_times)
+    @test all(time >= 0.0 for time in emergence_times)
 
-    last_leaf = sim.statuses[:Leaf][end].node
+    last_leaf = last(leaves).status.node
     @test last_leaf[:GeometryPrototype] == :Leaf
     @test last_leaf[:GeometryPrototypeOverrides] == (bend=0.32, tip_drop=0.10)
 
     prototypes = _plantsimengine_growth_test_prototypes()
     rebuild_geometry!(mtg, prototypes; bump_scene=false)
 
-    @test all(PlantGeom.has_geometry(st.node) for st in sim.statuses[:Internode])
-    @test all(PlantGeom.has_geometry(st.node) for st in sim.statuses[:Leaf])
+    @test all(PlantGeom.has_geometry(object.status.node) for object in internodes)
+    @test all(PlantGeom.has_geometry(object.status.node) for object in leaves)
 
-    @test outputs[:Internode][end].TT_cu_emergence ≈ 30.0
+    output_rows = PlantSimEngine.collect_outputs(
+        simulation,
+        :internode_emergence;
+        sink=nothing,
+    )
+    @test maximum(row.value for row in output_rows) ≈ 30.0
 end

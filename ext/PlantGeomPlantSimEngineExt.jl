@@ -5,18 +5,27 @@ import PlantGeom: emit_internode!, emit_leaf!, emit_phytomer!
 import PlantSimEngine
 import MultiScaleTreeGraph
 
+const PlantSimEngineRuntime = Union{
+    PlantSimEngine.CompositeModel,
+    PlantSimEngine.RunContext,
+    PlantSimEngine.Simulation,
+}
+
 @inline PlantGeom._node_from(x::PlantSimEngine.Status) = x.node
 
-function _emit_organ_with_sim!(
+function _emit_organ_with_scene!(
     parent::MultiScaleTreeGraph.Node,
-    sim::PlantSimEngine.GraphSimulation,
+    runtime::PlantSimEngineRuntime,
     link,
     symbol,
     scale;
     index::Integer=0,
     id=nothing,
     attributes=NamedTuple(),
-    check::Bool=true,
+    initial_status=NamedTuple(),
+    kind=nothing,
+    species=nothing,
+    name=nothing,
     bump_scene::Bool=true,
 )
     link_sym = PlantGeom._as_link_symbol(link)
@@ -24,24 +33,28 @@ function _emit_organ_with_sim!(
     scale_val = isnothing(scale) ? MultiScaleTreeGraph.scale(parent) : Int(scale)
     organ_id = isnothing(id) ? PlantGeom._default_id(parent) : Int(id)
     attrs = PlantGeom._to_attr_dict(attributes)
-
-    st = PlantSimEngine.add_organ!(
+    status = PlantSimEngine.add_organ!(
         parent,
-        sim,
+        runtime,
         link_sym,
         symbol_sym,
         scale_val;
         index=index,
         id=organ_id,
         attributes=attrs,
-        check=check,
+        initial_status=initial_status,
+        kind=kind,
+        species=species,
+        name=name,
     )
 
     bump_scene && PlantGeom.bump_scene_version!(parent)
-    return st
+    return status
 end
 
-function emit_internode!(parent::MultiScaleTreeGraph.Node, sim::PlantSimEngine.GraphSimulation;
+function emit_internode!(
+    parent::MultiScaleTreeGraph.Node,
+    runtime::PlantSimEngineRuntime;
     index::Integer=0,
     scale=nothing,
     link=:<,
@@ -50,6 +63,7 @@ function emit_internode!(parent::MultiScaleTreeGraph.Node, sim::PlantSimEngine.G
     width=nothing,
     thickness=nothing,
     phyllotaxy=nothing,
+    azimuth=nothing,
     y_insertion_angle=nothing,
     offset=nothing,
     border_offset=nothing,
@@ -60,7 +74,10 @@ function emit_internode!(parent::MultiScaleTreeGraph.Node, sim::PlantSimEngine.G
     prototype=nothing,
     prototype_overrides=nothing,
     attributes=NamedTuple(),
-    check::Bool=true,
+    initial_status=NamedTuple(),
+    kind=nothing,
+    species=nothing,
+    name=nothing,
     bump_scene::Bool=true,
     kwargs...,
 )
@@ -70,6 +87,7 @@ function emit_internode!(parent::MultiScaleTreeGraph.Node, sim::PlantSimEngine.G
         width=width,
         thickness=thickness,
         phyllotaxy=phyllotaxy,
+        azimuth=azimuth,
         y_insertion_angle=y_insertion_angle,
         offset=offset,
         border_offset=border_offset,
@@ -82,25 +100,34 @@ function emit_internode!(parent::MultiScaleTreeGraph.Node, sim::PlantSimEngine.G
         attributes=attributes,
         extra_attrs=kwargs,
     )
-    _emit_organ_with_sim!(
+    return _emit_organ_with_scene!(
         parent,
-        sim,
+        runtime,
         link,
         :Internode,
         scale;
         index=index,
         id=id,
         attributes=attrs,
-        check=check,
+        initial_status=initial_status,
+        kind=kind,
+        species=species,
+        name=name,
         bump_scene=bump_scene,
     )
 end
 
-function emit_internode!(parent_status::PlantSimEngine.Status, sim::PlantSimEngine.GraphSimulation; kwargs...)
-    emit_internode!(parent_status.node, sim; kwargs...)
+function emit_internode!(
+    parent_status::PlantSimEngine.Status,
+    runtime::PlantSimEngineRuntime;
+    kwargs...,
+)
+    return emit_internode!(parent_status.node, runtime; kwargs...)
 end
 
-function emit_leaf!(parent::MultiScaleTreeGraph.Node, sim::PlantSimEngine.GraphSimulation;
+function emit_leaf!(
+    parent::MultiScaleTreeGraph.Node,
+    runtime::PlantSimEngineRuntime;
     index::Integer=0,
     scale=nothing,
     link=:+,
@@ -109,6 +136,7 @@ function emit_leaf!(parent::MultiScaleTreeGraph.Node, sim::PlantSimEngine.GraphS
     width=nothing,
     thickness=nothing,
     phyllotaxy=nothing,
+    azimuth=nothing,
     x_insertion_angle=nothing,
     y_insertion_angle=nothing,
     z_insertion_angle=nothing,
@@ -121,7 +149,10 @@ function emit_leaf!(parent::MultiScaleTreeGraph.Node, sim::PlantSimEngine.GraphS
     prototype=nothing,
     prototype_overrides=nothing,
     attributes=NamedTuple(),
-    check::Bool=true,
+    initial_status=NamedTuple(),
+    kind=nothing,
+    species=nothing,
+    name=nothing,
     bump_scene::Bool=true,
     kwargs...,
 )
@@ -131,6 +162,7 @@ function emit_leaf!(parent::MultiScaleTreeGraph.Node, sim::PlantSimEngine.GraphS
         width=width,
         thickness=thickness,
         phyllotaxy=phyllotaxy,
+        azimuth=azimuth,
         x_insertion_angle=x_insertion_angle,
         y_insertion_angle=y_insertion_angle,
         z_insertion_angle=z_insertion_angle,
@@ -145,60 +177,74 @@ function emit_leaf!(parent::MultiScaleTreeGraph.Node, sim::PlantSimEngine.GraphS
         attributes=attributes,
         extra_attrs=kwargs,
     )
-    _emit_organ_with_sim!(
+    return _emit_organ_with_scene!(
         parent,
-        sim,
+        runtime,
         link,
         :Leaf,
         scale;
         index=index,
         id=id,
         attributes=attrs,
-        check=check,
+        initial_status=initial_status,
+        kind=kind,
+        species=species,
+        name=name,
         bump_scene=bump_scene,
     )
 end
 
-function emit_leaf!(parent_status::PlantSimEngine.Status, sim::PlantSimEngine.GraphSimulation; kwargs...)
-    emit_leaf!(parent_status.node, sim; kwargs...)
+function emit_leaf!(
+    parent_status::PlantSimEngine.Status,
+    runtime::PlantSimEngineRuntime;
+    kwargs...,
+)
+    return emit_leaf!(parent_status.node, runtime; kwargs...)
 end
 
 function emit_phytomer!(
     parent::MultiScaleTreeGraph.Node,
-    sim::PlantSimEngine.GraphSimulation;
+    runtime::PlantSimEngineRuntime;
     internode=NamedTuple(),
     leaf=NamedTuple(),
     internode_index::Integer=0,
     leaf_index::Integer=0,
     scale=nothing,
-    check::Bool=true,
     bump_scene::Bool=true,
 )
     internode_status = if internode === nothing
         nothing
     else
-        internode_kwargs = merge((; index=internode_index, scale=scale, check=check, bump_scene=false), PlantGeom._to_nt(internode))
-        emit_internode!(parent, sim; internode_kwargs...)
+        internode_kwargs = merge(
+            (; index=internode_index, scale=scale, bump_scene=false),
+            PlantGeom._to_nt(internode),
+        )
+        emit_internode!(parent, runtime; internode_kwargs...)
     end
 
     leaf_parent = isnothing(internode_status) ? parent : internode_status.node
     leaf_status = if leaf === nothing
         nothing
     else
-        leaf_kwargs = merge((; index=leaf_index, scale=scale, check=check, bump_scene=false), PlantGeom._to_nt(leaf))
-        emit_leaf!(leaf_parent, sim; leaf_kwargs...)
+        leaf_kwargs = merge(
+            (; index=leaf_index, scale=scale, bump_scene=false),
+            PlantGeom._to_nt(leaf),
+        )
+        emit_leaf!(leaf_parent, runtime; leaf_kwargs...)
     end
 
-    bump_scene && (internode_status !== nothing || leaf_status !== nothing) && PlantGeom.bump_scene_version!(parent)
+    bump_scene &&
+        (internode_status !== nothing || leaf_status !== nothing) &&
+        PlantGeom.bump_scene_version!(parent)
     return (internode=internode_status, leaf=leaf_status)
 end
 
 function emit_phytomer!(
     parent_status::PlantSimEngine.Status,
-    sim::PlantSimEngine.GraphSimulation;
-    kwargs...
+    runtime::PlantSimEngineRuntime;
+    kwargs...,
 )
-    emit_phytomer!(parent_status.node, sim; kwargs...)
+    return emit_phytomer!(parent_status.node, runtime; kwargs...)
 end
 
 end
