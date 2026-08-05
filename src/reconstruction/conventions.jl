@@ -1551,6 +1551,37 @@ function _apply_azimuth_elevation_stage(node, rot::SMatrix{3,3,Float64,9}, optio
     return raz * rey
 end
 
+function _apply_frame_orientation_hook_stage(
+    node,
+    rot::SMatrix{3,3,Float64,9},
+    length_axis::Symbol,
+    options::AmapReconstructionOptions,
+)
+    hook = options.frame_orientation_hook
+    hook === nothing && return rot
+
+    replacement = hook(node, rot, length_axis)
+    replacement === nothing && return rot
+    replacement isa AbstractMatrix || error(
+        "frame_orientation_hook must return a finite proper orthonormal 3 × 3 matrix or nothing.",
+    )
+    size(replacement) == (3, 3) || error(
+        "frame_orientation_hook must return a finite proper orthonormal 3 × 3 matrix or nothing.",
+    )
+    all(value -> value isa Real && isfinite(value), replacement) || error(
+        "frame_orientation_hook must return a finite proper orthonormal 3 × 3 matrix or nothing.",
+    )
+
+    candidate = SMatrix{3,3,Float64}(replacement)
+    isapprox(candidate' * candidate, _I3; atol=1e-10, rtol=1e-10) || error(
+        "frame_orientation_hook must return a finite proper orthonormal 3 × 3 matrix or nothing.",
+    )
+    isapprox(det(candidate), 1.0; atol=1e-10, rtol=1e-10) || error(
+        "frame_orientation_hook must return a finite proper orthonormal 3 × 3 matrix or nothing.",
+    )
+    return candidate
+end
+
 function _apply_gravity_bending_hook_stage(
     node,
     rot::SMatrix{3,3,Float64,9},
@@ -2561,6 +2592,12 @@ function reconstruct_geometry_from_attributes!(mtg, prototypes::AbstractDict;
         else
             r = _rotation_part(base_t ∘ local_insertion_t)
             r = _apply_azimuth_elevation_stage(node, r, amap_cfg)
+            r = _apply_frame_orientation_hook_stage(
+                node,
+                r,
+                node_convention.length_axis,
+                amap_cfg,
+            )
             r = _apply_gravity_bending_hook_stage(
                 node,
                 r,

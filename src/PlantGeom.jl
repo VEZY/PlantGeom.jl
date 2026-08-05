@@ -26,7 +26,7 @@ import EzXML: XMLDocument, ElementNode, setroot!, addelement!, hasnodename
 import EzXML: prettyprint # to remove
 import StaticArrays: SMatrix, SVector
 import StaticArrays
-import LinearAlgebra: I, UniformScaling, Diagonal, norm, cross, dot # Used for geometry parsing in OPF
+import LinearAlgebra: I, UniformScaling, Diagonal, det, norm, cross, dot # Used for geometry parsing in OPF
 import RecipesBase
 import Base
 import OrderedCollections
