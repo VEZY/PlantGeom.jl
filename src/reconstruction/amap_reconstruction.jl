@@ -154,9 +154,9 @@ Keyword reference:
   after insertion and azimuth/elevation but before the remaining biomechanical,
   deviation, world-axis, and Euler stages. Return a finite bending angle in
   radians, positive toward world `+Z`, or `nothing` to leave the frame
-  unchanged. Returning zero still realigns the transverse frame with its
-  secondary direction toward world `+Z`. The callback may retain state between
-  nodes, so callers should supply a fresh hook for each reconstruction.
+  unchanged. Returning positive or negative zero is also a complete no-op,
+  preserving the inherited transverse frame. The callback may retain state
+  between nodes, so callers should supply a fresh hook for each reconstruction.
 
 - `orthotropy_aliases`
   Column names used for orthotropy-driven bending orientation. This is a
