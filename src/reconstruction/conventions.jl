@@ -1615,8 +1615,7 @@ function _apply_world_axis_angle_stage(
     options::AmapReconstructionOptions,
 )
     angle, found = _resolve_alias(node, options.world_axis_angle_aliases)
-    found === nothing && return rot
-    angle === nothing && error("World-axis rotation angle '$found' must be numeric.")
+    (found === nothing || angle === nothing) && return rot
     angle == 0.0 && return rot
 
     axis = SVector{3,Float64}(
