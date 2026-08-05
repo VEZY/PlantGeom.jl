@@ -1551,6 +1551,62 @@ function _apply_azimuth_elevation_stage(node, rot::SMatrix{3,3,Float64,9}, optio
     return raz * rey
 end
 
+function _apply_gravity_bending_hook_stage(
+    node,
+    rot::SMatrix{3,3,Float64,9},
+    length_axis::Symbol,
+    options::AmapReconstructionOptions,
+)
+    hook = options.gravity_bending_hook
+    hook === nothing && return rot
+
+    dir = _safe_normalize(
+        rot * _unit_axis(length_axis),
+        _unit_axis(length_axis),
+    )
+    direction_z = clamp(dot(dir, _UP3), -1.0, 1.0)
+    angle = hook(node, direction_z)
+    angle === nothing && return rot
+    angle isa Real || error(
+        "gravity_bending_hook must return a finite real angle in radians or nothing.",
+    )
+    isfinite(angle) || error(
+        "gravity_bending_hook must return a finite real angle in radians or nothing.",
+    )
+
+    secondary = _normalize_perpendicular(
+        _UP3,
+        dir,
+        _any_perpendicular(dir, _unit_axis(:x)),
+    )
+    bend_axis = _normalize_perpendicular(
+        cross(dir, secondary),
+        dir,
+        _any_perpendicular(dir, _unit_axis(:y)),
+    )
+    bent = _axis_angle_world_rotation(bend_axis, Float64(angle)) * rot
+    bent_dir = _safe_normalize(
+        bent * _unit_axis(length_axis),
+        dir,
+    )
+    bent_secondary = _normalize_perpendicular(
+        _UP3,
+        bent_dir,
+        _any_perpendicular(bent_dir, _unit_axis(:x)),
+    )
+    bent_normal = _normalize_perpendicular(
+        cross(bent_dir, bent_secondary),
+        bent_dir,
+        _any_perpendicular(bent_dir, _unit_axis(:y)),
+    )
+    return _build_rotation_from_local_axes(
+        length_axis,
+        bent_dir,
+        bent_secondary,
+        bent_normal,
+    )
+end
+
 function _apply_orthotropy_stiffness_stage(
     node,
     rot::SMatrix{3,3,Float64,9},
@@ -2504,6 +2560,12 @@ function reconstruct_geometry_from_attributes!(mtg, prototypes::AbstractDict;
         else
             r = _rotation_part(base_t ∘ local_insertion_t)
             r = _apply_azimuth_elevation_stage(node, r, amap_cfg)
+            r = _apply_gravity_bending_hook_stage(
+                node,
+                r,
+                node_convention.length_axis,
+                amap_cfg,
+            )
             r = _apply_orthotropy_stiffness_stage(node, r, node_convention.length_axis, amap_cfg)
             r = _apply_deviation_stage(node, r, amap_cfg)
             r = _apply_world_axis_angle_stage(node, r, amap_cfg)

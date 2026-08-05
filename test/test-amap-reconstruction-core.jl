@@ -165,6 +165,61 @@
         @test dir_stiff[3] < 0.0
     end
 
+    @testset "stateful gravity-bending hook" begin
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        first_internode = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        second_internode = Node(first_internode, NodeMTG(:<, :Internode, 2, 2))
+        for internode in (first_internode, second_internode)
+            internode[:Length] = 1.0
+            internode[:Width] = 0.1
+            internode[:Thickness] = 0.1
+        end
+
+        seen_direction_z = Float64[]
+        hook = function (node, direction_z)
+            push!(seen_direction_z, direction_z)
+            return node === second_internode ? -pi / 6 : nothing
+        end
+        opts = AmapReconstructionOptions(gravity_bending_hook=hook)
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=opts,
+            root_align=false,
+        )
+
+        first_direction = LinearAlgebra.normalize(
+            SVector{3,Float64}(first_internode[:geometry].transformation(px)) -
+            SVector{3,Float64}(first_internode[:geometry].transformation(p0)),
+        )
+        second_direction = LinearAlgebra.normalize(
+            SVector{3,Float64}(second_internode[:geometry].transformation(px)) -
+            SVector{3,Float64}(second_internode[:geometry].transformation(p0)),
+        )
+        second_secondary = LinearAlgebra.normalize(
+            SVector{3,Float64}(second_internode[:geometry].transformation(py)) -
+            SVector{3,Float64}(second_internode[:geometry].transformation(p0)),
+        )
+        @test seen_direction_z == [0.0, 0.0, 0.0]
+        @test first_direction ≈ px atol=1.0e-12
+        @test second_direction ≈
+              SVector(cos(pi / 6), 0.0, -sin(pi / 6)) atol=1.0e-12
+        @test LinearAlgebra.dot(second_direction, second_secondary) ≈ 0.0 atol=1.0e-12
+        @test LinearAlgebra.dot(second_secondary, pz) > 0.8
+
+        invalid_opts = AmapReconstructionOptions(
+            gravity_bending_hook=(_node, _direction_z) -> NaN,
+        )
+        @test_throws ErrorException reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=invalid_opts,
+            root_align=false,
+        )
+    end
+
     @testset "stiffness propagation to component children" begin
         mtg = Node(NodeMTG(:/, :Plant, 1, 1))
         stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))

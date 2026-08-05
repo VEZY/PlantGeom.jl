@@ -26,6 +26,7 @@ struct AmapReconstructionOptions
     world_axis_y_aliases::Vector{Symbol}
     world_axis_z_aliases::Vector{Symbol}
     world_axis_angle_unit::Symbol
+    gravity_bending_hook::Union{Nothing,Function}
     orthotropy_aliases::Vector{Symbol}
     stiffness_angle_aliases::Vector{Symbol}
     stiffness_aliases::Vector{Symbol}
@@ -147,6 +148,15 @@ Keyword reference:
 - `world_axis_angle_unit::Symbol=:deg`
   Unit used by the world-axis angle attribute. Accepted values are `:deg` and
   `:rad`.
+
+- `gravity_bending_hook::Union{Nothing,Function}=nothing`
+  Optional sequential orientation callback called as `hook(node, direction_z)`
+  after insertion and azimuth/elevation but before the remaining biomechanical,
+  deviation, world-axis, and Euler stages. Return a finite bending angle in
+  radians, positive toward world `+Z`, or `nothing` to leave the frame
+  unchanged. Returning zero still realigns the transverse frame with its
+  secondary direction toward world `+Z`. The callback may retain state between
+  nodes, so callers should supply a fresh hook for each reconstruction.
 
 - `orthotropy_aliases`
   Column names used for orthotropy-driven bending orientation. This is a
@@ -295,6 +305,7 @@ function AmapReconstructionOptions(;
     world_axis_y_aliases=[:WorldAxisY, :world_axis_y],
     world_axis_z_aliases=[:WorldAxisZ, :world_axis_z],
     world_axis_angle_unit::Symbol=:deg,
+    gravity_bending_hook::Union{Nothing,Function}=nothing,
     orthotropy_aliases=[:Orthotropy, :orthotropy],
     stiffness_angle_aliases=[:StiffnessAngle, :stiffness_angle],
     stiffness_aliases=[:Stifness, :stifness, :Stiffness, :stiffness],
@@ -360,6 +371,7 @@ function AmapReconstructionOptions(;
         _amap_normalize_aliases(world_axis_y_aliases),
         _amap_normalize_aliases(world_axis_z_aliases),
         world_axis_angle_unit,
+        gravity_bending_hook,
         _amap_normalize_aliases(orthotropy_aliases),
         _amap_normalize_aliases(stiffness_angle_aliases),
         _amap_normalize_aliases(stiffness_aliases),
