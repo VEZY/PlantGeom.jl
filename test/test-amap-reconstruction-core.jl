@@ -208,6 +208,27 @@
         @test LinearAlgebra.dot(second_direction, second_secondary) ≈ 0.0 atol=1.0e-12
         @test LinearAlgebra.dot(second_secondary, pz) > 0.8
 
+        zero_hook = AmapReconstructionOptions(
+            gravity_bending_hook=(_node, _direction_z) -> -0.0,
+        )
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=zero_hook,
+            root_align=false,
+        )
+        zero_first_direction = LinearAlgebra.normalize(
+            SVector{3,Float64}(first_internode[:geometry].transformation(px)) -
+            SVector{3,Float64}(first_internode[:geometry].transformation(p0)),
+        )
+        zero_second_direction = LinearAlgebra.normalize(
+            SVector{3,Float64}(second_internode[:geometry].transformation(px)) -
+            SVector{3,Float64}(second_internode[:geometry].transformation(p0)),
+        )
+        @test zero_first_direction ≈ px atol=1.0e-12
+        @test zero_second_direction ≈ px atol=1.0e-12
+
         invalid_opts = AmapReconstructionOptions(
             gravity_bending_hook=(_node, _direction_z) -> NaN,
         )

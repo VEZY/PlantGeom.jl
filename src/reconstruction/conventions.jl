@@ -1573,6 +1573,7 @@ function _apply_gravity_bending_hook_stage(
     isfinite(angle) || error(
         "gravity_bending_hook must return a finite real angle in radians or nothing.",
     )
+    iszero(angle) && return rot
 
     secondary = _normalize_perpendicular(
         _UP3,
