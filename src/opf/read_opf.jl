@@ -1,5 +1,5 @@
 """
-    read_opf(file; attr_type = Dict, mtg_type = MutableNodeMTG, attribute_types = Dict())
+    read_opf(file; attr_type = Dict, mtg_type = MutableNodeMTG, attribute_types = Dict(), coordinate_scale = 100.0)
 
 Read an OPF file, and returns an MTG.
 
@@ -14,6 +14,9 @@ link, symbol, index, scale). See details section below.
 - `max_id::RefValue{Int64}=Ref(1)`: the ID of the first node, if `read_id==false`.
 - `attribute_types::Dict = Dict()`: optional explicit mapping from attribute name (`String` or `Symbol`)
   to Julia type (`Int*`, `Float*`, `Bool`, `String`). When provided, it overrides `attributeBDD`.
+- `coordinate_scale::Real = 100.0`: number of OPF coordinate units per internal
+  PlantGeom coordinate unit. The default converts OPF centimetres to PlantGeom metres;
+  use `1.0` when the in-memory coordinates are already expressed in centimetres.
 
 Each parsed topology node stores its original OPF id in `:source_topology_id`.
 
@@ -53,13 +56,15 @@ function read_opf(
     mtg_type=MultiScaleTreeGraph.MutableNodeMTG,
     read_id=true,
     max_id=Ref(1),
-    attribute_types=Dict()
+    attribute_types=Dict(),
+    coordinate_scale=100.0,
 )
+    coordinate_scale = _validate_opf_coordinate_scale(coordinate_scale)
 
     doc = readxml(file)
     xroot = root(doc)
 
-    if xroot.name != "opf"
+    if lowercase(xroot.name) != "opf"
         error("The file is not an OPF")
     end
 
@@ -72,27 +77,35 @@ function read_opf(
     opf_attr = Dict{Symbol,Any}()
     # node = elements(xroot)[end]
     for node in eachelement(xroot)
-        if node.name == "meshBDD"
-            push!(opf_attr, :meshBDD => parse_meshBDD!(node; file=file))
+        node_name = lowercase(node.name)
+        if node_name == "meshbdd"
+            push!(
+                opf_attr,
+                :meshBDD => parse_meshBDD!(
+                    node;
+                    file=file,
+                    coordinate_scale=coordinate_scale,
+                ),
+            )
         end
 
-        if node.name == "materialBDD"
+        if node_name == "materialbdd"
             push!(
                 opf_attr,
                 :materialBDD => parse_materialBDD!(node; file=file)
             )
         end
 
-        if node.name == "shapeBDD"
+        if node_name == "shapebdd"
             shapeBDD = parse_shapeBDD!(node)
             push!(opf_attr, :shapeBDD => shapeBDD)
         end
 
-        if node.name == "attributeBDD"
+        if node_name == "attributebdd"
             push!(opf_attr, :attributeBDD => parse_opf_attributeBDD!(node))
         end
 
-        if node.name == "topology"
+        if node_name == "topology"
             ref_meshes = parse_ref_meshes(opf_attr)
 
             # Handle missing attributeBDD by creating an empty one that will be populated dynamically
@@ -117,13 +130,28 @@ function read_opf(
                 read_id,
                 max_id,
                 opf_attr[:attributeBDD],   # Pass attributeBDD for dynamic updates
-                normalized_attribute_types # Explicit user mapping (CSV-like override)
+                normalized_attribute_types, # Explicit user mapping (CSV-like override)
+                Set{String}(),
+                Dict{String,Symbol}(),
+                Dict{String,Symbol}(),
+                coordinate_scale,
             )
 
             mtg[:ref_meshes] = ref_meshes
             return mtg
         end
     end
+end
+
+function _validate_opf_coordinate_scale(coordinate_scale)
+    coordinate_scale isa Real || throw(
+        ArgumentError("coordinate_scale must be a finite, positive real number"),
+    )
+    scale = Float64(coordinate_scale)
+    isfinite(scale) && scale > 0 || throw(
+        ArgumentError("coordinate_scale must be a finite, positive real number"),
+    )
+    return scale
 end
 
 """
@@ -262,17 +290,18 @@ end
 function parse_shapeBDD!(node)
     shapeBDD = Dict{Int,OPFShape}()
     for shape_node in eachelement(node)
-        shape_node.name == "shape" || continue
+        lowercase(shape_node.name) == "shape" || continue
         shape_id = parse(Int, shape_node["Id"])
         name = ""
         mesh_index = 0
         material_index = 0
         for child in eachelement(shape_node)
-            if child.name == "name"
+            child_name = lowercase(child.name)
+            if child_name == "name"
                 name = strip(child.content)
-            elseif child.name == "meshIndex"
+            elseif child_name == "meshindex"
                 mesh_index = parse(Int, child.content)
-            elseif child.name == "materialIndex"
+            elseif child_name == "materialindex"
                 material_index = parse(Int, child.content)
             end
         end
@@ -302,7 +331,7 @@ function _opf_parse_faces(elem, file::AbstractString, mesh_name::AbstractString)
     faces3d = Face3[]
     has_face_nodes = false
     for face_node in eachelement(elem)
-        face_node.name == "face" || continue
+        lowercase(face_node.name) == "face" || continue
         has_face_nodes = true
         ids = Int[parse(Int, m.match) + 1 for m in eachmatch(r"-?\d+", face_node.content)]
         length(ids) >= 3 || error("Invalid face in OPF mesh '$mesh_name' from file $file")
@@ -360,14 +389,16 @@ Parse the `meshBDD` section using `parse_opf_array`.
 Supports both flat `<faces>` arrays and nested `<face>` elements. Polygon faces with
 more than three vertices are triangulated with a fan strategy.
 """
-function parse_meshBDD!(node; file="")
+function parse_meshBDD!(node; file="", coordinate_scale=100.0)
+    coordinate_scale = _validate_opf_coordinate_scale(coordinate_scale)
+    inverse_coordinate_scale = inv(coordinate_scale)
     # MeshBDD:
     meshes = Dict{Int,OPFmesh}()
     # m = elements(node)[1]
     # length(parse_opf_array(elements(m)[3].content))
     # content = parse_opf_array(elements(m)[3].content)
     for m in eachelement(node)
-        m.name != "mesh" ? @warn("Unknown node element in meshBDD: $(m.name)") : nothing
+        lowercase(m.name) != "mesh" ? @warn("Unknown node element in meshBDD: $(m.name)") : nothing
         mesh_name = m["name"]
         enable_scale = haskey(m, "enableScale") ? parse(Bool, m["enableScale"]) : true
         mesh_points = GeometryBasics.Point{3,Float64}[]
@@ -376,17 +407,18 @@ function parse_meshBDD!(node; file="")
         mesh_texture_coords = nothing
 
         for i in eachelement(m)
-            if i.name == "faces"
+            element_name = lowercase(i.name)
+            if element_name == "faces"
                 mesh_faces = _opf_parse_faces(i, file, mesh_name)
-            elseif i.name == "textureCoords"
+            elseif element_name == "texturecoords"
                 content = _parse_opf_numeric_vector(i.content, Float64)
                 mesh_texture_coords = _opf_points2_from_flat(content, 0.01)
-            elseif i.name == "normals"
+            elseif element_name == "normals"
                 content = _parse_opf_numeric_vector(i.content, Float64)
                 mesh_normals = _opf_vec3_from_flat(content)
-            elseif i.name == "points"
+            elseif element_name == "points"
                 content = _parse_opf_numeric_vector(i.content, Float64)
-                mesh_points = _opf_points3_from_flat(content, 0.01)
+                mesh_points = _opf_points3_from_flat(content, inverse_coordinate_scale)
             else
                 error("Unknown node element for mesh$(i.Id) in mesh BDD: $(i.name)")
             end
@@ -419,14 +451,15 @@ files without explicit materials remain readable.
 function parse_materialBDD!(node; file=nothing)
     metBDD = Dict{Int,Phong}()
     for material_node in eachelement(node)
-        material_node.name == "material" || continue
+        lowercase(material_node.name) == "material" || continue
         material_id = parse(Int, material_node["Id"])
         raw = Dict{String,Any}()
         for child in eachelement(material_node)
-            if child.name == "shininess"
+            child_name = lowercase(child.name)
+            if child_name == "shininess"
                 raw["shininess"] = parse(Float64, child.content)
             else
-                raw[child.name] = _parse_opf_numeric_vector(child.content, Float64)
+                raw[child_name] = _parse_opf_numeric_vector(child.content, Float64)
             end
         end
         metBDD[material_id] = materialBDD_to_material(raw)
@@ -709,12 +742,14 @@ function parse_opf_topology!(
     attribute_types=Dict{String,DataType}(),
     dynamic_attributes=Set{String}(),
     attr_symbols=Dict{String,Symbol}(),
-    class_symbols=Dict{String,Symbol}()
+    class_symbols=Dict{String,Symbol}(),
+    coordinate_scale=100.0,
 )
     link = :/ # default, for "topology" and "decomp"
-    if node.name == "branch"
+    node_name = lowercase(node.name)
+    if node_name == "branch"
         link = :+
-    elseif node.name == "follow"
+    elseif node_name == "follow"
         link = :<
     end
 
@@ -746,20 +781,22 @@ function parse_opf_topology!(
     # Handle the children, can be attributes of children nodes:
     # elem = elements(node)[1]
     for elem in eachelement(node)
-        if elem.name == "geometry"
+        elem_name = lowercase(elem.name)
+        if elem_name == "geometry"
             shape_index = nothing
             mat = nothing
             d_up = 1.0
             d_dwn = 1.0
 
             for geom_elem in eachelement(elem)
-                if geom_elem.name == "shapeIndex"
+                geometry_element_name = lowercase(geom_elem.name)
+                if geometry_element_name == "shapeindex"
                     shape_index = parse(Int, geom_elem.content)
-                elseif geom_elem.name == "mat"
+                elseif geometry_element_name == "mat"
                     mat = _parse_opf_matrix3x4(geom_elem.content)
-                elseif geom_elem.name == "dUp"
+                elseif geometry_element_name == "dup"
                     d_up = parse(Float64, geom_elem.content)
-                elseif geom_elem.name == "dDwn"
+                elseif geometry_element_name == "ddwn"
                     d_dwn = parse(Float64, geom_elem.content)
                 end
             end
@@ -775,7 +812,7 @@ function parse_opf_topology!(
 
                 isnothing(mat) && error("Missing transformation matrix in OPF geometry for node id $(source_topology_id).")
                 A = SMatrix{3,3,Float64}(@view(mat[1:3, 1:3]))
-                t = SVector{3,Float64}((@view(mat[1:3, 4])) ./ 100)
+                t = SVector{3,Float64}((@view(mat[1:3, 4])) ./ coordinate_scale)
                 transformation = AffineMap(A, t)
                 # NB: We read an homogeneous transformation matrix from the OPF, but we work
                 # with cartesian coordinates in PlantGeom by design. So we deconstruct our
@@ -787,7 +824,7 @@ function parse_opf_topology!(
                 )
                 attrs_i[:geometry] = geom_value
             end
-        elseif elem.name == "decomp" || elem.name == "branch" || elem.name == "follow"
+        elseif elem_name == "decomp" || elem_name == "branch" || elem_name == "follow"
             parse_opf_topology!(
                 elem,
                 node_i,
@@ -801,7 +838,8 @@ function parse_opf_topology!(
                 attribute_types,
                 dynamic_attributes,
                 attr_symbols,
-                class_symbols
+                class_symbols,
+                coordinate_scale,
             )
         else
             attr_name = elem.name

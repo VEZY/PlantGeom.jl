@@ -12,6 +12,46 @@ function _approx_mesh(a, b; atol=1e-10)
     _approx_mesh_value(GeometryBasics.coordinates(a), GeometryBasics.coordinates(b); atol=atol)
 end
 
+@testset "write_opf: configurable coordinate scale preserves legacy units" begin
+    stem_ref = RefMesh(
+        "scaled_stem",
+        GeometryBasics.mesh(
+            GeometryBasics.Cylinder(
+                Point(0.0, 0.0, 0.0),
+                Point(1.0, 0.0, 0.0),
+                0.5,
+            ),
+        ),
+    )
+    plant = Node(NodeMTG(:/, :Plant, 1, 1))
+    plant[:geometry] = PlantGeom.Geometry(
+        stem_ref,
+        PlantGeom.Translation(2.0, 3.0, 4.0),
+        1.0,
+        1.0,
+    )
+
+    tmp_file = tempname() * ".opf"
+    @test_nowarn write_opf(tmp_file, plant; coordinate_scale=1.0)
+    roundtrip = read_opf(tmp_file; attr_type=Dict, coordinate_scale=1.0)
+
+    @test collect(
+        roundtrip[:geometry].transformation(SVector{3,Float64}(0.0, 0.0, 0.0)),
+    ) ≈ [2.0, 3.0, 4.0]
+    @test _approx_mesh(refmesh_to_mesh(plant), refmesh_to_mesh(roundtrip))
+
+    matrix_default = get_transformation_matrix(plant[:geometry].transformation)
+    matrix_legacy = get_transformation_matrix(
+        plant[:geometry].transformation;
+        coordinate_scale=1.0,
+    )
+    @test matrix_default[1:3, 4] ≈ [200.0, 300.0, 400.0]
+    @test matrix_legacy[1:3, 4] ≈ [2.0, 3.0, 4.0]
+
+    @test_throws ArgumentError write_opf(tmp_file, plant; coordinate_scale=-1.0)
+    @test_throws ArgumentError write_opf(tmp_file, plant; coordinate_scale=NaN)
+end
+
 @testset "write_opf: rebuilt growth plant round-trip preserves materialized meshes" begin
     stem_ref = RefMesh(
         "stem",

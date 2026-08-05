@@ -63,6 +63,64 @@ end
     @test isa(mtg_quad[:ref_meshes][mesh_key].material, Phong)
 end
 
+@testset "read_opf: missing shapeBDD uses mesh ids and configurable coordinates" begin
+    mktempdir() do tmp
+        opf_path = joinpath(tmp, "legacy_missing_shapebdd.opf")
+        open(opf_path, "w") do io
+            write(
+                io,
+                """
+<?xml version="1.0" encoding="UTF-8"?>
+<opf version="2.0">
+    <meshBDD>
+        <mesh name="LegacyMesh" shape="legacy" Id="1" enableScale="false">
+            <points>0 0 0 1 0 0 0 1 0</points>
+            <normals>0 0 1 0 0 1 0 0 1</normals>
+            <faces><face Id="0">0 1 2</face></faces>
+        </mesh>
+    </meshBDD>
+    <topology class="Plant" scale="1" id="1">
+        <geometry class="Mesh">
+            <shapeIndex>1</shapeIndex>
+            <mat>1 0 0 2 0 1 0 3 0 0 1 4</mat>
+            <dUp>1.0</dUp>
+            <dDwn>1.0</dDwn>
+        </geometry>
+    </topology>
+</opf>
+""",
+            )
+        end
+
+        legacy_units = @test_nowarn read_opf(
+            opf_path;
+            attr_type=Dict,
+            coordinate_scale=1.0,
+        )
+        @test collect(keys(legacy_units[:ref_meshes])) == [1]
+        @test legacy_units[:ref_meshes][1].name == "LegacyMesh"
+        @test PlantGeom.has_geometry(legacy_units)
+        @test collect(
+            legacy_units[:geometry].transformation(SVector{3,Float64}(0.0, 0.0, 0.0)),
+        ) ≈ [2.0, 3.0, 4.0]
+        @test collect(first(GeometryBasics.coordinates(legacy_units[:ref_meshes][1].mesh))) ≈
+              [0.0, 0.0, 0.0]
+        @test collect(GeometryBasics.coordinates(legacy_units[:ref_meshes][1].mesh)[2]) ≈
+              [1.0, 0.0, 0.0]
+
+        default_units = read_opf(opf_path; attr_type=Dict)
+        @test collect(
+            default_units[:geometry].transformation(SVector{3,Float64}(0.0, 0.0, 0.0)),
+        ) ≈ [0.02, 0.03, 0.04]
+        @test collect(GeometryBasics.coordinates(default_units[:ref_meshes][1].mesh)[2]) ≈
+              [0.01, 0.0, 0.0]
+    end
+
+    @test_throws ArgumentError read_opf("unused.opf"; coordinate_scale=0.0)
+    @test_throws ArgumentError read_opf("unused.opf"; coordinate_scale=Inf)
+    @test_throws ArgumentError read_opf("unused.opf"; coordinate_scale="cm")
+end
+
 @testset "read_opf: dynamic attributes without attributeBDD widen to broader types" begin
     mktempdir() do tmp
         opf_path = joinpath(tmp, "dynamic_missing_attrbdd.opf")
