@@ -1598,6 +1598,37 @@ function _apply_deviation_stage(node, rot::SMatrix{3,3,Float64,9}, options::Amap
     return rdev * rot
 end
 
+function _required_world_axis_component(node, aliases::Vector{Symbol}, label::Symbol)
+    value, found = _resolve_alias(node, aliases)
+    found === nothing && error(
+        "World-axis rotation requires a numeric $label component. Expected one of $(aliases).",
+    )
+    value === nothing && error(
+        "World-axis rotation $label component '$found' must be numeric.",
+    )
+    return value
+end
+
+function _apply_world_axis_angle_stage(
+    node,
+    rot::SMatrix{3,3,Float64,9},
+    options::AmapReconstructionOptions,
+)
+    angle, found = _resolve_alias(node, options.world_axis_angle_aliases)
+    found === nothing && return rot
+    angle === nothing && error("World-axis rotation angle '$found' must be numeric.")
+    angle == 0.0 && return rot
+
+    axis = SVector{3,Float64}(
+        _required_world_axis_component(node, options.world_axis_x_aliases, :x),
+        _required_world_axis_component(node, options.world_axis_y_aliases, :y),
+        _required_world_axis_component(node, options.world_axis_z_aliases, :z),
+    )
+    norm(axis) > 1e-12 || error("World-axis rotation axis must be nonzero.")
+    angle_rad = options.world_axis_angle_unit == :deg ? deg2rad(angle) : angle
+    return _axis_angle_world_rotation(axis, angle_rad) * rot
+end
+
 function _apply_normal_up_projection(rot::SMatrix{3,3,Float64,9}, length_axis::Symbol)
     secondary_axis = _secondary_axis(length_axis)
     normal_axis = _normal_axis(length_axis)
@@ -2476,6 +2507,7 @@ function reconstruct_geometry_from_attributes!(mtg, prototypes::AbstractDict;
             r = _apply_azimuth_elevation_stage(node, r, amap_cfg)
             r = _apply_orthotropy_stiffness_stage(node, r, node_convention.length_axis, amap_cfg)
             r = _apply_deviation_stage(node, r, amap_cfg)
+            r = _apply_world_axis_angle_stage(node, r, amap_cfg)
             r = r * _rotation_part(local_euler_t)
             r = _apply_projection_stage(node, r, node_convention.length_axis, amap_cfg)
             _apply_geometry_constraint_stage(

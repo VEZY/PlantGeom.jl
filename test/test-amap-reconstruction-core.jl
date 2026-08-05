@@ -81,6 +81,47 @@
         @test abs(dir[1]) < 1e-3
     end
 
+    @testset "arbitrary world axis-angle rotation" begin
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        stem[:Length] = 1.0
+        stem[:Width] = 0.1
+        stem[:Thickness] = 0.1
+        stem[:WorldAxisAngle] = pi / 2
+        stem[:WorldAxisX] = 0.0
+        stem[:WorldAxisY] = 1.0
+        stem[:WorldAxisZ] = 0.0
+        opts = AmapReconstructionOptions(world_axis_angle_unit=:rad)
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=opts,
+            root_align=false,
+        )
+
+        dir = LinearAlgebra.normalize(
+            SVector{3,Float64}(stem[:geometry].transformation(px)) -
+            SVector{3,Float64}(stem[:geometry].transformation(p0)),
+        )
+        @test dir ≈ -pz atol=1e-12
+
+        @test_throws ErrorException AmapReconstructionOptions(
+            world_axis_angle_unit=:turn,
+        )
+        stem[:WorldAxisX] = 0.0
+        stem[:WorldAxisY] = 0.0
+        stem[:WorldAxisZ] = 0.0
+        @test_throws ErrorException reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=opts,
+            root_align=false,
+        )
+    end
+
     @testset "orthotropy and stiffness angle precedence" begin
         mtg_ortho = Node(NodeMTG(:/, :Plant, 1, 1))
         stem_ortho = Node(mtg_ortho, NodeMTG(:/, :Internode, 1, 2))
