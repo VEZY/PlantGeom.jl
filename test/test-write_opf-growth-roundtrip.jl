@@ -117,6 +117,7 @@ end
         @test symbol(node_before) == symbol(node_after)
         @test scale(node_before) == scale(node_after)
         @test link(node_before) == link(node_after)
+        @test index(node_before) == index(node_after)
 
         if PlantGeom.has_geometry(node_before)
             @test PlantGeom.has_geometry(node_after)

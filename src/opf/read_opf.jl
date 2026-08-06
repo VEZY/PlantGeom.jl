@@ -760,11 +760,12 @@ function parse_opf_topology!(
         id = max_id[]
         max_id[] += 1
     end
+    node_index = haskey(node, "index") ? parse(Int, node["index"]) : id
 
     MTG = mtg_type(
         link,
         _cached_attr_symbol(class_symbols, node["class"]),
-        id,
+        node_index,
         parse(Int, node["scale"])
     )
 

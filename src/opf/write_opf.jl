@@ -272,6 +272,7 @@ function attributes_to_xml(
     xml_node["class"] = string(symbol(node))
     xml_node["scale"] = scale(node)
     xml_node["id"] = _opf_topology_id(node)
+    xml_node["index"] = index(node)
 
     for key in keys(node)
         if key == :geometry
