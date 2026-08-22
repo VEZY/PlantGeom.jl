@@ -27,8 +27,8 @@ end
 Parse the reference meshes from OPF attributes into a dictionary.
 
 # Arguments
-- `opf_attr::Dict`: Dictionary containing OPF attributes including `:meshBDD` and
-  optionally `:materialBDD` and `:shapeBDD`
+- `opf_attr::Dict`: Dictionary containing OPF attributes including `:meshBDD`
+  and `:shapeBDD`, and optionally `:materialBDD`
 
 # Returns
 - `Dict{Int, RefMesh}`: A dictionary mapping shape IDs to RefMesh objects
@@ -37,35 +37,17 @@ Parse the reference meshes from OPF attributes into a dictionary.
 - The returned dictionary uses the actual shape IDs from the OPF file as keys
 - This differs from the previous implementation which returned an array with 1-based indexing
 - Shape IDs, mesh indices, and material indices are used as-is from the OPF file (0-based)
-- Legacy OPF 2.0 files without `shapeBDD` use each mesh ID as its shape ID and
-  select the material with the same ID when available
 """
 function parse_ref_meshes(x)
     meshBDD = x[:meshBDD]
+    shapeBDD = x[:shapeBDD]
     materialBDD = get(x, :materialBDD, Dict{Int,Phong}())
     fallback_material = if isempty(materialBDD)
         _default_phong_material()
     else
         first(values(materialBDD))
     end
-    shapeBDD = get(x, :shapeBDD, nothing)
     meshes = Dict{Int,RefMesh}()
-
-    if isnothing(shapeBDD)
-        sizehint!(meshes, length(meshBDD))
-        for (id, mesh_entry) in meshBDD
-            meshes[id] = RefMesh(
-                mesh_entry.name,
-                mesh_entry.mesh,
-                mesh_entry.normals,
-                mesh_entry.textureCoords,
-                get(materialBDD, id, fallback_material),
-                mesh_entry.enableScale,
-            )
-        end
-        return meshes
-    end
-
     sizehint!(meshes, length(shapeBDD))
 
     for (id, shape) in shapeBDD

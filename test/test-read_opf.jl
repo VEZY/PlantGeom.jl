@@ -63,22 +63,30 @@ end
     @test isa(mtg_quad[:ref_meshes][mesh_key].material, Phong)
 end
 
-@testset "read_opf: missing shapeBDD uses mesh ids and configurable coordinates" begin
+@testset "read_opf: capitalized OPF tags and configurable coordinates" begin
     mktempdir() do tmp
-        opf_path = joinpath(tmp, "legacy_missing_shapebdd.opf")
+        opf_path = joinpath(tmp, "legacy_capitalized_tags.opf")
         open(opf_path, "w") do io
             write(
                 io,
                 """
 <?xml version="1.0" encoding="UTF-8"?>
 <opf version="2.0">
-    <meshBDD>
-        <mesh name="LegacyMesh" shape="legacy" Id="1" enableScale="false">
-            <points>0 0 0 1 0 0 0 1 0</points>
-            <normals>0 0 1 0 0 1 0 0 1</normals>
-            <faces><face Id="0">0 1 2</face></faces>
-        </mesh>
-    </meshBDD>
+    <MeshBDD>
+        <Mesh name="LegacyMesh" shape="legacy" Id="1" enableScale="false">
+            <Points>0 0 0 1 0 0 0 1 0</Points>
+            <Normals>0 0 1 0 0 1 0 0 1</Normals>
+            <Faces><Face Id="0">0 1 2</Face></Faces>
+        </Mesh>
+    </MeshBDD>
+    <MaterialBDD></MaterialBDD>
+    <ShapeBDD>
+        <Shape Id="1">
+            <Name>LegacyMesh</Name>
+            <MeshIndex>1</MeshIndex>
+            <MaterialIndex>1</MaterialIndex>
+        </Shape>
+    </ShapeBDD>
     <topology class="Plant" scale="1" id="1">
         <geometry class="Mesh">
             <shapeIndex>1</shapeIndex>

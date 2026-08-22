@@ -40,6 +40,7 @@ else
             bump_scene=false,
         )
         @test new_internode isa PlantSimEngine.Status
+        @test node_id(new_internode.node) == 4
         @test length(PlantSimEngine.model_objects(scene; scale=:Internode)) ==
               n_internodes_before + 1
         @test new_internode.node[:Length] == 0.20
@@ -56,6 +57,7 @@ else
             bump_scene=false,
         )
         @test new_leaf isa PlantSimEngine.Status
+        @test node_id(new_leaf.node) == 5
         @test length(PlantSimEngine.model_objects(scene; scale=:Leaf)) == n_leaves_before + 1
         @test new_leaf.node[:leaf_stage] == :juvenile
         @test new_leaf.leaf_stage == :juvenile

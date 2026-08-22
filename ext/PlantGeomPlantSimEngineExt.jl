@@ -31,7 +31,7 @@ function _emit_organ_with_scene!(
     link_sym = PlantGeom._as_link_symbol(link)
     symbol_sym = PlantGeom._as_symbol(symbol)
     scale_val = isnothing(scale) ? MultiScaleTreeGraph.scale(parent) : Int(scale)
-    organ_id = isnothing(id) ? PlantGeom._default_id(parent) : Int(id)
+    organ_id = isnothing(id) ? nothing : Int(id)
     attrs = PlantGeom._to_attr_dict(attributes)
     status = PlantSimEngine.add_organ!(
         parent,
