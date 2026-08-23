@@ -88,6 +88,7 @@ export scene_object_transformation, place_in_scene!
 export SceneGeometry, SceneNodeData, SceneBuilder, SceneUnits, SourceOwnerKey
 export make_scene, prepare_scene, add_plant!, add_object!, add_ground!
 export scene_node, scene_node_ids, source_owner, source_owners, node_areas, node_barycenters
+export compile_source_owner_map, source_owner_map_iscurrent
 export scene_length_unit, scene_area_unit
 export taper
 export refmesh_to_mesh, get_ref_meshes_color
@@ -132,7 +133,7 @@ function to_geometrybasics end # Extended in PlantGeomMeshesInterop extension
 export to_meshes, to_geometrybasics
 
 export get_transformation_matrix
-export bump_scene_version!
+export scene_version, bump_scene_version!
 
 # Defining the main functions for PlantViz:
 include("plantviz.jl")

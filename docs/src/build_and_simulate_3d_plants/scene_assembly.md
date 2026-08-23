@@ -273,6 +273,63 @@ meaning of its owner key. Reassemble or reinsert the complete object when a new
 source-instance identity is intended; reparenting within the same source
 instance remains supported.
 
+### Compile owners to PlantSimEngine objects
+
+When PlantSimEngine is loaded, [`compile_source_owner_map`](@ref) turns the
+scene-local owner keys into validated PlantSimEngine object identities. The
+default is intentionally strict: the model must have been constructed from the
+exact `scene.mtg`, not a copy with coincidentally equal numeric ids.
+
+```julia
+using PlantSimEngine
+
+model = CompositeModel(scene.mtg; status=initial_status)
+PlantSimEngine.Advanced.refresh_bindings!(model)
+
+owner_map = compile_source_owner_map(scene, model)
+leaf_id = owner_map[SourceOwnerKey(1, 42)]
+```
+
+The returned map is read-only. Its keys are sorted by
+`(source_instance_id, source_node_id)`, and lookup is a cached dictionary
+operation. Several scene components sharing one owner produce one map entry;
+several distinct owner keys may also map to the same PlantSimEngine object when
+that is the explicit model design.
+
+An assembled radiative scene and a physiological model do not always own the
+same MTG root. In that case, provide the exact registered source root for each
+scene instance:
+
+```julia
+owner_map = compile_source_owner_map(
+    scene,
+    model;
+    source_roots=Dict(
+        1 => exact_first_plant_root,
+        2 => exact_second_plant_root,
+    ),
+)
+```
+
+For a non-MTG ownership scheme, use `object_resolver=key -> object`. Its result
+may be a registered `Object`, `Status`, exact MTG node, `ObjectId`, or raw id;
+PlantSimEngine always validates it through `object_id`. `source_roots` and
+`object_resolver` are mutually exclusive. In particular, never construct an
+`ObjectId` directly from `key.source_node_id`: that integer is meaningful only
+inside its source-instance namespace.
+
+The compiled map records weak references to the exact scene MTG and model,
+along with their scene and topology revisions. Reuse it while:
+
+```julia
+source_owner_map_iscurrent(owner_map, scene, model)
+```
+
+returns `true`. Geometry refreshes, organogenesis, removal, or reparenting make
+the map stale. Refresh PlantSimEngine bindings after a lifecycle change, then
+compile a new map at that lifecycle barrier. Lookup and freshness checks are
+allocation-free on the steady-state path; neither performs an MTG traversal.
+
 ## Export to OPS
 
 `make_scene` returns a [`SceneGeometry`](@ref). The MTG scene root is stored in

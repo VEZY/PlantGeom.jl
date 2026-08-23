@@ -176,6 +176,13 @@ function SceneGeometry{MTG,Mesh,T}(
 end
 
 """
+    scene_version(scene::SceneGeometry) -> Int
+
+Return the version counter stored on the exact MTG root backing `scene`.
+"""
+scene_version(scene::SceneGeometry) = scene_version(scene.mtg)
+
+"""
     SceneBuilder
 
 Mutable builder passed to [`make_scene`](@ref) callback blocks.
@@ -380,6 +387,28 @@ source-owner keys. The dictionary is independent of mesh-face order.
 """
 source_owners(scene::SceneGeometry) =
     Dict(nid => node.source_owner for (nid, node) in scene.nodes)
+
+"""
+    compile_source_owner_map(scene, runtime; owner_keys=nothing,
+                             source_roots=nothing, object_resolver=nothing)
+
+Compile the opaque [`SourceOwnerKey`](@ref) values present in `scene` to the
+stable object identities owned by an optional simulation runtime.
+
+PlantGeom core deliberately does not depend on a simulation engine. A concrete
+method is provided by the PlantSimEngine package extension when PlantSimEngine
+is loaded.
+"""
+function compile_source_owner_map end
+
+"""
+    source_owner_map_iscurrent(map[, scene, runtime])
+
+Return whether a compiled source-owner map still describes the same scene and
+simulation topology. The concrete method is supplied by the simulation-engine
+extension that created `map`.
+"""
+function source_owner_map_iscurrent end
 
 """
     node_areas(scene::SceneGeometry)
