@@ -182,6 +182,10 @@ function build_explicit_coordinate_scene()
     return mtg
 end
 
+# The focused file is also runnable on its own and does not download fixtures.
+include(joinpath(@__DIR__, "scene_ownership.jl"))
+SUITE["Scene ownership"] = SCENE_OWNERSHIP_SUITE
+
 # ---------
 # IO
 # ---------
