@@ -55,6 +55,81 @@ The `domain` is `(xmin, ymin, xmax, ymax)` in scene coordinates. It is also used
 as the default ground extent when you call [`add_ground!`](@ref) inside the
 builder block.
 
+## Coordinate Units
+
+PlantGeom keeps mesh coordinates and geometry summaries as plain numeric arrays
+for predictable performance. A [`SceneUnits`](@ref) value records how those
+numbers must be interpreted; it does not wrap every coordinate in a Unitful
+quantity. Scenes use metres by default:
+
+```julia
+using Unitful
+
+scene = make_scene(
+    domain=(0.0, 0.0, 500.0, 300.0),
+    units=SceneUnits(length=u"cm"),
+) do sc
+    # `at` and the domain are in centimetres. `read_opf` has already converted
+    # this plant to metres, so declare that source unit explicitly.
+    add_plant!(
+        sc,
+        read_opf("plant.opf"),
+        group="plants",
+        id=1,
+        at=(100.0, 50.0, 0.0),
+        geometry_length_unit=u"m",
+    )
+end
+
+scene_length_unit(scene) # u"cm"
+scene_area_unit(scene)   # u"cm^2"
+```
+
+`geometry_length_unit` belongs to each inserted object because one scene may
+combine sources with different conventions. PlantGeom computes one conversion
+factor before traversing that object, then applies transformations in this
+order:
+
+```text
+scene placement ∘ unit conversion ∘ existing geometry transform
+```
+
+This means an existing geometry translation is converted with the object,
+while `at`, `domain`, and ground coordinates are already in the scene unit. If
+`geometry_length_unit` is omitted or equals the scene unit, PlantGeom adds no
+conversion transform.
+
+!!! note "Geometry created after insertion"
+
+    Unit conversion is applied once to geometry that exists when
+    `add_plant!` or `add_object!` runs. The source unit is not stored as a rule
+    and is not replayed by `prepare_scene` or scene refreshes, because replaying
+    it would rescale existing organs twice. Geometry emitted later must
+    therefore be created directly in the scene unit.
+
+The file readers have distinct boundaries:
+
+- `read_opf` converts historical OPF centimetres to numeric metres by default.
+  Add that result to a metre scene without `geometry_length_unit`, or declare
+  `geometry_length_unit=u"m"` when the target scene uses another unit.
+- `read_opf(...; coordinate_scale=1.0)` preserves OPF coordinate numbers. If
+  those numbers represent centimetres, use `geometry_length_unit=u"cm"` when
+  adding the object.
+- `read_gwa` preserves the numeric coordinates stored in the GWA file. Declare
+  their physical unit explicitly whenever it differs from the scene unit.
+- `prepare_scene(mtg; units=...)` is metadata-only. It never guesses or rescales
+  coordinates that are already assembled.
+
+!!! warning "Units are not serialized in OPF or OPS"
+
+    `SceneUnits` belongs to `SceneGeometry`; it is not written into the MTG,
+    OPF, GWA, or OPS formats. The default `write_opf` convention treats numeric
+    PlantGeom coordinates as metres and writes OPF centimetres. `write_ops`
+    likewise has no scene-unit field. Normalize a non-metre scene to metres
+    before an OPS round trip. For a standalone OPF written from another numeric
+    convention, choose `coordinate_scale` explicitly and retain that convention
+    outside the file.
+
 ## Add Objects
 
 Use [`add_plant!`](@ref) for plant-like MTGs and [`add_object!`](@ref) for

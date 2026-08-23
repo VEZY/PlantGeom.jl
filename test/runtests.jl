@@ -39,6 +39,7 @@ end
 include("test-write-cache-sanitization.jl")
 include("test-scene-placement.jl")
 include("test-scene-ownership.jl")
+include("test-scene-units.jl")
 
 @testset "Makie recipes" begin
     include("test-makie-recipes.jl")

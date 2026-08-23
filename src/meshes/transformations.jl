@@ -659,6 +659,20 @@ function transform_mesh!(node::MultiScaleTreeGraph.Node, transformation::Transfo
                 params=geom.params,
                 transformation=_compose_transformation(transformation, geom.transformation),
             )
+        elseif geom isa ExtrudedTubeGeometry
+            node[:geometry] = ExtrudedTubeGeometry(
+                geom.path,
+                geom.n_sides,
+                geom.radius,
+                geom.radii,
+                geom.widths,
+                geom.heights,
+                geom.path_normals,
+                geom.torsion,
+                geom.cap_ends,
+                geom.material,
+                _compose_transformation(transformation, geom.transformation),
+            )
         end
     end
 end

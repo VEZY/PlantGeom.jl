@@ -108,7 +108,8 @@ end
 Prepared generic scene representation.
 
 It stores the source MTG, a merged mesh, a face-to-node map, optional per-node
-geometry summaries, the source path, and the scene XY domain.
+geometry summaries, the source path, the scene XY domain, and the units used to
+interpret its numeric coordinates.
 
 Fields:
 
@@ -121,6 +122,7 @@ Fields:
 - `source_path`: descriptive path or label for provenance.
 - `scene_xy_bounds`: scene domain as `(xmin, ymin, xmax, ymax)`, or `nothing`
   when no domain is known.
+- `units`: metadata describing the physical length unit of scene coordinates.
 """
 mutable struct SceneGeometry{MTG,Mesh,T}
     mtg::MTG
@@ -129,6 +131,48 @@ mutable struct SceneGeometry{MTG,Mesh,T}
     nodes::Dict{Int,SceneNodeData{T}}
     source_path::String
     scene_xy_bounds::Union{Nothing,NTuple{4,T}}
+    units::SceneUnits
+end
+
+# Keep both historical six-argument constructors. Scene units are metadata, so
+# legacy callers continue to produce metre-based scenes without adding a type
+# parameter to SceneGeometry.
+function SceneGeometry(
+    mtg::MTG,
+    merged_mesh::Mesh,
+    face2node::Vector{Int},
+    nodes::Dict{Int,SceneNodeData{T}},
+    source_path::String,
+    scene_xy_bounds::Union{Nothing,NTuple{4,T}},
+) where {MTG,Mesh,T}
+    return SceneGeometry(
+        mtg,
+        merged_mesh,
+        face2node,
+        nodes,
+        source_path,
+        scene_xy_bounds,
+        SceneUnits(),
+    )
+end
+
+function SceneGeometry{MTG,Mesh,T}(
+    mtg::MTG,
+    merged_mesh::Mesh,
+    face2node::Vector{Int},
+    nodes::Dict{Int,SceneNodeData{T}},
+    source_path::String,
+    scene_xy_bounds::Union{Nothing,NTuple{4,T}},
+) where {MTG,Mesh,T}
+    return SceneGeometry{MTG,Mesh,T}(
+        mtg,
+        merged_mesh,
+        face2node,
+        nodes,
+        source_path,
+        scene_xy_bounds,
+        SceneUnits(),
+    )
 end
 
 """
@@ -157,6 +201,7 @@ Fields:
 - `next_node_id`: next scene-level MTG node id used during insertion.
 - `next_source_instance_id`: next deterministic namespace used for an object
   inserted through this builder.
+- `units`: metadata describing the physical length unit of the scene.
 """
 mutable struct SceneBuilder
     mtg
@@ -167,6 +212,7 @@ mutable struct SceneBuilder
     source_topology_id::Bool
     next_node_id::Int
     next_source_instance_id::Int
+    units::SceneUnits
 end
 
 function _next_scene_source_instance_id(mtg)
@@ -207,6 +253,27 @@ SceneBuilder(
     source_topology_id,
     MultiScaleTreeGraph.max_id(mtg) + 1,
     _next_scene_source_instance_id(mtg),
+    SceneUnits(),
+)
+
+SceneBuilder(
+    mtg,
+    domain::Union{Nothing,NTuple{4,Float64}},
+    source_path::String,
+    compute_area::Bool,
+    compute_barycenter::Bool,
+    source_topology_id::Bool,
+    units::SceneUnits,
+) = SceneBuilder(
+    mtg,
+    domain,
+    source_path,
+    compute_area,
+    compute_barycenter,
+    source_topology_id,
+    MultiScaleTreeGraph.max_id(mtg) + 1,
+    _next_scene_source_instance_id(mtg),
+    units,
 )
 
 SceneBuilder(
@@ -226,7 +293,55 @@ SceneBuilder(
     source_topology_id,
     next_node_id,
     _next_scene_source_instance_id(mtg),
+    SceneUnits(),
 )
+
+SceneBuilder(
+    mtg,
+    domain::Union{Nothing,NTuple{4,Float64}},
+    source_path::String,
+    compute_area::Bool,
+    compute_barycenter::Bool,
+    source_topology_id::Bool,
+    next_node_id::Int,
+    units::SceneUnits,
+) = SceneBuilder(
+    mtg,
+    domain,
+    source_path,
+    compute_area,
+    compute_barycenter,
+    source_topology_id,
+    next_node_id,
+    _next_scene_source_instance_id(mtg),
+    units,
+)
+
+SceneBuilder(
+    mtg,
+    domain::Union{Nothing,NTuple{4,Float64}},
+    source_path::String,
+    compute_area::Bool,
+    compute_barycenter::Bool,
+    source_topology_id::Bool,
+    next_node_id::Int,
+    next_source_instance_id::Int,
+) = SceneBuilder(
+    mtg,
+    domain,
+    source_path,
+    compute_area,
+    compute_barycenter,
+    source_topology_id,
+    next_node_id,
+    next_source_instance_id,
+    SceneUnits(),
+)
+
+scene_length_unit(scene::SceneGeometry) = scene_length_unit(scene.units)
+scene_length_unit(builder::SceneBuilder) = scene_length_unit(builder.units)
+scene_area_unit(scene::SceneGeometry) = scene_area_unit(scene.units)
+scene_area_unit(builder::SceneBuilder) = scene_area_unit(builder.units)
 
 """
     scene_node(scene::SceneGeometry, node_id)
@@ -959,7 +1074,7 @@ end
     prepare_scene(mtg; source_path="interactive.scene", domain=nothing,
                   scene_xy_bounds=nothing, relabel_ids=false,
                   compute_area=true, compute_barycenter=true,
-                  source_topology_id=true)
+                  source_topology_id=true, units=SceneUnits())
 
 Prepare an MTG scene root for geometry-level downstream work.
 
@@ -981,6 +1096,8 @@ Keyword arguments:
 - `compute_barycenter`: compute area-weighted barycenter per MTG node.
 - `source_topology_id`: preserve original topology ids in node summaries when
   nodes carry a `:source_topology_id` attribute.
+- `units`: metadata describing the physical unit of the existing numeric
+  coordinates. `prepare_scene` never rescales geometry.
 
 The function records private `_scene_*` ownership metadata on object roots and
 geometry nodes so ownership remains stable across refreshes and organogenesis.
@@ -1000,6 +1117,7 @@ function prepare_scene(
     compute_area::Bool=true,
     compute_barycenter::Bool=true,
     source_topology_id::Bool=true,
+    units::SceneUnits=SceneUnits(),
 )
     source_roots, newly_namespaced_roots = _normalize_scene_source_instances!(mtg)
     if relabel_ids
@@ -1073,7 +1191,15 @@ function prepare_scene(
         Val(source_topology_id),
     )
 
-    return SceneGeometry(mtg, merged_mesh, face2node, nodes, String(source_path), bounds)
+    return SceneGeometry(
+        mtg,
+        merged_mesh,
+        face2node,
+        nodes,
+        String(source_path),
+        bounds,
+        units,
+    )
 end
 
 function _refresh_scene!(scene::SceneGeometry; compute_area::Bool=true, compute_barycenter::Bool=true, source_topology_id::Bool=true)
@@ -1087,11 +1213,13 @@ function _refresh_scene!(scene::SceneGeometry; compute_area::Bool=true, compute_
         compute_area=compute_area,
         compute_barycenter=compute_barycenter,
         source_topology_id=source_topology_id,
+        units=scene.units,
     )
     scene.merged_mesh = refreshed.merged_mesh
     scene.face2node = refreshed.face2node
     scene.nodes = refreshed.nodes
     scene.scene_xy_bounds = refreshed.scene_xy_bounds
+    scene.units = refreshed.units
     return scene
 end
 
@@ -1237,7 +1365,8 @@ function _transform_object!(
                 _rebase_node_source_ownership!(node, normalized_instance_id)
             end
         end
-        node_has_geometry && transform_mesh!(node, transformation)
+        node_has_geometry && !(transformation isa IdentityTransformation) &&
+            transform_mesh!(node, transformation)
         return nothing
     end
     return mtg
@@ -1279,7 +1408,8 @@ end
                 at=(0, 0, 0), scale=1.0, rotate=(0, 0, 0), deg=false,
                 rotation=nothing, inclination_azimut=0.0,
                 inclination_angle=0.0, transform=nothing,
-                file_path="", source_owner=nothing, kwargs...)
+                file_path="", source_owner=nothing,
+                geometry_length_unit=nothing, kwargs...)
     add_object!(builder::SceneBuilder, path::AbstractString; type="object", kwargs...)
 
 Add an object to a scene being assembled with [`make_scene`](@ref).
@@ -1314,6 +1444,12 @@ Placement options:
   placement. These cannot be mixed with a nonzero `rotate=` value.
 - `transform`: extra `CoordinateTransformations.Transformation` composed after
   the placement transform.
+- `geometry_length_unit=nothing`: physical length unit of the input geometry.
+  When supplied, coordinates are converted once to `builder.units` before
+  placement. The default performs no conversion, which is appropriate for OPF
+  inputs read with PlantGeom's default metre conversion when the scene is also
+  in metres. Placement coordinates such as `at` are always expressed in the
+  scene unit.
 - `source_owner=nothing`: preserve any existing botanical owner mapping when
   re-instancing an already assembled object. A fresh scene-instance namespace
   is still assigned. For a first insertion, each geometry node owns itself.
@@ -1348,11 +1484,16 @@ function add_object!(
     transform=nothing,
     file_path::AbstractString="",
     source_owner=nothing,
+    geometry_length_unit=nothing,
     kwargs...,
 )
     0 < builder.next_source_instance_id < typemax(Int) || throw(OverflowError(
         "SceneBuilder has no remaining source-instance namespace.",
     ))
+    unit_factor = _scene_length_conversion_factor(
+        geometry_length_unit,
+        builder.units,
+    )
     obj = object isa GeometryBasics.AbstractMesh ? _mesh_object_mtg(object; type=type) : deepcopy(object)
     _annotate_object_root!(obj; group=group, id=id, file_path=file_path, kwargs...)
     placement = _placement_transform(
@@ -1366,10 +1507,15 @@ function add_object!(
         inclination_angle=inclination_angle,
         transform=transform,
     )
+    object_transformation = if unit_factor == 1.0
+        placement
+    else
+        _compose_transformation(placement, scale3(unit_factor))
+    end
     source_instance_id = builder.next_source_instance_id
     _transform_object!(
         obj,
-        placement;
+        object_transformation;
         source_instance_id=source_instance_id,
         source_owner=source_owner,
     )
@@ -1580,8 +1726,10 @@ function add_ground!(
 end
 
 """
-    make_scene(f; domain, mtg_type=NodeMTG, source_path="interactive.scene", ...)
-    make_scene(; domain, mtg_type=NodeMTG, source_path="interactive.scene", ...)
+    make_scene(f; domain, mtg_type=NodeMTG, source_path="interactive.scene",
+               units=SceneUnits(), ...)
+    make_scene(; domain, mtg_type=NodeMTG, source_path="interactive.scene",
+               units=SceneUnits(), ...)
 
 Create a scene root, run the builder callback `f`, and return a prepared
 [`SceneGeometry`](@ref).
@@ -1601,6 +1749,9 @@ Keyword arguments:
 - `compute_area`: compute per-node surface areas.
 - `compute_barycenter`: compute per-node area-weighted barycenters.
 - `source_topology_id`: preserve source topology ids when available.
+- `units`: physical length unit used to interpret all numeric scene coordinates.
+  Domain bounds, placement coordinates, and generated ground coordinates use
+  this unit.
 
 Objects added through the builder are relabelled as they are inserted, so
 independent object roots with overlapping ids can safely share one scene without
@@ -1636,6 +1787,7 @@ function make_scene(
     compute_area::Bool=true,
     compute_barycenter::Bool=true,
     source_topology_id::Bool=true,
+    units::SceneUnits=SceneUnits(),
 )
     bounds = _coerce_scene_domain(domain)
     root = _scene_root(bounds; mtg_type=mtg_type)
@@ -1648,6 +1800,7 @@ function make_scene(
         source_topology_id,
         MultiScaleTreeGraph.max_id(root) + 1,
         1,
+        units,
     )
     f(builder)
     return prepare_scene(
@@ -1658,6 +1811,7 @@ function make_scene(
         compute_area=compute_area,
         compute_barycenter=compute_barycenter,
         source_topology_id=source_topology_id,
+        units=builder.units,
     )
 end
 
@@ -1668,6 +1822,7 @@ function make_scene(;
     compute_area::Bool=true,
     compute_barycenter::Bool=true,
     source_topology_id::Bool=true,
+    units::SceneUnits=SceneUnits(),
 )
     make_scene(
         identity;
@@ -1677,5 +1832,6 @@ function make_scene(;
         compute_area=compute_area,
         compute_barycenter=compute_barycenter,
         source_topology_id=source_topology_id,
+        units=units,
     )
 end
