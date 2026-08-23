@@ -72,6 +72,37 @@ _source_owner_current_allocated(owner_map, scene, runtime) =
     @test only(values(subset)) == expected_ids[2]
 end
 
+@testset "PlantSimEngine source-owner map: raw mesh owner anchor" begin
+    scene = make_scene(domain=(0.0, 0.0, 2.0, 2.0)) do builder
+        add_object!(
+            builder,
+            _ownership_test_mesh();
+            group="plants",
+            type="Leaf",
+            id=11,
+        )
+    end
+    runtime = _source_owner_map_runtime(scene.mtg)
+    source_root = only(MultiScaleTreeGraph.children(scene.mtg))
+    scene_leaf = only(MultiScaleTreeGraph.children(source_root))
+    owner_key = SourceOwnerKey(1, 2)
+
+    # The wrapper's current scene id collides with the Leaf's retained source
+    # id, but only the stamped Leaf is an exact source-owner destination.
+    @test PlantGeom._stored_source_ownership(source_root) === nothing
+    @test PlantGeom._intrinsic_source_node_id(source_root) == owner_key.source_node_id
+    @test PlantGeom._stored_source_ownership(scene_leaf) ==
+          PlantGeom._SceneSourceOwnership(1, 2, 2)
+
+    owner_map = compile_source_owner_map(scene, runtime)
+    leaf_object_id = PlantSimEngine.object_id(runtime, scene_leaf)
+    root_object_id = PlantSimEngine.object_id(runtime, source_root)
+
+    @test collect(owner_map) == [owner_key => leaf_object_id]
+    @test owner_map[owner_key] == leaf_object_id
+    @test owner_map[owner_key] != root_object_id
+end
+
 @testset "PlantSimEngine source-owner map: compound organs" begin
     shared_ref = RefMesh("source-map-compound", _ownership_test_mesh())
     source_plant = Node(NodeMTG(:/, :Plant, 1, 1), Dict{Symbol,Any}())

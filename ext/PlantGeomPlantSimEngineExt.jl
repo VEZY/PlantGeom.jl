@@ -113,9 +113,22 @@ function _scene_owner_nodes(scene::PlantGeom.SceneGeometry, owner_keys, model)
             "The prepared scene contains a source root without a source-instance namespace.",
         ))
         MultiScaleTreeGraph.traverse!(source_root) do node
-            key = PlantGeom.SourceOwnerKey(
+            # Current MTG ids are scene-local and may collide with the intrinsic
+            # source id retained by a relabelled descendant. Only a provenance
+            # stamp can make a node an exact source-owner destination.
+            ownership = PlantGeom._stored_source_ownership(node)
+            ownership === nothing && return nothing
+            PlantGeom._validate_geometry_source_instance(
+                node,
+                ownership,
                 source_instance_id,
-                PlantGeom._intrinsic_source_node_id(node),
+            )
+
+            # Use the node's own source identity, not `owner_node_id`: one node
+            # may own a component while its own geometry is owned by an ancestor.
+            key = PlantGeom.SourceOwnerKey(
+                ownership.source_instance_id,
+                ownership.source_node_id,
             )
             key in wanted && _insert_exact_owner_node!(owner_nodes, key, node)
             return nothing
