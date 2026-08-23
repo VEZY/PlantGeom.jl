@@ -1,5 +1,6 @@
 """
-    read_ops(file; attr_type=Dict{String,Any}, mtg_type=MutableNodeMTG, attribute_types=Dict(), kwargs...)
+    read_ops(file; attr_type=Dict{String,Any}, mtg_type=MutableNodeMTG,
+             attribute_types=Dict(), materialize_scene_boundary=false, kwargs...)
 
 Reads an OPS file and returns the content as a `MultiScaleTreeGraph`.
 Per-object OPS transforms (`rotation`, `scale`, `inclinationAzimut`/`inclinationAngle`,
@@ -17,8 +18,21 @@ MultiScaleTreeGraph >= v0.15 (columnar attributes backend).
 
 `attribute_types` is forwarded to [`read_opf`](@ref) and can be used to
 override OPF attribute types by name (CSV-like typing override).
+
+`materialize_scene_boundary=false` keeps the `:Scene` root as a geometry-free
+container. The OPS terrain line is retained in `scene_dimensions` and can be
+materialized later with [`add_ground!`](@ref). Set the keyword to `true` only
+for the historical translucent plotting quadrangle; such a root-boundary mesh
+is a visualization artifact and must be removed before [`prepare_scene`](@ref).
 """
-function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, attribute_types=Dict(), kwargs...)
+function read_ops(
+    file;
+    attr_type=Dict,
+    mtg_type=MutableNodeMTG,
+    attribute_types=Dict(),
+    materialize_scene_boundary::Bool=false,
+    kwargs...,
+)
     scene_dimensions, object_table = read_ops_file(file; kwargs...)
 
     scene = Node(mtg_type(:/, :Scene, 1, 0), MultiScaleTreeGraph.init_empty_attr())
@@ -89,8 +103,13 @@ function read_ops(file; attr_type=Dict, mtg_type=MutableNodeMTG, attribute_types
         addchild!(scene, opf)
     end
 
-    # Only create ground quadrangle if scene dimensions are provided
-    if !isnothing(scene_dimensions)
+    # Historical PlantGeom releases attached a translucent plot-boundary
+    # quadrangle directly to the :Scene root. That makes the root both a
+    # container and a geometric component, which is incompatible with durable
+    # source ownership and canonical scene assembly. Keep it as an explicit
+    # opt-in visualization artifact; scientific ground geometry belongs on a
+    # child created with `add_ground!`.
+    if materialize_scene_boundary && !isnothing(scene_dimensions)
         p_0 = scene_dimensions[1]
         p_max = scene_dimensions[2]
 

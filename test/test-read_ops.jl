@@ -2,9 +2,11 @@ file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene
 @testset "read_ops" begin
     ops = @test_nowarn read_ops(file)
     @test ops.scene_dimensions == (GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0), GeometryBasics.Point{3,Float64}(2.0, 1.0, 0.0))
-    @test length(get_ref_meshes(ops)) == 5
-    #Note: there are only 4 ref_meshes because the same opf file is used for the simple_plants,
-    # so we can optimize it by only using the common ones.
+    @test length(get_ref_meshes(ops)) == 4
+    @test !PlantGeom.has_geometry(ops)
+    # There are only 4 reference meshes because the same OPF file is reused for
+    # the simple plants. The OPS plot boundary remains metadata rather than a
+    # synthetic mesh on the Scene root.
     opfs = children(ops)
     length(opfs) == 6
     opfs[1].filePath == "coffee.opf"
@@ -23,6 +25,13 @@ file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene
     [@test(p.functional_group == "plant") for p in opfs[2:end]]
     length_values = @test_nowarn descendants(ops, :Length; ignore_nothing=true)
     @test !isempty(length_values)
+end
+
+@testset "read_ops optional historical scene-boundary geometry" begin
+    ops = @test_nowarn read_ops(file; materialize_scene_boundary=true)
+    @test PlantGeom.has_geometry(ops)
+    @test length(get_ref_meshes(ops)) == 5
+    @test_throws ArgumentError prepare_scene(ops)
 end
 
 @testset "read_ops applies inclination transforms" begin
