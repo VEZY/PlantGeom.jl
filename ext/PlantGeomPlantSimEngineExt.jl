@@ -11,7 +11,7 @@ const PlantSimEngineRuntime = Union{
     PlantSimEngine.Simulation,
 }
 
-struct _CompiledSourceOwnerMap <:
+mutable struct _CompiledSourceOwnerMap <:
        AbstractDict{PlantGeom.SourceOwnerKey,PlantSimEngine.ObjectId}
     owner_keys::Vector{PlantGeom.SourceOwnerKey}
     object_ids::Vector{PlantSimEngine.ObjectId}
