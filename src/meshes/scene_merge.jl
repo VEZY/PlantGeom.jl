@@ -32,6 +32,17 @@ end
 
 GeometryJobBatches() = GeometryJobBatches(Dict{DataType,Any}(), Dict{DataType,Any}())
 
+# Compilation-time ownership snapshot. A positive `owner_node_id` is an
+# existing stamp, a negative value is an unstamped default self-owner, and zero
+# is an unstamped node requiring the source root's explicit resolver. The other
+# fields are already known, so scene preparation never looks ownership up twice.
+struct _CompiledSceneOwnership
+    source_instance_id::Int
+    source_node_id::Int
+    owner_node_id::Int
+    source_root_index::Int
+end
+
 @inline function _push_typed_job!(dict::Dict{DataType,Any}, job::J) where {J}
     key = J
     if haskey(dict, key)
@@ -72,19 +83,141 @@ end
     return nothing
 end
 
-function compile_geometry_jobs(mtg; filter_fun=nothing, symbol=nothing, scale=nothing, link=nothing)
-    batches = GeometryJobBatches()
+function _compile_geometry_jobs!(
+    batches::GeometryJobBatches,
+    mtg;
+    seq::Base.RefValue{Int},
+    filter_fun=nothing,
+    symbol=nothing,
+    scale=nothing,
+    link=nothing,
+    geometry_nodes=nothing,
+    geometry_ownership=nothing,
+    source_instance_id=nothing,
+    source_root_index::Int=0,
+    source_namespace_was_missing::Bool=false,
+    source_owner_resolver=nothing,
+)
     any_node_selected = false
-    seq = 0
+    collect_ownership = geometry_ownership !== nothing
+    # Ownership stamps may live on non-geometric botanical owners. Inspect all
+    # nodes in the same traversal that compiles geometry so cross-instance
+    # reparenting cannot hide on an owner anchor.
+    preflight_all_nodes = collect_ownership
+    traversal_filter = preflight_all_nodes ? nothing : filter_fun
+    traversal_symbol = preflight_all_nodes ? nothing : symbol
+    traversal_scale = preflight_all_nodes ? nothing : scale
+    traversal_link = preflight_all_nodes ? nothing : link
 
-    MultiScaleTreeGraph.traverse!(mtg; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link) do node
+    MultiScaleTreeGraph.traverse!(
+        mtg;
+        filter_fun=traversal_filter,
+        symbol=traversal_symbol,
+        scale=traversal_scale,
+        link=traversal_link,
+    ) do node
+        stored_ownership = if !collect_ownership
+            nothing
+        else
+            _preflight_scene_ownership(
+                node,
+                source_instance_id,
+                source_namespace_was_missing,
+            )
+        end
+        if preflight_all_nodes && !MultiScaleTreeGraph.is_filtered(
+            node,
+            scale,
+            symbol,
+            link,
+            filter_fun,
+        )
+            return nothing
+        end
         has_geometry(node) || return nothing
         geom = node[:geometry]
         any_node_selected = true
-        seq += 1
-        _compile_node_geometry_jobs!(batches, seq, MultiScaleTreeGraph.node_id(node), geom)
+        seq[] += 1
+        geometry_nodes === nothing || push!(geometry_nodes, node)
+        geometry_ownership === nothing || push!(
+            geometry_ownership,
+            _compiled_scene_ownership(
+                node,
+                source_instance_id,
+                source_root_index,
+                stored_ownership,
+                source_owner_resolver,
+            ),
+        )
+        _compile_node_geometry_jobs!(batches, seq[], MultiScaleTreeGraph.node_id(node), geom)
     end
 
+    return any_node_selected
+end
+
+
+function compile_geometry_jobs(
+    mtg;
+    filter_fun=nothing,
+    symbol=nothing,
+    scale=nothing,
+    link=nothing,
+    geometry_nodes=nothing,
+)
+    batches = GeometryJobBatches()
+    any_node_selected = _compile_geometry_jobs!(
+        batches,
+        mtg;
+        seq=Ref(0),
+        filter_fun=filter_fun,
+        symbol=symbol,
+        scale=scale,
+        link=link,
+        geometry_nodes=geometry_nodes,
+    )
+
+    return batches, any_node_selected
+end
+
+
+function _compile_scene_geometry_jobs(
+    source_roots;
+    newly_namespaced_roots,
+    filter_fun=nothing,
+    symbol=nothing,
+    scale=nothing,
+    link=nothing,
+    geometry_nodes,
+    geometry_ownership,
+)
+    batches = GeometryJobBatches()
+    seq = Ref(0)
+    any_node_selected = false
+    for (source_root_index, root) in enumerate(source_roots)
+        source_instance_id = _scene_positive_int_attribute(
+            root,
+            _SCENE_SOURCE_INSTANCE_ID_ATTRIBUTE,
+        )
+        source_instance_id isa Int || error(
+            "Scene source namespaces must be normalized before compiling geometry.",
+        )
+        source_owner_resolver = _root_source_owner_resolver(root)
+        any_node_selected |= _compile_geometry_jobs!(
+            batches,
+            root;
+            seq=seq,
+            filter_fun=filter_fun,
+            symbol=symbol,
+            scale=scale,
+            link=link,
+            geometry_nodes=geometry_nodes,
+            geometry_ownership=geometry_ownership,
+            source_instance_id=source_instance_id,
+            source_root_index=source_root_index,
+            source_namespace_was_missing=newly_namespaced_roots[source_root_index],
+            source_owner_resolver=source_owner_resolver,
+        )
+    end
     return batches, any_node_selected
 end
 
@@ -129,7 +262,7 @@ function _materialize_batch!(
     return nothing
 end
 
-function materialize_geometry_jobs(batches::GeometryJobBatches)
+function _materialize_geometry_jobs(batches::GeometryJobBatches)
     seqs = Int[]
     meshes = Any[]
     node_ids = Int[]
@@ -144,12 +277,145 @@ function materialize_geometry_jobs(batches::GeometryJobBatches)
 
     if !issorted(seqs)
         p = sortperm(seqs)
+        seqs = seqs[p]
         meshes = meshes[p]
         node_ids = node_ids[p]
         ne_per_mesh = ne_per_mesh[p]
     end
 
+    return meshes, node_ids, ne_per_mesh, seqs
+end
+
+function materialize_geometry_jobs(batches::GeometryJobBatches)
+    meshes, node_ids, ne_per_mesh, _ = _materialize_geometry_jobs(batches)
     return meshes, node_ids, ne_per_mesh
+end
+
+function _materialize_merged_geometry(batches::GeometryJobBatches)
+    meshes, node_ids, ne_per_mesh, seqs = _materialize_geometry_jobs(batches)
+    isempty(meshes) && error("No geometry meshes found to merge.")
+
+    face2node = Vector{Int}(undef, sum(ne_per_mesh))
+    ofs = 0
+    @inbounds for i in eachindex(meshes)
+        ne = ne_per_mesh[i]
+        if ne > 0
+            face2node[ofs+1:ofs+ne] .= node_ids[i]
+            ofs += ne
+        end
+    end
+
+    merged_mesh = merge_simple_meshes(meshes)
+    return merged_mesh, face2node, node_ids, ne_per_mesh, seqs
+end
+
+function _build_merged_mesh_with_map(
+    ::Val{false},
+    mtg;
+    filter_fun=nothing,
+    symbol=nothing,
+    scale=nothing,
+    link=nothing,
+    source_roots=nothing,
+    newly_namespaced_roots=nothing,
+)
+    batches, any_node_selected = if source_roots === nothing
+        compile_geometry_jobs(
+            mtg;
+            filter_fun=filter_fun,
+            symbol=symbol,
+            scale=scale,
+            link=link,
+        )
+    else
+        geometry_nodes = typeof(mtg)[]
+        geometry_ownership = _CompiledSceneOwnership[]
+        _compile_scene_geometry_jobs(
+            source_roots;
+            newly_namespaced_roots=newly_namespaced_roots,
+            filter_fun=filter_fun,
+            symbol=symbol,
+            scale=scale,
+            link=link,
+            geometry_nodes=geometry_nodes,
+            geometry_ownership=geometry_ownership,
+        )
+    end
+    any_node_selected || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
+
+    merged_mesh, face2node, _, _, _ = _materialize_merged_geometry(batches)
+    return merged_mesh, face2node
+end
+
+function _build_merged_mesh_with_map(
+    ::Val{true},
+    mtg;
+    filter_fun=nothing,
+    symbol=nothing,
+    scale=nothing,
+    link=nothing,
+    source_roots=nothing,
+    newly_namespaced_roots=nothing,
+)
+    geometry_nodes = typeof(mtg)[]
+    geometry_ownership =
+        source_roots === nothing ? nothing : _CompiledSceneOwnership[]
+    batches, any_node_selected = if source_roots === nothing
+        compile_geometry_jobs(
+            mtg;
+            filter_fun=filter_fun,
+            symbol=symbol,
+            scale=scale,
+            link=link,
+            geometry_nodes=geometry_nodes,
+        )
+    else
+        _compile_scene_geometry_jobs(
+            source_roots;
+            newly_namespaced_roots=newly_namespaced_roots,
+            filter_fun=filter_fun,
+            symbol=symbol,
+            scale=scale,
+            link=link,
+            geometry_nodes=geometry_nodes,
+            geometry_ownership=geometry_ownership,
+        )
+    end
+    any_node_selected || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
+
+    merged_mesh, face2node, node_ids, ne_per_mesh, seqs =
+        _materialize_merged_geometry(batches)
+    return merged_mesh,
+        face2node,
+        node_ids,
+        ne_per_mesh,
+        geometry_nodes,
+        geometry_ownership,
+        seqs
+end
+
+# Backwards-compatible private wrapper. Hot internal paths dispatch directly on
+# `Val` so their two- and seven-value return types remain fully inferred.
+function _build_merged_mesh_with_map(
+    mtg;
+    filter_fun=nothing,
+    symbol=nothing,
+    scale=nothing,
+    link=nothing,
+    collect_nodes::Bool=false,
+    source_roots=nothing,
+    newly_namespaced_roots=nothing,
+)
+    return _build_merged_mesh_with_map(
+        Val(collect_nodes),
+        mtg;
+        filter_fun=filter_fun,
+        symbol=symbol,
+        scale=scale,
+        link=link,
+        source_roots=source_roots,
+        newly_namespaced_roots=newly_namespaced_roots,
+    )
 end
 
 """
@@ -161,31 +427,14 @@ Returns a merged `mesh` and a `face2node::Vector{Int}` mapping each face index i
 merged mesh to the originating MTG node id (`MultiScaleTreeGraph.node_id(node)`).
 """
 function build_merged_mesh_with_map(mtg; filter_fun=nothing, symbol=nothing, scale=nothing, link=nothing)
-    batches, any_node_selected = compile_geometry_jobs(
+    return _build_merged_mesh_with_map(
+        Val(false),
         mtg;
         filter_fun=filter_fun,
         symbol=symbol,
         scale=scale,
         link=link,
     )
-    any_node_selected || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
-
-    meshes, node_ids, ne_per_mesh = materialize_geometry_jobs(batches)
-    length(meshes) > 0 || error("No geometry meshes found to merge.")
-
-    total_elems = sum(ne_per_mesh)
-    face2node = Vector{Int}(undef, total_elems)
-    ofs = 0
-    @inbounds for i in eachindex(meshes)
-        ne = ne_per_mesh[i]
-        if ne > 0
-            face2node[ofs+1:ofs+ne] .= node_ids[i]
-            ofs += ne
-        end
-    end
-
-    merged_mesh = merge_simple_meshes(meshes)
-    return merged_mesh, face2node
 end
 
 """

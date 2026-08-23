@@ -1,12 +1,69 @@
+struct _NoSourceOwnerToken end
+
+"""
+    SourceOwnerKey(source_instance_id, source_node_id)
+
+Opaque identity of the botanical source owner of one scene element.
+
+The pair remains distinct from both the current scene MTG node id and mesh-face
+indices. `source_instance_id` namespaces one object insertion in a scene, while
+`source_node_id` identifies the owning node inside that source object. Several
+scene elements may intentionally share one key, for example leaflet meshes
+owned by a compound `Leaf`.
+
+Treat the complete key as the identity contract; the integer fields are an
+efficient scene-local representation rather than globally persistent ids.
+"""
+struct SourceOwnerKey
+    source_instance_id::Int
+    source_node_id::Int
+
+    function SourceOwnerKey(source_instance_id::Int, source_node_id::Int)
+        source_instance_id > 0 || throw(ArgumentError(
+            "`source_instance_id` must be positive, got $source_instance_id.",
+        ))
+        source_node_id > 0 || throw(ArgumentError(
+            "`source_node_id` must be positive, got $source_node_id.",
+        ))
+        return new(source_instance_id, source_node_id)
+    end
+
+    # Reserved for SceneNodeData's backwards-compatible `nothing` sentinel.
+    SourceOwnerKey(::_NoSourceOwnerToken) = new(0, 0)
+end
+
+SourceOwnerKey(source_instance_id::Integer, source_node_id::Integer) =
+    SourceOwnerKey(Int(source_instance_id), Int(source_node_id))
+
+Base.:(==)(a::SourceOwnerKey, b::SourceOwnerKey) =
+    a.source_instance_id == b.source_instance_id && a.source_node_id == b.source_node_id
+Base.isequal(a::SourceOwnerKey, b::SourceOwnerKey) =
+    isequal(a.source_instance_id, b.source_instance_id) &&
+    isequal(a.source_node_id, b.source_node_id)
+Base.hash(key::SourceOwnerKey, h::UInt) =
+    hash(key.source_node_id, hash(key.source_instance_id, h))
+
+const _NO_SOURCE_OWNER = SourceOwnerKey(_NoSourceOwnerToken())
+
+struct _SceneSourceOwnership
+    source_instance_id::Int
+    source_node_id::Int
+    owner_node_id::Int
+end
+
+const _SCENE_SOURCE_INSTANCE_ID_ATTRIBUTE = :_scene_source_instance_id
+const _SCENE_SOURCE_OWNERSHIP_ATTRIBUTE = :_scene_source_ownership
+const _SCENE_SOURCE_OWNER_RESOLVER_ATTRIBUTE = :_scene_source_owner_resolver
+
 """
     SceneNodeData
 
 Generic per-node geometry summary used by [`SceneGeometry`](@ref).
 
-The data is intentionally geometry-only. Semantic attributes such as `group`,
-`type`, cultivar, treatment, or material class stay on the source MTG nodes.
-Downstream models can read and compile those attributes during their own
-preparation step.
+The data contains geometry summaries and an opaque source-owner identity.
+Semantic attributes such as `group`, `type`, cultivar, treatment, or material
+class stay on the source MTG nodes. Downstream models can read and compile those
+attributes during their own preparation step.
 
 Fields:
 
@@ -17,11 +74,32 @@ Fields:
 - `source_topology_id`: original topology id copied from the source object when
   available. If no explicit source id exists, [`prepare_scene`](@ref) falls back
   to the current node id when `source_topology_id=true`.
+- `source_owner`: botanical source owner of the scene element. This remains
+  available independently of `source_topology_id` output retention.
 """
 struct SceneNodeData{T}
     area::Union{Nothing,T}
     barycenter::Union{Nothing,NTuple{3,T}}
     source_topology_id::Union{Nothing,Int}
+    source_owner::SourceOwnerKey
+end
+
+# Preserve the public constructor used by downstream synthetic-scene fixtures.
+SceneNodeData(area, barycenter, source_topology_id) =
+    SceneNodeData(area, barycenter, source_topology_id, _NO_SOURCE_OWNER)
+SceneNodeData{T}(area, barycenter, source_topology_id) where {T} =
+    SceneNodeData{T}(area, barycenter, source_topology_id, _NO_SOURCE_OWNER)
+SceneNodeData(area, barycenter, source_topology_id, ::Nothing) =
+    SceneNodeData(area, barycenter, source_topology_id, _NO_SOURCE_OWNER)
+SceneNodeData{T}(area, barycenter, source_topology_id, ::Nothing) where {T} =
+    SceneNodeData{T}(area, barycenter, source_topology_id, _NO_SOURCE_OWNER)
+
+@inline function Base.getproperty(node::SceneNodeData, name::Symbol)
+    if name === :source_owner
+        owner = getfield(node, :source_owner)
+        return owner == _NO_SOURCE_OWNER ? nothing : owner
+    end
+    return getfield(node, name)
 end
 
 """
@@ -76,6 +154,9 @@ Fields:
 - `compute_barycenter`: whether summaries should include area-weighted
   barycenters.
 - `source_topology_id`: whether summaries should preserve source topology ids.
+- `next_node_id`: next scene-level MTG node id used during insertion.
+- `next_source_instance_id`: next deterministic namespace used for an object
+  inserted through this builder.
 """
 mutable struct SceneBuilder
     mtg
@@ -85,6 +166,29 @@ mutable struct SceneBuilder
     compute_barycenter::Bool
     source_topology_id::Bool
     next_node_id::Int
+    next_source_instance_id::Int
+end
+
+function _next_scene_source_instance_id(mtg)
+    maximum_instance_id = Ref(0)
+    MultiScaleTreeGraph.traverse!(mtg) do node
+        instance_id = _scene_positive_int_attribute(
+            node,
+            _SCENE_SOURCE_INSTANCE_ID_ATTRIBUTE,
+        )
+        instance_id === nothing ||
+            (maximum_instance_id[] = max(maximum_instance_id[], instance_id))
+        ownership = _stored_source_ownership(node)
+        ownership === nothing ||
+            (maximum_instance_id[] = max(
+                maximum_instance_id[],
+                ownership.source_instance_id,
+            ))
+    end
+    maximum_instance_id[] == typemax(Int) && throw(
+        OverflowError("Cannot allocate another scene source-instance id."),
+    )
+    return maximum_instance_id[] + 1
 end
 
 SceneBuilder(
@@ -102,6 +206,26 @@ SceneBuilder(
     compute_barycenter,
     source_topology_id,
     MultiScaleTreeGraph.max_id(mtg) + 1,
+    _next_scene_source_instance_id(mtg),
+)
+
+SceneBuilder(
+    mtg,
+    domain::Union{Nothing,NTuple{4,Float64}},
+    source_path::String,
+    compute_area::Bool,
+    compute_barycenter::Bool,
+    source_topology_id::Bool,
+    next_node_id::Int,
+) = SceneBuilder(
+    mtg,
+    domain,
+    source_path,
+    compute_area,
+    compute_barycenter,
+    source_topology_id,
+    next_node_id,
+    _next_scene_source_instance_id(mtg),
 )
 
 """
@@ -121,6 +245,26 @@ These are the ids used in `scene.face2node`, [`scene_node`](@ref),
 [`node_areas`](@ref), and [`node_barycenters`](@ref).
 """
 scene_node_ids(scene::SceneGeometry) = sort!(collect(keys(scene.nodes)))
+
+"""
+    source_owner(scene::SceneGeometry, node_id)
+
+Return the opaque [`SourceOwnerKey`](@ref) associated with one scene MTG node,
+or `nothing` when the node has no prepared geometry summary or ownership.
+"""
+function source_owner(scene::SceneGeometry, node_id::Integer)
+    node = scene_node(scene, node_id)
+    node === nothing ? nothing : node.source_owner
+end
+
+"""
+    source_owners(scene::SceneGeometry)
+
+Return a dictionary from prepared scene MTG node ids to their opaque botanical
+source-owner keys. The dictionary is independent of mesh-face order.
+"""
+source_owners(scene::SceneGeometry) =
+    Dict(nid => node.source_owner for (nid, node) in scene.nodes)
 
 """
     node_areas(scene::SceneGeometry)
@@ -221,6 +365,596 @@ function _source_topology_id(node)
     return nothing
 end
 
+function _scene_positive_int_attribute(node, key::Symbol)
+    haskey(node, key) || return nothing
+    value = node[key]
+    (value === nothing || ismissing(value)) && return nothing
+    try
+        parsed = Int(value)
+        parsed > 0 && return parsed
+    catch
+    end
+    return nothing
+end
+
+function _source_object_root(node)
+    current = node
+    while true
+        _scene_positive_int_attribute(
+            current,
+            _SCENE_SOURCE_INSTANCE_ID_ATTRIBUTE,
+        ) === nothing || return current
+        MultiScaleTreeGraph.isroot(current) && return current
+        current = MultiScaleTreeGraph.parent(current)
+    end
+end
+
+@inline _coerce_scene_source_ownership(::Nothing, _) = nothing
+@inline _coerce_scene_source_ownership(::Missing, _) = nothing
+@inline _coerce_scene_source_ownership(
+    ownership::_SceneSourceOwnership,
+    _,
+) = ownership
+@noinline function _coerce_scene_source_ownership(ownership, node)
+    throw(ArgumentError(
+        "Private scene ownership metadata must contain a _SceneSourceOwnership; " *
+        "got $(typeof(ownership)) on node $(MultiScaleTreeGraph.node_id(node)).",
+    ))
+end
+
+# MultiScaleTreeGraph's generic `get(::ColumnarAttrs, ...)` has an `Any`
+# fallback, which boxes one ownership value per node even when its column has a
+# concrete type. Keep the hot path typed until the dependency exposes a public
+# typed attribute accessor. These internals are available throughout our
+# supported MultiScaleTreeGraph 0.15 series.
+@inline function _columnar_source_ownership(
+    attrs::MultiScaleTreeGraph.ColumnarAttrs,
+    node,
+)::Union{Nothing,_SceneSourceOwnership}
+    if !MultiScaleTreeGraph._isbound(attrs)
+        return _coerce_scene_source_ownership(
+            get(attrs.staged, _SCENE_SOURCE_OWNERSHIP_ATTRIBUTE, nothing),
+            node,
+        )
+    end
+
+    store, bucket_id, row = MultiScaleTreeGraph._bound_store_bid_row(attrs.ref)
+    bucket = store.buckets[bucket_id]
+    column_index = get(bucket.col_index, _SCENE_SOURCE_OWNERSHIP_ATTRIBUTE, 0)
+    column_index == 0 && return nothing
+
+    if MultiScaleTreeGraph._column_matches_exact_type(
+        bucket,
+        column_index,
+        _SceneSourceOwnership,
+    )
+        column = bucket.columns[column_index]::MultiScaleTreeGraph.Column{_SceneSourceOwnership}
+        return @inbounds column.data[row]
+    elseif MultiScaleTreeGraph._column_matches_nullable_type(
+        bucket,
+        column_index,
+        _SceneSourceOwnership,
+    )
+        column = bucket.columns[column_index]::MultiScaleTreeGraph.Column{Union{Nothing,_SceneSourceOwnership}}
+        return @inbounds column.data[row]
+    end
+
+    return _coerce_scene_source_ownership(
+        MultiScaleTreeGraph._get_value(
+            bucket,
+            row,
+            _SCENE_SOURCE_OWNERSHIP_ATTRIBUTE,
+            nothing,
+        ),
+        node,
+    )
+end
+
+@inline function _stored_source_ownership(node)
+    ownership = _columnar_source_ownership(
+        MultiScaleTreeGraph.node_attributes(node),
+        node,
+    )
+    ownership === nothing && return nothing
+    ownership.source_instance_id > 0 &&
+        ownership.source_node_id > 0 &&
+        ownership.owner_node_id > 0 || throw(ArgumentError(
+        "Private scene ownership metadata must contain positive ids; got " *
+        "$ownership on node $(MultiScaleTreeGraph.node_id(node)).",
+    ))
+    return ownership
+end
+
+@inline function _stored_source_owner_key(node)
+    ownership = _stored_source_ownership(node)
+    ownership === nothing && return nothing
+    return SourceOwnerKey(ownership.source_instance_id, ownership.owner_node_id)
+end
+
+@inline function _root_source_owner_resolver(root)
+    haskey(root, _SCENE_SOURCE_OWNER_RESOLVER_ATTRIBUTE) || return nothing
+    resolver = root[_SCENE_SOURCE_OWNER_RESOLVER_ATTRIBUTE]
+    return resolver === nothing || ismissing(resolver) ? nothing : resolver
+end
+
+@inline function _default_source_owner_node_id(node)
+    return something(_source_topology_id(node), MultiScaleTreeGraph.node_id(node))
+end
+
+@inline function _intrinsic_source_node_id(node)
+    ownership = _stored_source_ownership(node)
+    return ownership === nothing ?
+           _default_source_owner_node_id(node) : ownership.source_node_id
+end
+
+@inline function _set_source_ownership!(
+    node,
+    source_instance_id::Int,
+    source_node_id::Int,
+    owner_node_id::Int,
+)
+    ownership = _SceneSourceOwnership(
+        source_instance_id,
+        source_node_id,
+        owner_node_id,
+    )
+    node[_SCENE_SOURCE_OWNERSHIP_ATTRIBUTE] = ownership
+    return ownership
+end
+
+@inline function _rebase_node_source_ownership!(node, source_instance_id::Int)
+    ownership = _stored_source_ownership(node)
+    ownership === nothing && return nothing
+    return _set_source_ownership!(
+        node,
+        source_instance_id,
+        ownership.source_node_id,
+        ownership.owner_node_id,
+    )
+end
+
+function _resolve_source_owner(node, resolver)
+    resolver === nothing && return (_default_source_owner_node_id(node), nothing)
+    applicable(resolver, node) || throw(ArgumentError(
+        "`source_owner` must be callable with an MTG node; got $(typeof(resolver)).",
+    ))
+
+    owner = resolver(node)
+    owner_id = if owner isa MultiScaleTreeGraph.Node
+        _source_object_root(owner) === _source_object_root(node) || throw(ArgumentError(
+            "`source_owner` returned a node from another scene object for node " *
+            "$(MultiScaleTreeGraph.node_id(node)). Owners must belong to the same object root.",
+        ))
+        _intrinsic_source_node_id(owner)
+    elseif owner isa Integer
+        Int(owner)
+    else
+        throw(ArgumentError(
+            "`source_owner` must return an MTG node or integer source node id; " *
+            "got $(typeof(owner)) for scene node $(MultiScaleTreeGraph.node_id(node)).",
+        ))
+    end
+    owner_id > 0 || throw(ArgumentError(
+        "`source_owner` returned non-positive source node id $owner_id for " *
+        "scene node $(MultiScaleTreeGraph.node_id(node)).",
+    ))
+    return owner_id, owner isa MultiScaleTreeGraph.Node ? owner : nothing
+end
+
+function _source_owner_node_id(
+    node,
+    resolver;
+    source_instance_id::Union{Nothing,Int}=nothing,
+    allow_owner_rebase::Bool=false,
+)
+    owner_id, owner = _resolve_source_owner(node, resolver)
+
+    if source_instance_id !== nothing && owner !== nothing
+        owner_ownership = _stored_source_ownership(owner)
+        if owner_ownership === nothing
+            _set_source_ownership!(
+                owner,
+                source_instance_id,
+                owner_id,
+                owner_id,
+            )
+        elseif owner_ownership.source_instance_id != source_instance_id
+            allow_owner_rebase || throw(ArgumentError(
+                "`source_owner` returned owner node " *
+                "$(MultiScaleTreeGraph.node_id(owner)) from source instance " *
+                "$(owner_ownership.source_instance_id), but node " *
+                "$(MultiScaleTreeGraph.node_id(node)) belongs to source instance " *
+                "$source_instance_id. Cross-instance owner anchors are unsupported.",
+            ))
+            _rebase_node_source_ownership!(owner, source_instance_id)
+        end
+    end
+    return owner_id
+end
+
+@inline function _scene_source_roots(mtg)
+    if MultiScaleTreeGraph.symbol(mtg) === :Scene
+        has_geometry(mtg) && throw(ArgumentError(
+            "A :Scene node is a container and cannot carry geometry directly. " *
+            "Attach the geometry to an object node below the scene root.",
+        ))
+        return MultiScaleTreeGraph.children(mtg)
+    end
+    return (mtg,)
+end
+
+function _plan_rebased_source_ownership(
+    root,
+    old_source_instance_id::Int,
+    source_instance_id::Int,
+)
+    resolver = _root_source_owner_resolver(root)
+    nodes = typeof(root)[]
+    MultiScaleTreeGraph.traverse!(root) do node
+        push!(nodes, node)
+        return nothing
+    end
+
+    node_indices = IdDict{typeof(root),Int}()
+    existing_ownership = Vector{Union{Nothing,_SceneSourceOwnership}}(undef, length(nodes))
+    planned_ownership = Vector{Union{Nothing,_SceneSourceOwnership}}(undef, length(nodes))
+    fill!(planned_ownership, nothing)
+    @inbounds for index in eachindex(nodes)
+        node = nodes[index]
+        node_indices[node] = index
+        ownership = _stored_source_ownership(node)
+        existing_ownership[index] = ownership
+        if ownership !== nothing
+            _validate_geometry_source_instance(
+                node,
+                ownership,
+                old_source_instance_id,
+            )
+            planned_ownership[index] = _SceneSourceOwnership(
+                source_instance_id,
+                ownership.source_node_id,
+                ownership.owner_node_id,
+            )
+        end
+    end
+
+    owner_indices = Int[]
+    @inbounds for index in eachindex(nodes)
+        existing_ownership[index] === nothing || continue
+        node = nodes[index]
+        if _is_scene_geometry_node(node)
+            source_node_id = _default_source_owner_node_id(node)
+            owner_id, owner = _resolve_source_owner(node, resolver)
+            planned_ownership[index] = _SceneSourceOwnership(
+                source_instance_id,
+                source_node_id,
+                owner_id,
+            )
+            if owner !== nothing
+                owner_index = get(node_indices, owner, 0)
+                owner_index > 0 || error(
+                    "Resolved source owner is missing from its object traversal.",
+                )
+                push!(owner_indices, owner_index)
+            end
+        end
+    end
+
+    # A non-geometric owner anchor needs its own intrinsic identity retained.
+    # Geometry owners already have their resolver-derived plan, while existing
+    # stamps were rebased in the first pass.
+    for owner_index in owner_indices
+        planned_ownership[owner_index] === nothing || continue
+        owner = nodes[owner_index]
+        owner_source_node_id = _default_source_owner_node_id(owner)
+        planned_ownership[owner_index] = _SceneSourceOwnership(
+            source_instance_id,
+            owner_source_node_id,
+            owner_source_node_id,
+        )
+    end
+    return nodes, planned_ownership
+end
+
+function _rebase_source_ownership!(root, source_instance_id::Int)
+    source_instance_id > 0 || throw(ArgumentError(
+        "Scene source-instance ids must be positive; got $source_instance_id.",
+    ))
+    old_source_instance_id = _scene_positive_int_attribute(
+        root,
+        _SCENE_SOURCE_INSTANCE_ID_ATTRIBUTE,
+    )
+    old_source_instance_id === nothing && throw(ArgumentError(
+        "Cannot rebase source ownership without an existing positive " *
+        "source-instance namespace on the object root.",
+    ))
+    nodes, planned_ownership = _plan_rebased_source_ownership(
+        root,
+        old_source_instance_id,
+        source_instance_id,
+    )
+
+    # Commit only after every resolver result and existing stamp was validated.
+    root[_SCENE_SOURCE_INSTANCE_ID_ATTRIBUTE] = source_instance_id
+    @inbounds for index in eachindex(nodes)
+        ownership = planned_ownership[index]
+        ownership === nothing ||
+            (nodes[index][_SCENE_SOURCE_OWNERSHIP_ATTRIBUTE] = ownership)
+    end
+    return root
+end
+
+function _normalize_scene_source_instances!(mtg)
+    roots = _scene_source_roots(mtg)
+    newly_namespaced_roots = falses(length(roots))
+    maximum_instance_id = 0
+    allocations_required = 0
+    seen_instances = Set{Int}()
+
+    for root in roots
+        instance_id = _scene_positive_int_attribute(
+            root,
+            _SCENE_SOURCE_INSTANCE_ID_ATTRIBUTE,
+        )
+        if instance_id === nothing || instance_id in seen_instances
+            allocations_required += 1
+        else
+            maximum_instance_id = max(maximum_instance_id, instance_id)
+            push!(seen_instances, instance_id)
+        end
+    end
+
+    if allocations_required > 0 &&
+       maximum_instance_id > typemax(Int) - allocations_required
+        throw(OverflowError(
+            "Cannot allocate $allocations_required additional scene " *
+            "source-instance id(s) after $maximum_instance_id.",
+        ))
+    end
+    next_instance_id = allocations_required > 0 ? maximum_instance_id + 1 : 0
+    empty!(seen_instances)
+
+    for (root_index, root) in enumerate(roots)
+        instance_id = _scene_positive_int_attribute(
+            root,
+            _SCENE_SOURCE_INSTANCE_ID_ATTRIBUTE,
+        )
+        if instance_id === nothing
+            instance_id = next_instance_id
+            root[_SCENE_SOURCE_INSTANCE_ID_ATTRIBUTE] = instance_id
+            newly_namespaced_roots[root_index] = true
+            allocations_required -= 1
+            allocations_required > 0 && (next_instance_id += 1)
+        elseif instance_id in seen_instances
+            instance_id = next_instance_id
+            _rebase_source_ownership!(root, instance_id)
+            allocations_required -= 1
+            allocations_required > 0 && (next_instance_id += 1)
+        end
+        push!(seen_instances, instance_id)
+    end
+    return roots, newly_namespaced_roots
+end
+
+@inline function _validate_geometry_source_instance(
+    node,
+    ownership::_SceneSourceOwnership,
+    source_instance_id::Int,
+)
+    ownership.source_instance_id == source_instance_id || throw(ArgumentError(
+        "Scene node $(MultiScaleTreeGraph.node_id(node)) was reparented across " *
+        "source instances ($(ownership.source_instance_id) => $source_instance_id). " *
+        "Cross-instance reparenting is unsupported because it would change source identity.",
+    ))
+    return nothing
+end
+
+function _validate_geometry_source_instance(node, source_instance_id::Int)
+    ownership = _stored_source_ownership(node)
+    ownership === nothing && return nothing
+    return _validate_geometry_source_instance(node, ownership, source_instance_id)
+end
+
+@inline function _compiled_scene_ownership(
+    node,
+    source_instance_id::Int,
+    source_root_index::Int,
+    ownership::Union{Nothing,_SceneSourceOwnership},
+    source_owner_resolver,
+)
+    if ownership === nothing
+        source_node_id = _default_source_owner_node_id(node)
+        return _CompiledSceneOwnership(
+            source_instance_id,
+            source_node_id,
+            source_owner_resolver === nothing ? -source_node_id : 0,
+            source_root_index,
+        )
+    end
+    return _CompiledSceneOwnership(
+        ownership.source_instance_id,
+        ownership.source_node_id,
+        ownership.owner_node_id,
+        source_root_index,
+    )
+end
+
+@inline function _preflight_scene_ownership(
+    node,
+    source_instance_id::Int,
+    source_namespace_was_missing::Bool,
+)
+    ownership = _stored_source_ownership(node)
+    ownership === nothing && return nothing
+    source_namespace_was_missing && throw(ArgumentError(
+        "A source root contains ownership stamps but no source-instance namespace. " *
+        "Reinsert the complete stamped object instead of discarding its private " *
+        "root metadata.",
+    ))
+    _validate_geometry_source_instance(node, ownership, source_instance_id)
+    return ownership
+end
+
+
+function _validate_geometry_source_instance(node)
+    object_root = _source_object_root(node)
+    source_instance_id = _scene_positive_int_attribute(
+        object_root,
+        _SCENE_SOURCE_INSTANCE_ID_ATTRIBUTE,
+    )
+    source_instance_id === nothing && error(
+        "Scene source namespaces must be normalized before resolving ownership.",
+    )
+    return _validate_geometry_source_instance(node, source_instance_id)
+end
+
+@inline function _source_owner_key_from_compiled!(
+    node,
+    ownership::_CompiledSceneOwnership,
+    source_roots,
+)
+    if ownership.owner_node_id > 0
+        return SourceOwnerKey(
+            ownership.source_instance_id,
+            ownership.owner_node_id,
+        )
+    elseif ownership.owner_node_id < 0
+        owner_node_id = -ownership.owner_node_id
+        _set_source_ownership!(
+            node,
+            ownership.source_instance_id,
+            ownership.source_node_id,
+            owner_node_id,
+        )
+        return SourceOwnerKey(ownership.source_instance_id, owner_node_id)
+    end
+
+    object_root = source_roots[ownership.source_root_index]
+    root_source_instance_id = _scene_positive_int_attribute(
+        object_root,
+        _SCENE_SOURCE_INSTANCE_ID_ATTRIBUTE,
+    )
+    root_source_instance_id === nothing && error(
+        "Scene source namespaces must be normalized before resolving ownership.",
+    )
+    ownership.source_instance_id == root_source_instance_id || error(
+        "Compiled scene source metadata no longer matches the MTG topology.",
+    )
+    owner_id = _source_owner_node_id(
+        node,
+        _root_source_owner_resolver(object_root);
+        source_instance_id=ownership.source_instance_id,
+    )
+    _set_source_ownership!(
+        node,
+        ownership.source_instance_id,
+        ownership.source_node_id,
+        owner_id,
+    )
+    return SourceOwnerKey(ownership.source_instance_id, owner_id)
+end
+
+function _ensure_source_ownership_before_relabel!(roots, newly_namespaced_roots)
+    # Validate every existing stamp before either stamping new geometry or
+    # changing any node id. This includes non-geometric botanical owner anchors.
+    for (root_index, root) in enumerate(roots)
+        source_instance_id = _scene_positive_int_attribute(
+            root,
+            _SCENE_SOURCE_INSTANCE_ID_ATTRIBUTE,
+        )
+        MultiScaleTreeGraph.traverse!(root) do node
+            ownership = _stored_source_ownership(node)
+            ownership === nothing && return nothing
+            newly_namespaced_roots[root_index] && throw(ArgumentError(
+                "A source root contains ownership stamps but no source-instance " *
+                "namespace. Reinsert the complete stamped object instead of " *
+                "discarding its private root metadata.",
+            ))
+            _validate_geometry_source_instance(
+                node,
+                ownership,
+                source_instance_id,
+            )
+            return nothing
+        end
+    end
+
+    for root in roots
+        source_instance_id = _scene_positive_int_attribute(
+            root,
+            _SCENE_SOURCE_INSTANCE_ID_ATTRIBUTE,
+        )
+        resolver = _root_source_owner_resolver(root)
+        MultiScaleTreeGraph.traverse!(root, filter_fun=_is_scene_geometry_node) do node
+            ownership = _stored_source_ownership(node)
+            if ownership === nothing
+                source_node_id = _default_source_owner_node_id(node)
+                owner_id = _source_owner_node_id(
+                    node,
+                    resolver;
+                    source_instance_id=source_instance_id,
+                )
+                _set_source_ownership!(
+                    node,
+                    source_instance_id,
+                    source_node_id,
+                    owner_id,
+                )
+            elseif ownership.source_instance_id != source_instance_id
+                _validate_geometry_source_instance(node)
+            end
+            return nothing
+        end
+    end
+    return nothing
+end
+
+function _populate_scene_node_summaries!(
+    nodes,
+    geometry_node_ids,
+    geometry_nelems,
+    geometry_nodes,
+    geometry_ownership,
+    geometry_seqs,
+    node_area,
+    bary_acc,
+    source_roots,
+    ::Val{COMPUTE_AREA},
+    ::Val{COMPUTE_BARYCENTER},
+    ::Val{SOURCE_TOPOLOGY_ID},
+) where {COMPUTE_AREA,COMPUTE_BARYCENTER,SOURCE_TOPOLOGY_ID}
+    @inbounds for i in eachindex(geometry_node_ids)
+        geometry_nelems[i] > 0 || continue
+        nid = geometry_node_ids[i]
+        geometry_seq = geometry_seqs[i]
+        node = geometry_nodes[geometry_seq]
+        area = COMPUTE_AREA ? get(node_area, nid, 0.0) : nothing
+        barycenter = if COMPUTE_BARYCENTER
+            denom = get(node_area, nid, 0.0)
+            if denom > 0
+                sx, sy, sz = get(bary_acc, nid, (0.0, 0.0, 0.0))
+                (sx / denom, sy / denom, sz / denom)
+            else
+                (NaN, NaN, NaN)
+            end
+        else
+            nothing
+        end
+        sid = if SOURCE_TOPOLOGY_ID
+            something(_source_topology_id(node), nid)
+        else
+            nothing
+        end
+        owner = _source_owner_key_from_compiled!(
+            node,
+            geometry_ownership[geometry_seq],
+            source_roots,
+        )
+        nodes[nid] = SceneNodeData{Float64}(area, barycenter, sid, owner)
+    end
+    return nodes
+end
+
 """
     prepare_scene(mtg; source_path="interactive.scene", domain=nothing,
                   scene_xy_bounds=nothing, relabel_ids=false,
@@ -248,8 +982,11 @@ Keyword arguments:
 - `source_topology_id`: preserve original topology ids in node summaries when
   nodes carry a `:source_topology_id` attribute.
 
-The function mutates `mtg` when `relabel_ids=true` or when a domain is written
-back as `mtg[:scene_dimensions]`. It returns a [`SceneGeometry`](@ref).
+The function records private `_scene_*` ownership metadata on object roots and
+geometry nodes so ownership remains stable across refreshes and organogenesis.
+It also mutates `mtg` when `relabel_ids=true` or when a domain is written back
+as `mtg[:scene_dimensions]`. Private scene metadata is omitted by OPF writers.
+The function returns a [`SceneGeometry`](@ref).
 
 Use [`make_scene`](@ref) for new scene construction; use `prepare_scene`
 directly when you already have a scene MTG.
@@ -264,18 +1001,44 @@ function prepare_scene(
     compute_barycenter::Bool=true,
     source_topology_id::Bool=true,
 )
-    relabel_ids && _relabel_node_ids!(mtg, Ref(1))
+    source_roots, newly_namespaced_roots = _normalize_scene_source_instances!(mtg)
+    if relabel_ids
+        # Establish fallback owner ids while they still refer to the source
+        # topology. Subsequent relabelling may change scene node ids, never the
+        # already-established botanical owner keys.
+        _ensure_source_ownership_before_relabel!(
+            source_roots,
+            newly_namespaced_roots,
+        )
+        fill!(newly_namespaced_roots, false)
+        _relabel_node_ids!(mtg, Ref(1))
+    end
     bounds = domain === nothing ? scene_xy_bounds : domain
     bounds = bounds === nothing ? _scene_xy_bounds_from_mtg(mtg) : _coerce_scene_domain(bounds)
     bounds === nothing || _set_scene_dimensions!(mtg, bounds)
 
-    merged_mesh, face2node = build_merged_mesh_with_map(mtg; filter_fun=_is_scene_geometry_node)
-    node_ids = sort!(unique(face2node))
+    merged_mesh,
+    face2node,
+    geometry_node_ids,
+    geometry_nelems,
+    geometry_nodes,
+    geometry_ownership,
+    geometry_seqs =
+        _build_merged_mesh_with_map(
+            Val(true),
+            mtg;
+            filter_fun=_is_scene_geometry_node,
+            source_roots=source_roots,
+            newly_namespaced_roots=newly_namespaced_roots,
+        )
     nodes = Dict{Int,SceneNodeData{Float64}}()
+    sizehint!(nodes, length(geometry_node_ids))
 
     node_area = Dict{Int,Float64}()
     bary_acc = Dict{Int,NTuple{3,Float64}}()
     if compute_area || compute_barycenter
+        sizehint!(node_area, length(geometry_node_ids))
+        compute_barycenter && sizehint!(bary_acc, length(geometry_node_ids))
         verts = GeometryBasics.decompose(GeometryBasics.Point3, merged_mesh)
         faces = GeometryBasics.decompose(Face3, merged_mesh)
         for (i, f) in enumerate(faces)
@@ -295,33 +1058,20 @@ function prepare_scene(
         end
     end
 
-    for nid in node_ids
-        area = compute_area ? get(node_area, nid, 0.0) : nothing
-        barycenter =
-            if compute_barycenter
-                denom = compute_area ? get(node_area, nid, 0.0) : begin
-                    # Recompute the denominator from accumulated weights only when area is disabled.
-                    # The fallback keeps the API simple; users needing barycenters usually keep area on.
-                    get(node_area, nid, 0.0)
-                end
-                if denom > 0
-                    sx, sy, sz = get(bary_acc, nid, (0.0, 0.0, 0.0))
-                    (sx / denom, sy / denom, sz / denom)
-                else
-                    (NaN, NaN, NaN)
-                end
-            else
-                nothing
-            end
-        sid =
-            if source_topology_id
-                node = MultiScaleTreeGraph.get_node(mtg, nid)
-                node === nothing ? nid : something(_source_topology_id(node), nid)
-            else
-                nothing
-            end
-        nodes[nid] = SceneNodeData(area, barycenter, sid)
-    end
+    _populate_scene_node_summaries!(
+        nodes,
+        geometry_node_ids,
+        geometry_nelems,
+        geometry_nodes,
+        geometry_ownership,
+        geometry_seqs,
+        node_area,
+        bary_acc,
+        source_roots,
+        Val(compute_area),
+        Val(compute_barycenter),
+        Val(source_topology_id),
+    )
 
     return SceneGeometry(mtg, merged_mesh, face2node, nodes, String(source_path), bounds)
 end
@@ -437,10 +1187,58 @@ function _store_ops_placement_metadata!(
     return root
 end
 
-function _transform_object!(mtg, transformation)
-    MultiScaleTreeGraph.traverse!(mtg, filter_fun=has_geometry) do node
-        transform_mesh!(node, transformation)
-        return true
+function _transform_object!(
+    mtg,
+    transformation;
+    source_instance_id=nothing,
+    source_owner=nothing,
+)
+    normalized_instance_id = source_instance_id === nothing ? 0 : Int(source_instance_id)
+    resolver = if source_instance_id === nothing
+        nothing
+    elseif source_owner === nothing
+        _root_source_owner_resolver(mtg)
+    else
+        source_owner
+    end
+    if source_instance_id !== nothing
+        mtg[_SCENE_SOURCE_INSTANCE_ID_ATTRIBUTE] = normalized_instance_id
+        if source_owner !== nothing
+            mtg[_SCENE_SOURCE_OWNER_RESOLVER_ATTRIBUTE] = source_owner
+        end
+    end
+    MultiScaleTreeGraph.traverse!(mtg) do node
+        node_has_geometry = has_geometry(node)
+        if source_instance_id !== nothing
+            existing_ownership = _stored_source_ownership(node)
+            if node_has_geometry
+                source_node_id = existing_ownership === nothing ?
+                                 _default_source_owner_node_id(node) :
+                                 existing_ownership.source_node_id
+                owner_id = if source_owner === nothing && existing_ownership !== nothing
+                    existing_ownership.owner_node_id
+                elseif resolver === nothing
+                    source_node_id
+                else
+                    _source_owner_node_id(
+                        node,
+                        resolver;
+                        source_instance_id=normalized_instance_id,
+                        allow_owner_rebase=true,
+                    )
+                end
+                _set_source_ownership!(
+                    node,
+                    normalized_instance_id,
+                    source_node_id,
+                    owner_id,
+                )
+            elseif existing_ownership !== nothing
+                _rebase_node_source_ownership!(node, normalized_instance_id)
+            end
+        end
+        node_has_geometry && transform_mesh!(node, transformation)
+        return nothing
     end
     return mtg
 end
@@ -481,7 +1279,7 @@ end
                 at=(0, 0, 0), scale=1.0, rotate=(0, 0, 0), deg=false,
                 rotation=nothing, inclination_azimut=0.0,
                 inclination_angle=0.0, transform=nothing,
-                file_path="", kwargs...)
+                file_path="", source_owner=nothing, kwargs...)
     add_object!(builder::SceneBuilder, path::AbstractString; type="object", kwargs...)
 
 Add an object to a scene being assembled with [`make_scene`](@ref).
@@ -516,6 +1314,14 @@ Placement options:
   placement. These cannot be mixed with a nonzero `rotate=` value.
 - `transform`: extra `CoordinateTransformations.Transformation` composed after
   the placement transform.
+- `source_owner=nothing`: preserve any existing botanical owner mapping when
+  re-instancing an already assembled object. A fresh scene-instance namespace
+  is still assigned. For a first insertion, each geometry node owns itself.
+- `source_owner=resolver`: explicitly recompute ownership before relabelling.
+  The resolver receives each copied geometry node and returns its botanical
+  owner node (or positive source node id). It is retained privately on the
+  copied object root so geometry created later uses the same rule during
+  [`prepare_scene`](@ref).
 
 `add_object!` deep-copies MTG inputs before mutating them, annotates the object
 root with placement metadata, applies the placement transform to all geometry
@@ -541,8 +1347,12 @@ function add_object!(
     inclination_angle=0.0,
     transform=nothing,
     file_path::AbstractString="",
+    source_owner=nothing,
     kwargs...,
 )
+    0 < builder.next_source_instance_id < typemax(Int) || throw(OverflowError(
+        "SceneBuilder has no remaining source-instance namespace.",
+    ))
     obj = object isa GeometryBasics.AbstractMesh ? _mesh_object_mtg(object; type=type) : deepcopy(object)
     _annotate_object_root!(obj; group=group, id=id, file_path=file_path, kwargs...)
     placement = _placement_transform(
@@ -556,9 +1366,12 @@ function add_object!(
         inclination_angle=inclination_angle,
         transform=transform,
     )
+    source_instance_id = builder.next_source_instance_id
     _transform_object!(
         obj,
-        placement,
+        placement;
+        source_instance_id=source_instance_id,
+        source_owner=source_owner,
     )
     _store_ops_placement_metadata!(
         obj,
@@ -576,6 +1389,7 @@ function add_object!(
     _relabel_node_ids!(obj, next_node_id)
     builder.next_node_id = next_node_id[]
     MultiScaleTreeGraph.addchild!(builder.mtg, obj)
+    builder.next_source_instance_id = source_instance_id + 1
     return builder
 end
 
@@ -833,6 +1647,7 @@ function make_scene(
         compute_barycenter,
         source_topology_id,
         MultiScaleTreeGraph.max_id(root) + 1,
+        1,
     )
     f(builder)
     return prepare_scene(

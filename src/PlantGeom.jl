@@ -84,9 +84,9 @@ export diagram, diagram!
 export read_opf, read_gwa, write_opf, write_gwa
 export read_ops_file, read_ops, write_ops, write_ops_file
 export scene_object_transformation, place_in_scene!
-export SceneGeometry, SceneNodeData, SceneBuilder
+export SceneGeometry, SceneNodeData, SceneBuilder, SourceOwnerKey
 export make_scene, prepare_scene, add_plant!, add_object!, add_ground!
-export scene_node, scene_node_ids, node_areas, node_barycenters
+export scene_node, scene_node_ids, source_owner, source_owners, node_areas, node_barycenters
 export taper
 export refmesh_to_mesh, get_ref_meshes_color
 export xmax, ymax, zmax, xmin, ymin, zmin

@@ -129,6 +129,75 @@ scene = make_scene(domain=(0.0, 0.0, 5.0, 3.0)) do sc
 end
 ```
 
+Each insertion receives its own source-instance namespace. Consequently, two
+copies may keep the same object-local node ids without colliding in downstream
+models.
+
+## Trace Geometry Back to Botanical Organs
+
+A scene contains several distinct kinds of identity:
+
+- a scene MTG node id identifies the copied and possibly relabelled scene node;
+- `source_topology_id` is optional provenance copied from the input topology;
+- [`SourceOwnerKey`](@ref) identifies the botanical source object that owns a
+  geometric component.
+
+Use [`source_owner`](@ref) or [`source_owners`](@ref) when results calculated on
+scene components must be assigned back to botanical organs:
+
+```julia
+for scene_node_id in scene_node_ids(scene)
+    owner = source_owner(scene, scene_node_id)
+    # Compile `owner` to the corresponding object in the downstream model.
+end
+```
+
+The complete `SourceOwnerKey` is the identity. Its `source_instance_id`
+distinguishes repeated insertions and independent input topologies, while its
+`source_node_id` identifies the owner inside that source object. The key is
+scene-local: do not persist either integer alone as a globally stable botanical
+identifier, and do not infer ownership from mesh-face order.
+
+By default, every geometry-bearing node owns its own component. Compound
+organs can provide a resolver when they are inserted. For example, leaflet
+meshes can be owned by their enclosing `Leaf`:
+
+```julia
+function nearest_leaf(node)
+    current = node
+    while MultiScaleTreeGraph.symbol(current) !== :Leaf
+        MultiScaleTreeGraph.isroot(current) &&
+            error("No Leaf ancestor found for scene geometry")
+        current = MultiScaleTreeGraph.parent(current)
+    end
+    return current
+end
+
+scene = make_scene(domain=(0.0, 0.0, 5.0, 3.0)) do sc
+    add_plant!(
+        sc,
+        compound_plant;
+        group="plants",
+        id=1,
+        source_owner=nearest_leaf,
+    )
+end
+```
+
+Several scene nodes may then share one owner key. The mapping survives copying,
+placement transforms, scene-node relabelling, and later scene preparation.
+Calling `add_plant!` or `add_object!` again preserves an existing botanical
+mapping by default while assigning the copy a fresh source-instance namespace;
+passing a new `source_owner` resolver recomputes it explicitly.
+
+`prepare_scene` records private `_scene_*` attributes on the scene MTG to retain
+this information across refreshes and organogenesis. PlantGeom's OPF writer
+omits these implementation attributes. Moving an already stamped node between
+two source instances is deliberately rejected: such a move would change the
+meaning of its owner key. Reassemble or reinsert the complete object when a new
+source-instance identity is intended; reparenting within the same source
+instance remains supported.
+
 ## Export to OPS
 
 `make_scene` returns a [`SceneGeometry`](@ref). The MTG scene root is stored in
