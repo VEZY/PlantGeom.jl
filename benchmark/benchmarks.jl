@@ -186,6 +186,9 @@ end
 include(joinpath(@__DIR__, "scene_ownership.jl"))
 SUITE["Scene ownership"] = SCENE_OWNERSHIP_SUITE
 
+include(joinpath(@__DIR__, "scene_units.jl"))
+SUITE["Scene units"] = SCENE_UNITS_SUITE
+
 # ---------
 # IO
 # ---------
