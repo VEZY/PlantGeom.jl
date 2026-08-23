@@ -11,22 +11,23 @@
     PlantGeomTestEmergenceModel(; TT_emergence=10.0) =
         PlantGeomTestEmergenceModel(TT_emergence)
 
-    PlantSimEngine.inputs_(::PlantGeomTestEmergenceModel) = (TT_cu=-Inf,)
+    PlantSimEngine.inputs_(::PlantGeomTestEmergenceModel) =
+        (TT_cu=PlantSimEngine.Required(Float64),)
     PlantSimEngine.outputs_(::PlantGeomTestEmergenceModel) =
         (TT_cu_emergence=0.0, emitted=0,)
 
     function PlantSimEngine.run!(
         model::PlantGeomTestEmergenceModel,
-        models,
         status,
-        meteo,
-        constants=nothing,
-        context=nothing,
+        environment,
+        constants,
+        context,
     )
         status.emitted == 0 || return nothing
         status.TT_cu - status.TT_cu_emergence >= model.TT_emergence || return nothing
 
-        phase = isodd(length(PlantSimEngine.model_objects(context.compiled.scene; scale=:Internode))) ?
+        runtime = PlantSimEngine.runtime_model(context)
+        phase = isodd(length(PlantSimEngine.model_objects(runtime; scale=:Internode))) ?
                 180.0 : 0.0
         emit_phytomer!(
             status,
@@ -152,18 +153,22 @@ end
         status=initial_status,
         environment=meteo,
         applications=(
-            PlantSimEngine.ModelSpec(ToyDegreeDaysCumulModel(); name=:degree_days) |>
-            PlantSimEngine.AppliesTo(PlantSimEngine.One(scale=:Scene)),
+            PlantSimEngine.ModelSpec(
+                ToyDegreeDaysCumulModel();
+                name=:degree_days,
+                on=PlantSimEngine.One(scale=:Scene),
+            ),
             PlantSimEngine.ModelSpec(
                 PlantGeomTestEmergenceModel(TT_emergence=10.0);
                 name=:emergence,
-            ) |>
-            PlantSimEngine.AppliesTo(PlantSimEngine.Many(scale=:Internode)) |>
-            PlantSimEngine.Inputs(
-                :TT_cu => PlantSimEngine.One(
-                    scale=:Scene,
-                    within=PlantSimEngine.SceneScope(),
-                    var=:TT_cu,
+                on=PlantSimEngine.Many(scale=:Internode),
+                inputs=(
+                    :TT_cu => PlantSimEngine.One(
+                        scale=:Scene,
+                        within=PlantSimEngine.SceneScope(),
+                        application=:degree_days,
+                        var=:TT_cu,
+                    ),
                 ),
             ),
         ),
@@ -171,10 +176,11 @@ end
     simulation = @test_nowarn PlantSimEngine.run!(
         scene;
         steps=3,
-        tracked_outputs=PlantSimEngine.OutputRequest(
-            :Internode,
+        outputs=PlantSimEngine.OutputRequest(
+            PlantSimEngine.Many(scale=:Internode),
             :TT_cu_emergence;
             name=:internode_emergence,
+            application=:emergence,
         ),
     )
 
