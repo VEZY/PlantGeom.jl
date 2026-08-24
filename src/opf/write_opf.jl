@@ -5,7 +5,13 @@ using Printf: @sprintf
 @inline _opf_join_values(values) = join((_opf_scalar_string(v) for v in values), "\t")
 @inline _opf_attr_string(val::AbstractArray) = _opf_join_values(val)
 @inline _opf_attr_string(val) = _opf_scalar_string(val)
-@inline _opf_skip_attribute(key::Symbol) = key in (:ref_meshes, :geometry, :source_topology_id, :description) || startswith(String(key), "_scene_")
+@inline _opf_skip_attribute(key::Symbol) = key in (
+    :ref_meshes,
+    :geometry,
+    :source_topology_id,
+    :description,
+    :plantsimengine_status,
+) || startswith(String(key), "_scene_")
 @inline _opf_topology_id(node) = (haskey(node, :source_topology_id) && node[:source_topology_id] !== nothing && !ismissing(node[:source_topology_id])) ? node[:source_topology_id] : node_id(node)
 
 @inline _opf_geometry_material(geom::Geometry) = geom.ref_mesh.material
