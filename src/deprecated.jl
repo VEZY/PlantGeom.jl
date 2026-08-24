@@ -30,3 +30,41 @@ function viz!(mesh::T, args...; kwars...) where {T<:MultiScaleTreeGraph.Node}
     @warn "The `viz!` function is deprecated, use `plantviz!` instead."
     plantviz!(mesh, args...; kwars...)
 end
+
+@noinline function _deprecate_emit_phytomer!()
+    Base.depwarn(
+        "`emit_phytomer!` is deprecated because it does not create a `:Phytomer` node; " *
+        "use `emit_internode_leaf!` for the same internode/leaf emission behavior.",
+        :emit_phytomer!,
+    )
+    return nothing
+end
+
+"""
+    emit_phytomer!(parent; kwargs...)
+
+Deprecated compatibility wrapper for [`emit_internode_leaf!`](@ref).
+
+Despite its historical name, this function does not create a `:Phytomer` node.
+It preserves the former behavior of emitting an `:Internode`, a `:Leaf`, or both.
+"""
+function emit_phytomer!(
+    parent::MultiScaleTreeGraph.Node;
+    internode=NamedTuple(),
+    leaf=NamedTuple(),
+    internode_index::Integer=0,
+    leaf_index::Integer=0,
+    scale=nothing,
+    bump_scene::Bool=true,
+)
+    _deprecate_emit_phytomer!()
+    return emit_internode_leaf!(
+        parent;
+        internode=internode,
+        leaf=leaf,
+        internode_index=internode_index,
+        leaf_index=leaf_index,
+        scale=scale,
+        bump_scene=bump_scene,
+    )
+end

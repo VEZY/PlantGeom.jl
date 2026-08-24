@@ -1,7 +1,7 @@
 module PlantGeomPlantSimEngineExt
 
 using PlantGeom
-import PlantGeom: emit_internode!, emit_leaf!, emit_phytomer!
+import PlantGeom: emit_internode!, emit_leaf!, emit_internode_leaf!, emit_phytomer!
 import PlantSimEngine
 import MultiScaleTreeGraph
 
@@ -534,7 +534,7 @@ function emit_leaf!(
     return emit_leaf!(parent_status.node, runtime; kwargs...)
 end
 
-function emit_phytomer!(
+function emit_internode_leaf!(
     parent::MultiScaleTreeGraph.Node,
     runtime::PlantSimEngineRuntime;
     internode=NamedTuple(),
@@ -571,12 +571,44 @@ function emit_phytomer!(
     return (internode=internode_status, leaf=leaf_status)
 end
 
+function emit_internode_leaf!(
+    parent_status::PlantSimEngine.Status,
+    runtime::PlantSimEngineRuntime;
+    kwargs...,
+)
+    return emit_internode_leaf!(parent_status.node, runtime; kwargs...)
+end
+
+function emit_phytomer!(
+    parent::MultiScaleTreeGraph.Node,
+    runtime::PlantSimEngineRuntime;
+    internode=NamedTuple(),
+    leaf=NamedTuple(),
+    internode_index::Integer=0,
+    leaf_index::Integer=0,
+    scale=nothing,
+    bump_scene::Bool=true,
+)
+    PlantGeom._deprecate_emit_phytomer!()
+    return emit_internode_leaf!(
+        parent,
+        runtime;
+        internode=internode,
+        leaf=leaf,
+        internode_index=internode_index,
+        leaf_index=leaf_index,
+        scale=scale,
+        bump_scene=bump_scene,
+    )
+end
+
 function emit_phytomer!(
     parent_status::PlantSimEngine.Status,
     runtime::PlantSimEngineRuntime;
     kwargs...,
 )
-    return emit_phytomer!(parent_status.node, runtime; kwargs...)
+    PlantGeom._deprecate_emit_phytomer!()
+    return emit_internode_leaf!(parent_status.node, runtime; kwargs...)
 end
 
 end

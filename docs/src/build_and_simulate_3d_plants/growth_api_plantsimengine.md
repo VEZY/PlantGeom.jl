@@ -22,8 +22,8 @@ The point of this workflow is to keep the responsibilities separate:
 We build a very small dynamic plant model where:
 
 - a `:Scene` node accumulates thermal time from meteorology
-- each internode emits **one new phytomer** once enough thermal time has accumulated
-- the growth event is implemented inside a PlantSimEngine model using `emit_phytomer!`
+- each internode emits **one new internode/leaf pair** once enough thermal time has accumulated
+- the growth event is implemented inside a PlantSimEngine model using `emit_internode_leaf!`
 - after the simulation, we rebuild geometry and visualize the result
 
 This example is fully runnable as shown.
@@ -90,7 +90,8 @@ prototypes = Dict(
 This is the key integration point.
 
 The model receives `TT_cu` from the `:Scene` scale.  
-When the thermal-time threshold is reached, it calls `emit_phytomer!` from PlantGeom.
+When the thermal-time threshold is reached, it calls `emit_internode_leaf!` from
+PlantGeom. This helper adds the two organ nodes; it does not create a `:Phytomer` node.
 
 ```@example psegrowth
 PlantSimEngine.@process "plantgeom_docs_emergence" verbose = false
@@ -117,7 +118,7 @@ function PlantSimEngine.run!(
         runtime = PlantSimEngine.runtime_model(context)
         phase = isodd(length(PlantSimEngine.model_objects(runtime; scale=:Internode))) ?
                 180.0 : 0.0
-        emit_phytomer!(
+        emit_internode_leaf!(
             status,
             context;
             internode=(
@@ -293,6 +294,6 @@ This example shows the intended split:
 So the recommended pattern is:
 
 1. write a PlantSimEngine model that triggers growth events
-2. call `emit_internode!`, `emit_leaf!`, or `emit_phytomer!` inside that model
+2. call `emit_internode!`, `emit_leaf!`, or `emit_internode_leaf!` inside that model
 3. run the simulation with `PlantSimEngine.run!(model; steps=...)`
 4. rebuild geometry when you want a visual or exportable 3D plant

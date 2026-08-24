@@ -86,13 +86,13 @@ end
     )
 
     plant = Node(NodeMTG(:/, :Plant, 1, 1))
-    first_phy = emit_phytomer!(
+    first_pair = emit_internode_leaf!(
         plant;
         internode=(link=:/, index=1, length=0.20, width=0.022),
         leaf=(index=1, offset=0.15, length=0.22, width=0.05, thickness=0.02, y_insertion_angle=52.0),
     )
-    emit_phytomer!(
-        first_phy.internode;
+    emit_internode_leaf!(
+        first_pair.internode;
         internode=(index=2, length=0.18, width=0.020),
         leaf=(index=2, offset=0.14, length=0.24, width=0.055, thickness=0.02, phyllotaxy=180.0, y_insertion_angle=54.0),
     )

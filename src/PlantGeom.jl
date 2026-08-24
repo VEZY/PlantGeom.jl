@@ -122,7 +122,7 @@ export transformation_from_attributes
 export geometry_from_attributes
 export reconstruct_geometry_from_attributes!
 export set_geometry_from_attributes!
-export emit_internode!, emit_leaf!, emit_phytomer!
+export emit_internode!, emit_leaf!, emit_internode_leaf!, emit_phytomer!
 export grow_length!, grow_width!, set_growth_attributes!, rebuild_geometry!
 
 function colorbar end # Extended in PlantGeomMakie extension

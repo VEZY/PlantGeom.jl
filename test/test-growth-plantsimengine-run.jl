@@ -29,7 +29,7 @@
         runtime = PlantSimEngine.runtime_model(context)
         phase = isodd(length(PlantSimEngine.model_objects(runtime; scale=:Internode))) ?
                 180.0 : 0.0
-        emit_phytomer!(
+        emit_internode_leaf!(
             status,
             context;
             internode=(

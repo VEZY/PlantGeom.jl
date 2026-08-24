@@ -62,7 +62,7 @@ else
         @test new_leaf.node[:leaf_stage] == :juvenile
         @test new_leaf.leaf_stage == :juvenile
 
-        phy = emit_phytomer!(
+        organ_pair = emit_internode_leaf!(
             new_internode.node,
             scene;
             internode=(
@@ -78,24 +78,24 @@ else
             ),
             bump_scene=false,
         )
-        @test phy.internode isa PlantSimEngine.Status
-        @test phy.leaf isa PlantSimEngine.Status
+        @test organ_pair.internode isa PlantSimEngine.Status
+        @test organ_pair.leaf isa PlantSimEngine.Status
 
-        grow_length!(phy.internode; delta=0.03, bump_scene=false)
-        @test phy.internode.node[:Length] ≈ 0.15
+        grow_length!(organ_pair.internode; delta=0.03, bump_scene=false)
+        @test organ_pair.internode.node[:Length] ≈ 0.15
 
-        grow_width!(phy.internode; delta=0.005, bump_scene=false)
-        @test phy.internode.node[:Width] ≈ 0.02
-        @test phy.internode.node[:Thickness] ≈ 0.02
+        grow_width!(organ_pair.internode; delta=0.005, bump_scene=false)
+        @test organ_pair.internode.node[:Width] ≈ 0.02
+        @test organ_pair.internode.node[:Thickness] ≈ 0.02
 
-        set_growth_attributes!(phy.leaf; leaf_stage=:adult, age=5, bump_scene=false)
-        @test phy.leaf.node[:leaf_stage] == :adult
-        @test phy.leaf.node[:age] == 5
+        set_growth_attributes!(organ_pair.leaf; leaf_stage=:adult, age=5, bump_scene=false)
+        @test organ_pair.leaf.node[:leaf_stage] == :adult
+        @test organ_pair.leaf.node[:age] == 5
 
         @test PlantSimEngine.bindings_dirty(scene)
         v0 = scene_ver(mtg)
         emit_leaf!(
-            phy.internode,
+            organ_pair.internode,
             scene;
             length=0.05,
             width=0.015,
@@ -103,5 +103,34 @@ else
             bump_scene=true,
         )
         @test scene_ver(mtg) == v0 + 1
+
+        legacy_pair = @test_deprecated r"does not create a `:Phytomer` node" emit_phytomer!(
+            new_internode.node,
+            scene;
+            internode=(
+                length=0.07,
+                width=0.01,
+                initial_status=(var1=1.0, var2=2.0),
+            ),
+            leaf=(
+                length=0.04,
+                width=0.01,
+                initial_status=(var1=1.0, var2=2.0),
+            ),
+            bump_scene=false,
+        )
+        @test legacy_pair.internode isa PlantSimEngine.Status
+        @test legacy_pair.leaf isa PlantSimEngine.Status
+        @test symbol(legacy_pair.internode.node) == :Internode
+        @test symbol(legacy_pair.leaf.node) == :Leaf
+
+        legacy_empty = @test_deprecated r"does not create a `:Phytomer` node" emit_phytomer!(
+            plant_status,
+            scene;
+            internode=nothing,
+            leaf=nothing,
+            bump_scene=false,
+        )
+        @test legacy_empty == (internode=nothing, leaf=nothing)
     end
 end
