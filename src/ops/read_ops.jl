@@ -17,9 +17,9 @@ override OPF attribute types by name (CSV-like typing override).
 
 The `:Scene` root is always a geometry-free container. The OPS terrain line is
 retained in `scene_dimensions`; create scientific ground geometry with
-[`add_ground!`](@ref). The historical translucent root-boundary quadrangle is
-available only through the explicit
-`PlantGeom.LegacyOPS.materialize_scene_boundary!` compatibility boundary.
+[`add_ground!`](@ref). To visualize the historical OPS extent without changing
+the MTG, call `plantviz(scene; show_scene_boundary=true)` or plot the pure
+[`scene_boundary_mesh`](@ref) result yourself.
 """
 function read_ops(
     file;

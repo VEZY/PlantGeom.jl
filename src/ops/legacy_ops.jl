@@ -16,9 +16,18 @@ Attach the historical translucent OPS plot-boundary quadrangle to the `:Scene`
 root. This is a visualization compatibility artifact, not scientific ground
 geometry. A scene with root geometry cannot be passed to
 [`PlantGeom.prepare_scene`](@ref); prefer [`PlantGeom.add_ground!`](@ref) in new
-code.
+code. This mutating compatibility helper is deprecated and will be removed in
+PlantGeom v0.21; use `plantviz(scene; show_scene_boundary=true)` or
+[`PlantGeom.scene_boundary_mesh`](@ref) instead.
 """
 function materialize_scene_boundary!(scene)
+    Base.depwarn(
+        "`LegacyOPS.materialize_scene_boundary!` is deprecated because it mutates " *
+        "the MTG with visualization geometry. Use `plantviz(scene; " *
+        "show_scene_boundary=true)` or `scene_boundary_mesh(scene)` instead; " *
+        "the mutating helper will be removed in PlantGeom v0.21.",
+        :materialize_scene_boundary!,
+    )
     has_geometry(scene) && throw(
         ArgumentError(
             "cannot materialize the legacy OPS boundary: the Scene root already has geometry",

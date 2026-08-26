@@ -56,6 +56,7 @@ include("ops/read_ops_file.jl")
 include("ops/scene_helpers.jl")
 include("ops/read_ops.jl")
 include("ops/legacy_ops.jl")
+include("ops/scene_boundary.jl")
 include("ops/write_ops.jl")
 include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
@@ -85,6 +86,7 @@ export diagram, diagram!
 # export nvertices, nelements
 export read_opf, read_gwa, write_opf, write_gwa
 export read_ops_file, read_ops, write_ops, write_ops_file
+export scene_boundary_mesh
 export scene_object_transformation, place_in_scene!
 export SceneGeometry, SceneNodeData, SceneBuilder, SceneUnits, SourceOwnerKey
 export make_scene, prepare_scene, add_plant!, add_object!, add_ground!

@@ -269,11 +269,19 @@ representation used after loading.
 
 `PlantGeom.LegacyOPS.materialize_scene_boundary!(scene)`
 : Historical use: recreates the translucent quadrangle that old `read_ops`
-  versions attached to the `:Scene` root. The canonical replacement keeps the
-  root geometry-free, uses `scene_dimensions` as metadata, and calls
-  [`add_ground!`](@ref) for real geometry. This explicit historical
-  visualization adapter is never part of canonical `read_ops`; its result is
-  intentionally rejected by [`prepare_scene`](@ref).
+  versions attached to the `:Scene` root. It remains namespaced only for source
+  compatibility while maintained workflows migrate to the pure overlay:
+
+  ```julia
+  scene = read_ops(path)
+  plantviz(scene; show_scene_boundary=true)
+  ```
+
+  [`scene_boundary_mesh`](@ref) returns the same planar extent for custom
+  plotting without changing `scene`, its version, or its serialized data. The
+  overlay is not an organ or radiative surface. Add real scientific ground as a
+  separate `Ground` object with [`add_ground!`](@ref). The mutating LegacyOPS
+  helper is deprecated and will be removed in PlantGeom v0.21.
 
 The former `refmesh_to_mesh!` function was not a working compatibility path: it
 only raised an error. It has therefore been removed. Replace any remaining

@@ -29,10 +29,72 @@ end
 
 @testset "LegacyOPS explicit historical scene-boundary geometry" begin
     ops = @test_nowarn read_ops(file)
-    @test_nowarn PlantGeom.LegacyOPS.materialize_scene_boundary!(ops)
+    @test_deprecated r"mutates.*v0.21" PlantGeom.LegacyOPS.materialize_scene_boundary!(ops)
     @test PlantGeom.has_geometry(ops)
     @test length(get_ref_meshes(ops)) == 5
     @test_throws ArgumentError prepare_scene(ops)
+end
+
+@testset "OPS scene boundary is a pure visualization mesh" begin
+    ops = @test_nowarn read_ops(file)
+    keys_before = Set(keys(ops))
+    version_before = scene_version(ops)
+    ref_mesh_count_before = length(get_ref_meshes(ops))
+    geometry_nodes_before = MultiScaleTreeGraph.traverse(
+        ops,
+        identity;
+        filter_fun=PlantGeom.has_geometry,
+    )
+    geometry_node_ids_before = MultiScaleTreeGraph.node_id.(geometry_nodes_before)
+    surface_count_before = sum(
+        PlantGeom.nelements(refmesh_to_mesh(node)) for node in geometry_nodes_before
+    )
+
+    boundary = @test_nowarn scene_boundary_mesh(ops)
+    @test collect(GeometryBasics.coordinates(boundary)) == [
+        GeometryBasics.Point{3,Float64}(0.0, 0.0, 0.0),
+        GeometryBasics.Point{3,Float64}(2.0, 0.0, 0.0),
+        GeometryBasics.Point{3,Float64}(2.0, 1.0, 0.0),
+        GeometryBasics.Point{3,Float64}(0.0, 1.0, 0.0),
+    ]
+    @test length(GeometryBasics.faces(boundary)) == 2
+    @test !PlantGeom.has_geometry(ops)
+    @test Set(keys(ops)) == keys_before
+    @test scene_version(ops) == version_before
+    @test length(get_ref_meshes(ops)) == ref_mesh_count_before
+    geometry_nodes_after = MultiScaleTreeGraph.traverse(
+        ops,
+        identity;
+        filter_fun=PlantGeom.has_geometry,
+    )
+    @test MultiScaleTreeGraph.node_id.(geometry_nodes_after) == geometry_node_ids_before
+    @test sum(
+        PlantGeom.nelements(refmesh_to_mesh(node)) for node in geometry_nodes_after
+    ) == surface_count_before
+
+    mktempdir() do tmp
+        before_file = joinpath(tmp, "before.ops")
+        after_file = joinpath(tmp, "after.ops")
+        @test_nowarn write_ops(
+            before_file,
+            ops;
+            write_objects=false,
+            preserve_file_paths=true,
+        )
+        @test_nowarn scene_boundary_mesh(ops)
+        @test_nowarn write_ops(
+            after_file,
+            ops;
+            write_objects=false,
+            preserve_file_paths=true,
+        )
+        @test read(before_file, String) == read(after_file, String)
+    end
+
+    no_dimensions = read_opf(
+        joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "simple_plant.opf"),
+    )
+    @test_throws ArgumentError scene_boundary_mesh(no_dimensions)
 end
 
 @testset "read_ops applies inclination transforms" begin
