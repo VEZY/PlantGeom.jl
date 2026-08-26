@@ -1,5 +1,5 @@
 @testset "write_opf: skips transient scene cache attributes" begin
-    mtg = read_opf("files/simple_plant.opf", attr_type=Dict)
+    mtg = read_opf("files/simple_plant.opf")
     mtg[:_scene_version] = 3
     mtg[:_scene_cache] = (hash=UInt(1), mesh="cached-mesh", face2node=[1, 2, 3])
 
@@ -10,13 +10,13 @@
     @test !occursin("_scene_cache", raw)
     @test !occursin("_scene_version", raw)
 
-    reloaded = read_opf(tmp_file, attr_type=Dict)
+    reloaded = read_opf(tmp_file)
     @test !haskey(reloaded, :_scene_cache)
     @test !haskey(reloaded, :_scene_version)
 end
 
 @testset "write_opf: skips PlantSimEngine runtime status without mutating source geometry" begin
-    mtg = read_opf("files/simple_plant.opf", attr_type=Dict)
+    mtg = read_opf("files/simple_plant.opf")
     source_nodes = collect(traverse(mtg, identity))
     geometry_position = findfirst(PlantGeom.has_geometry, source_nodes)
     @test geometry_position !== nothing
@@ -40,7 +40,7 @@ end
 
     raw = read(tmp_file, String)
     @test !occursin("plantsimengine_status", raw)
-    reloaded = read_opf(tmp_file, attr_type=Dict)
+    reloaded = read_opf(tmp_file)
     @test all(
         node -> !haskey(node, :plantsimengine_status),
         traverse(reloaded, identity),
@@ -87,7 +87,7 @@ end
             @test !occursin("_scene_cache", raw)
             @test !occursin("_scene_version", raw)
 
-            reloaded = read_opf(path, attr_type=Dict)
+            reloaded = read_opf(path)
             @test !haskey(reloaded, :_scene_cache)
             @test !haskey(reloaded, :_scene_version)
         end

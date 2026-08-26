@@ -33,7 +33,7 @@ end
 
     tmp_file = tempname() * ".opf"
     @test_nowarn write_opf(tmp_file, plant; coordinate_scale=1.0)
-    roundtrip = read_opf(tmp_file; attr_type=Dict, coordinate_scale=1.0)
+    roundtrip = read_opf(tmp_file; coordinate_scale=1.0)
 
     @test collect(
         roundtrip[:geometry].transformation(SVector{3,Float64}(0.0, 0.0, 0.0)),
@@ -107,7 +107,7 @@ end
     tmp_file = tempname() * ".opf"
     @test_nowarn write_opf(tmp_file, plant)
 
-    roundtrip = read_opf(tmp_file, attr_type=Dict)
+    roundtrip = read_opf(tmp_file)
     nodes_after = collect(MultiScaleTreeGraph.traverse(roundtrip, node -> node))
 
     @test length(nodes_before) == length(nodes_after)

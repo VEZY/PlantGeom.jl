@@ -19,7 +19,7 @@ function _scene_child_xranges(mtg)
 end
 
 @testset "make_scene: configurable MTG encoding type" begin
-    imported = read_opf("files/simple_plant.opf", attr_type=Dict, mtg_type=MutableNodeMTG)
+    imported = read_opf("files/simple_plant.opf", mtg_type=MutableNodeMTG)
 
     scene = make_scene(domain=(0.0, 0.0, 2.0, 2.0); mtg_type=MutableNodeMTG) do builder
         add_plant!(builder, imported; group="imported", id=1)
@@ -41,7 +41,7 @@ end
 end
 
 @testset "make_scene: repeated objects receive unique node ids" begin
-    imported = read_opf("files/simple_plant.opf", attr_type=Dict, mtg_type=NodeMTG)
+    imported = read_opf("files/simple_plant.opf", mtg_type=NodeMTG)
 
     scene = make_scene(domain=(0.0, 0.0, 2.0, 2.0)) do builder
         add_plant!(builder, imported; group="imported", id=1, at=(0.25, 0.5, 0.0))
@@ -140,7 +140,7 @@ function _scene_object_meshes(scene)
 end
 
 @testset "place_in_scene!: mixed scene round-trip through OPS" begin
-    imported = read_opf("files/simple_plant.opf", attr_type=Dict, mtg_type=NodeMTG)
+    imported = read_opf("files/simple_plant.opf", mtg_type=NodeMTG)
     generated = _scene_test_generated_plant()
 
     scene = Node(NodeMTG(:/, :Scene, 1, 0))

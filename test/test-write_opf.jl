@@ -66,15 +66,15 @@ end
 
 tmp_file = tempname()
 @testset "write_opf: read, write, read again and compare -> simple_plant" begin
-    mtg = read_opf("files/simple_plant.opf", attr_type=Dict)
+    mtg = read_opf("files/simple_plant.opf")
     PlantGeom.write_opf(tmp_file, mtg)
-    mtg2 = read_opf(tmp_file, attr_type=Dict)
+    mtg2 = read_opf(tmp_file)
     @test _approx_roundtrip(mtg, mtg2)
 end
 
 @testset "write_opf: read, write, read again and compare -> coffee" begin
-    mtg = read_opf("files/coffee.opf", attr_type=Dict)
+    mtg = read_opf("files/coffee.opf")
     PlantGeom.write_opf(tmp_file, mtg)
-    mtg2 = read_opf(tmp_file, attr_type=Dict)
+    mtg2 = read_opf(tmp_file)
     @test _approx_roundtrip(mtg, mtg2)
 end

@@ -1,4 +1,12 @@
-mtg = read_opf("files/simple_plant.opf", attr_type=Dict)
+mtg = read_opf("files/simple_plant.opf")
+
+@testset "read_opf: deprecated attr_type compatibility boundary" begin
+    legacy = @test_deprecated r"attr_type.*v0.21" read_opf(
+        "files/simple_plant.opf";
+        attr_type=Dict,
+    )
+    @test length(legacy) == length(mtg)
+end
 
 @testset "read_opf: simple_plant.opf -> attributes" begin
     @test length(mtg) == 7
@@ -30,7 +38,10 @@ end
 @testset "read_opf: simple_plant.opf -> meshes" begin
     Internode = get_node(mtg, 4)
 
-    @test sort(collect(keys(Internode))) == [:Length, :Width, :XEuler, :geometry, :source_topology_id]
+    @test sort(collect(keys(Internode))) ==
+          [:Length, :Width, :geometry, :source_topology_id]
+    @test !haskey(Internode, :XEuler)
+    @test get(node_attributes(Internode), :XEuler, nothing) === nothing
     @test sort(names(Internode)) == [:Length, :Width, :XEuler, :geometry, :source_topology_id]
     @test isa(Internode[:geometry], PlantGeom.Geometry)
 
@@ -42,7 +53,7 @@ end
 end
 
 @testset "read_opf: read coffee.opf" begin
-    mtg = read_opf("files/coffee.opf", attr_type=Dict)
+    mtg = read_opf("files/coffee.opf")
     @test length(mtg) == 4191
     @test sort(get_attributes(mtg)) ==
           [
@@ -55,7 +66,7 @@ end
 
 @testset "read_opf: triangulate polygon faces and fallback material" begin
     quad_file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "quad_empty_material.opf")
-    mtg_quad = @test_nowarn read_opf(quad_file, attr_type=Dict)
+    mtg_quad = @test_nowarn read_opf(quad_file)
     @test length(mtg_quad[:ref_meshes]) == 1
     # Use actual ID (0) instead of 1-based index
     mesh_key = first(keys(mtg_quad[:ref_meshes]))
@@ -102,7 +113,6 @@ end
 
         legacy_units = @test_nowarn read_opf(
             opf_path;
-            attr_type=Dict,
             coordinate_scale=1.0,
         )
         @test collect(keys(legacy_units[:ref_meshes])) == [1]
@@ -116,7 +126,7 @@ end
         @test collect(GeometryBasics.coordinates(legacy_units[:ref_meshes][1].mesh)[2]) ≈
               [1.0, 0.0, 0.0]
 
-        default_units = read_opf(opf_path; attr_type=Dict)
+        default_units = read_opf(opf_path)
         @test collect(
             default_units[:geometry].transformation(SVector{3,Float64}(0.0, 0.0, 0.0)),
         ) ≈ [0.02, 0.03, 0.04]
@@ -188,14 +198,14 @@ end
             )
         end
 
-        mtg_dyn = @test_nowarn read_opf(opf_path, attr_type=Dict)
+        mtg_dyn = @test_nowarn read_opf(opf_path)
         vals = descendants(mtg_dyn, :DynamicValue, ignore_nothing=true)
         @test vals == Any[1, 2.5, "hello"]
     end
 end
 
 @testset "read_opf: attribute_types overrides OPF or dynamic typing" begin
-    mtg_string_len = read_opf("files/simple_plant.opf", attr_type=Dict, attribute_types=Dict("Length" => String))
+    mtg_string_len = read_opf("files/simple_plant.opf", attribute_types=Dict("Length" => String))
     length_vals = descendants(mtg_string_len, :Length, ignore_nothing=true)
     @test length_vals == Any["0.1", "0.2", "0.1", "0.2"]
 end

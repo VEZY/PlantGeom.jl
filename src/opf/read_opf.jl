@@ -1,13 +1,11 @@
 """
-    read_opf(file; attr_type = Dict, mtg_type = MutableNodeMTG, attribute_types = Dict(), coordinate_scale = 100.0)
+    read_opf(file; mtg_type=MutableNodeMTG, attribute_types=Dict(), coordinate_scale=100.0)
 
 Read an OPF file, and returns an MTG.
 
 # Arguments
 
 - `file::String`: The path to the opf file.
-- `attr_type::DataType = Dict`: kept for backward compatibility and ignored for
-  MultiScaleTreeGraph >= v0.15 (typed columnar attributes backend is always used).
 - `mtg_type = MutableNodeMTG`: the type used to hold the mtg encoding for each node (*i.e.*
 link, symbol, index, scale). See details section below.
 - `read_id::Bool = true`: whether to read the ID from the OPF or recompute it on the fly.
@@ -20,10 +18,11 @@ link, symbol, index, scale). See details section below.
 
 Each parsed topology node stores its original OPF id in `:source_topology_id`.
 
-# Details
+# Compatibility
 
-`attr_type` is ignored with MultiScaleTreeGraph >= v0.15 where the typed
-columnar backend is always used.
+The obsolete `attr_type` keyword is accepted temporarily at this public entrypoint
+and emits a deprecation warning. It has been ignored since MultiScaleTreeGraph v0.15;
+remove it from callers. The compatibility keyword will be removed in PlantGeom v0.21.
 
 The `MultiScaleTreeGraph` package provides two types for `mtg_type`, one immutable
 (`NodeMTG`), and one mutable (`MutableNodeMTG`). If you're planning on modifying the mtg
@@ -52,13 +51,14 @@ opf = read_opf(file)
 """
 function read_opf(
     file;
-    attr_type=Dict,
+    attr_type=nothing,
     mtg_type=MultiScaleTreeGraph.MutableNodeMTG,
     read_id=true,
     max_id=Ref(1),
     attribute_types=Dict(),
     coordinate_scale=100.0,
 )
+    _deprecate_attr_type!(attr_type)
     coordinate_scale = _validate_opf_coordinate_scale(coordinate_scale)
 
     doc = readxml(file)
@@ -124,7 +124,6 @@ function read_opf(
                 node,
                 nothing,
                 features,
-                attr_type,
                 mtg_type,
                 ref_meshes,
                 read_id,
@@ -707,7 +706,7 @@ end
 
 """
 
-    parse_opf_topology!(node, mtg, features, attr_type, mtg_type, ref_meshes, ...)
+    parse_opf_topology!(node, mtg, features, mtg_type, ref_meshes, ...)
 
 Parser of the OPF topology.
 
@@ -716,7 +715,6 @@ Parser of the OPF topology.
 - `node::ElementNode`: the XML node to parse.
 - `mtg::Union{Nothing,Node}`: the parent MTG node.
 - `features::Dict`: the features of the OPF.
-- `attr_type::DataType`: the type of the attributes to use.
 - `mtg_type::DataType`: the type of the MTG to use.
 - `ref_meshes::Dict`: the reference meshes.
 - `read_id::Bool`: whether to read the ID from the OPF or recompute it on the fly.
@@ -733,7 +731,6 @@ function parse_opf_topology!(
     node,
     mtg,
     features,
-    attr_type,
     mtg_type,
     ref_meshes,
     read_id=true,
@@ -830,7 +827,6 @@ function parse_opf_topology!(
                 elem,
                 node_i,
                 features,
-                attr_type,
                 mtg_type,
                 ref_meshes,
                 read_id,

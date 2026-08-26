@@ -1277,7 +1277,6 @@ function _read_scene_object(
     ext = lowercase(splitext(path)[2])
     ext == ".opf" && return read_opf(
         path,
-        attr_type=Dict,
         mtg_type=mtg_type,
         attribute_types=Dict("pos" => Float64),
     )

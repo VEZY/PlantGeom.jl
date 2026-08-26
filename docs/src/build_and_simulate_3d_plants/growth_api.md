@@ -411,7 +411,7 @@ PlantGeom still handles topology and geometry metadata, while PlantSimEngine sti
 For a complete runnable example with:
 
 - a custom PlantSimEngine growth model
-- a `ModelMapping`
+- a `CompositeModel` assembled from `ModelSpec` applications
 - meteorological forcing
 - a call to `run!`
 - and a final 3D reconstruction

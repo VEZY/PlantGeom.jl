@@ -286,12 +286,10 @@ end
 @testset "OPF metre defaults and explicit legacy centimetres agree" begin
     metres = read_opf(
         "files/simple_plant.opf";
-        attr_type=Dict,
         mtg_type=NodeMTG,
     )
     legacy_centimetres = read_opf(
         "files/simple_plant.opf";
-        attr_type=Dict,
         mtg_type=NodeMTG,
         coordinate_scale=1.0,
     )

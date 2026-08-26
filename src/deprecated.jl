@@ -1,5 +1,16 @@
 @deprecate geometry(; ref_mesh, ref_mesh_index=nothing, transformation=IdentityTransformation(), dUp=1.0, dDwn=1.0, mesh=nothing) Geometry(; ref_mesh, transformation=IdentityTransformation(), dUp=1.0, dDwn=1.0)
 
+@noinline function _deprecate_attr_type!(attr_type)
+    attr_type === nothing && return nothing
+    Base.depwarn(
+        "`read_opf(...; attr_type=...)` is deprecated because `attr_type` has been " *
+        "ignored since MultiScaleTreeGraph v0.15. Remove the keyword; compatibility " *
+        "will be removed in PlantGeom v0.21.",
+        :read_opf,
+    )
+    return nothing
+end
+
 # Placement APIs now use the explicit `at=` keyword. Keyword-only renames cannot
 # be represented safely with `@deprecate` because Julia does not dispatch on
 # keyword names, so the affected methods call this helper directly.

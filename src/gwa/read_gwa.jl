@@ -1,10 +1,8 @@
 """
-    read_gwa(file; attr_type=Dict, mtg_type=MutableNodeMTG, read_id=true, max_id=Ref(1))
+    read_gwa(file; mtg_type=MutableNodeMTG, read_id=true, max_id=Ref(1))
 
 Read a GWA mesh file and return a `MultiScaleTreeGraph.Node`.
 
-`attr_type` is kept for backward compatibility and ignored with
-MultiScaleTreeGraph >= v0.15 (columnar attributes backend).
 Each parsed mesh node stores its original mesh id as `:source_topology_id`.
 """
 
@@ -17,7 +15,7 @@ Each parsed mesh node stores its original mesh id as `:source_topology_id`.
     end
 end
 
-function read_gwa(file; attr_type=Dict, mtg_type=MultiScaleTreeGraph.MutableNodeMTG, read_id=true, max_id=Ref(1))
+function read_gwa(file; mtg_type=MultiScaleTreeGraph.MutableNodeMTG, read_id=true, max_id=Ref(1))
     doc = readxml(file)
     xroot = root(doc)
 

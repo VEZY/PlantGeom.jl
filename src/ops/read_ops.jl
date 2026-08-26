@@ -1,6 +1,5 @@
 """
-    read_ops(file; attr_type=Dict{String,Any}, mtg_type=MutableNodeMTG,
-             attribute_types=Dict(), materialize_scene_boundary=false, kwargs...)
+    read_ops(file; mtg_type=MutableNodeMTG, attribute_types=Dict(), kwargs...)
 
 Reads an OPS file and returns the content as a `MultiScaleTreeGraph`.
 Per-object OPS transforms (`rotation`, `scale`, `inclinationAzimut`/`inclinationAngle`,
@@ -13,24 +12,19 @@ Additional keyword arguments are forwarded to [`read_ops_file`](@ref), e.g.
 `relaxed=true` and `assume_scale_column=false` for legacy OPS rows where the
 scale column is missing.
 
-`attr_type` is kept for backward compatibility and ignored with
-MultiScaleTreeGraph >= v0.15 (columnar attributes backend).
-
 `attribute_types` is forwarded to [`read_opf`](@ref) and can be used to
 override OPF attribute types by name (CSV-like typing override).
 
-`materialize_scene_boundary=false` keeps the `:Scene` root as a geometry-free
-container. The OPS terrain line is retained in `scene_dimensions` and can be
-materialized later with [`add_ground!`](@ref). Set the keyword to `true` only
-for the historical translucent plotting quadrangle; such a root-boundary mesh
-is a visualization artifact and must be removed before [`prepare_scene`](@ref).
+The `:Scene` root is always a geometry-free container. The OPS terrain line is
+retained in `scene_dimensions`; create scientific ground geometry with
+[`add_ground!`](@ref). The historical translucent root-boundary quadrangle is
+available only through the explicit
+`PlantGeom.LegacyOPS.materialize_scene_boundary!` compatibility boundary.
 """
 function read_ops(
     file;
-    attr_type=Dict,
     mtg_type=MutableNodeMTG,
     attribute_types=Dict(),
-    materialize_scene_boundary::Bool=false,
     kwargs...,
 )
     scene_dimensions, object_table = read_ops_file(file; kwargs...)
@@ -56,14 +50,13 @@ function read_ops(
             opf = if ext == ".opf"
                 read_opf(
                     object_path,
-                    attr_type=attr_type,
                     mtg_type=mtg_type,
                     read_id=false,
                     max_id=node_max_id,
                     attribute_types=attribute_types
                 )
             elseif ext == ".gwa"
-                read_gwa(object_path, attr_type=attr_type, mtg_type=mtg_type, read_id=false, max_id=node_max_id)
+                read_gwa(object_path, mtg_type=mtg_type, read_id=false, max_id=node_max_id)
             else
                 error("Unsupported OPS object extension: $ext in $file")
             end
@@ -101,29 +94,6 @@ function read_ops(
         opf.inclinationAngle = row.inclinationAngle
         opf.rotation = row.rotation
         addchild!(scene, opf)
-    end
-
-    # Historical PlantGeom releases attached a translucent plot-boundary
-    # quadrangle directly to the :Scene root. That makes the root both a
-    # container and a geometric component, which is incompatible with durable
-    # source ownership and canonical scene assembly. Keep it as an explicit
-    # opt-in visualization artifact; scientific ground geometry belongs on a
-    # child created with `add_ground!`.
-    if materialize_scene_boundary && !isnothing(scene_dimensions)
-        p_0 = scene_dimensions[1]
-        p_max = scene_dimensions[2]
-
-        p = [
-            point3(p_0),
-            point3(p_max[1], p_0[2], p_0[3]),
-            point3(p_max),
-            point3(p_0[1], p_max[2], p_0[3])
-        ]
-        c = [face3(1, 2, 3), face3(3, 4, 1)]
-        scene_quadrangle = _mesh(p, c)
-
-        scene_refmesh = RefMesh("Scene", scene_quadrangle, RGBA(159 / 255, 182 / 255, 205 / 255, 0.1))
-        scene.geometry = Geometry(ref_mesh=scene_refmesh)
     end
 
     # OPS scenes are assembled by attaching pre-built OPF/GWA subtrees.

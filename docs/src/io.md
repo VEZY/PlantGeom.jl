@@ -252,3 +252,29 @@ If you only need a list for plotting, use `get_ref_meshes(opf)` (or
   available in `read_ops` and forwarded to embedded OPFs).
 - For reconstruction workflows from `.mtg`, see:
   [AMAP-Style Quickstart](build_and_simulate_3d_plants/reconstruct_from_mtg/amap_quickstart.md).
+
+## Compatibility Boundaries
+
+OPF, GWA, and OPS remain supported interchange formats. Compatibility is kept
+at their input or visualization boundary; it does not alter the canonical MTG
+representation used after loading.
+
+`read_opf(file; attr_type=Dict)`
+: Historical use: selected the pre-v0.15 MTG attribute container. Canonical
+  replacement: omit `attr_type`; use `attribute_types` only to override
+  individual OPF field types. This public API deprecation is tested in
+  `test-read_opf.jl`, warns now, and will be removed in PlantGeom v0.21.
+  `read_gwa` and `read_ops` do not retain this keyword because it never
+  affected either reader.
+
+`PlantGeom.LegacyOPS.materialize_scene_boundary!(scene)`
+: Historical use: recreates the translucent quadrangle that old `read_ops`
+  versions attached to the `:Scene` root. The canonical replacement keeps the
+  root geometry-free, uses `scene_dimensions` as metadata, and calls
+  [`add_ground!`](@ref) for real geometry. This explicit historical
+  visualization adapter is never part of canonical `read_ops`; its result is
+  intentionally rejected by [`prepare_scene`](@ref).
+
+The former `refmesh_to_mesh!` function was not a working compatibility path: it
+only raised an error. It has therefore been removed. Replace any remaining
+qualified call with the non-mutating [`refmesh_to_mesh`](@ref).

@@ -27,8 +27,9 @@ file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "scene
     @test !isempty(length_values)
 end
 
-@testset "read_ops optional historical scene-boundary geometry" begin
-    ops = @test_nowarn read_ops(file; materialize_scene_boundary=true)
+@testset "LegacyOPS explicit historical scene-boundary geometry" begin
+    ops = @test_nowarn read_ops(file)
+    @test_nowarn PlantGeom.LegacyOPS.materialize_scene_boundary!(ops)
     @test PlantGeom.has_geometry(ops)
     @test length(get_ref_meshes(ops)) == 5
     @test_throws ArgumentError prepare_scene(ops)

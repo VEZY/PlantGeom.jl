@@ -1,5 +1,5 @@
 @testset "Plots recipe" begin
-    mtg = read_opf("files/simple_plant.opf", attr_type=Dict)
+    mtg = read_opf("files/simple_plant.opf")
 
     recipe = RecipesBase.apply_recipe(Dict{Symbol,Any}(), mtg)
 
