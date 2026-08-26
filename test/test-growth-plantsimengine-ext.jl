@@ -18,14 +18,25 @@ else
         Node(internode, NodeMTG(:+, :Leaf, 1, 2))
 
         function initial_status(node)
-            status = PlantSimEngine.Status(node=node, var1=1.0, var2=2.0)
-            node[:plantsimengine_status] = status
-            return status
+            return PlantSimEngine.Status(node=node, var1=1.0, var2=2.0)
         end
 
         scene = PlantSimEngine.CompositeModel(mtg; status=initial_status)
         n_internodes_before = length(PlantSimEngine.model_objects(scene; scale=:Internode))
         n_leaves_before = length(PlantSimEngine.model_objects(scene; scale=:Leaf))
+
+        function assert_registered_status(status)
+            @test PlantSimEngine.model_status(scene, status.node) === status
+            @test PlantSimEngine.source_node(scene, status) === status.node
+            @test !haskey(
+                MultiScaleTreeGraph.node_attributes(status.node),
+                :plantsimengine_status,
+            )
+        end
+
+        for object in PlantSimEngine.model_objects(scene)
+            assert_registered_status(object.status)
+        end
 
         plant_status = only(PlantSimEngine.model_objects(scene; scale=:Plant)).status
         new_internode = emit_internode!(
@@ -40,6 +51,7 @@ else
             bump_scene=false,
         )
         @test new_internode isa PlantSimEngine.Status
+        assert_registered_status(new_internode)
         @test node_id(new_internode.node) == 4
         @test length(PlantSimEngine.model_objects(scene; scale=:Internode)) ==
               n_internodes_before + 1
@@ -57,6 +69,7 @@ else
             bump_scene=false,
         )
         @test new_leaf isa PlantSimEngine.Status
+        assert_registered_status(new_leaf)
         @test node_id(new_leaf.node) == 5
         @test length(PlantSimEngine.model_objects(scene; scale=:Leaf)) == n_leaves_before + 1
         @test new_leaf.node[:leaf_stage] == :juvenile
@@ -80,6 +93,8 @@ else
         )
         @test organ_pair.internode isa PlantSimEngine.Status
         @test organ_pair.leaf isa PlantSimEngine.Status
+        assert_registered_status(organ_pair.internode)
+        assert_registered_status(organ_pair.leaf)
 
         grow_length!(organ_pair.internode; delta=0.03, bump_scene=false)
         @test organ_pair.internode.node[:Length] ≈ 0.15
@@ -94,7 +109,7 @@ else
 
         @test PlantSimEngine.bindings_dirty(scene)
         v0 = scene_ver(mtg)
-        emit_leaf!(
+        bumped_leaf = emit_leaf!(
             organ_pair.internode,
             scene;
             length=0.05,
@@ -102,6 +117,7 @@ else
             initial_status=(var1=1.0, var2=2.0),
             bump_scene=true,
         )
+        assert_registered_status(bumped_leaf)
         @test scene_ver(mtg) == v0 + 1
 
         legacy_pair = @test_deprecated r"does not create a `:Phytomer` node" emit_phytomer!(
@@ -121,6 +137,8 @@ else
         )
         @test legacy_pair.internode isa PlantSimEngine.Status
         @test legacy_pair.leaf isa PlantSimEngine.Status
+        assert_registered_status(legacy_pair.internode)
+        assert_registered_status(legacy_pair.leaf)
         @test symbol(legacy_pair.internode.node) == :Internode
         @test symbol(legacy_pair.leaf.node) == :Leaf
 

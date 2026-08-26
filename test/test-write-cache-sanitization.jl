@@ -15,7 +15,7 @@
     @test !haskey(reloaded, :_scene_version)
 end
 
-@testset "write_opf: skips PlantSimEngine runtime status without mutating source geometry" begin
+@testset "legacy OPF boundary: strips deliberately injected PlantSimEngine runtime attrs" begin
     mtg = read_opf("files/simple_plant.opf")
     source_nodes = collect(traverse(mtg, identity))
     geometry_position = findfirst(PlantGeom.has_geometry, source_nodes)
@@ -23,6 +23,8 @@ end
     geometry_node = source_nodes[something(geometry_position)]
     root_status = PlantSimEngine.Status(node=mtg, runtime_value=11.0)
     geometry_status = PlantSimEngine.Status(node=geometry_node, runtime_value=17.0)
+    # Deliberately reproduce a historical, non-canonical graph. Ordinary
+    # PlantSimEngine initialization keeps statuses in the model registry.
     mtg[:plantsimengine_status] = root_status
     geometry_node[:plantsimengine_status] = geometry_status
     mtg[:UserScalar] = 23
@@ -41,6 +43,7 @@ end
     raw = read(tmp_file, String)
     @test !occursin("plantsimengine_status", raw)
     reloaded = read_opf(tmp_file)
+    @test !haskey(reloaded, :plantsimengine_status)
     @test all(
         node -> !haskey(node, :plantsimengine_status),
         traverse(reloaded, identity),

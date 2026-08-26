@@ -1,7 +1,5 @@
 function _source_owner_map_status(node)
-    status = PlantSimEngine.Status(node=node)
-    node[:plantsimengine_status] = status
-    return status
+    return PlantSimEngine.Status(node=node)
 end
 
 function _source_owner_map_runtime(root; id=MultiScaleTreeGraph.node_id)
@@ -11,6 +9,15 @@ function _source_owner_map_runtime(root; id=MultiScaleTreeGraph.node_id)
         status=_source_owner_map_status,
     )
     PlantSimEngine.Advanced.refresh_bindings!(model)
+    for object in PlantSimEngine.model_objects(model)
+        status = PlantSimEngine.model_status(model, object)
+        @test status === object.status
+        @test PlantSimEngine.source_node(model, status) === status.node
+        @test !haskey(
+            MultiScaleTreeGraph.node_attributes(status.node),
+            :plantsimengine_status,
+        )
+    end
     return model
 end
 

@@ -192,8 +192,8 @@ mtg
 ## 5. Create the PlantSimEngine composite model
 
 First define how MTG attributes become the initial `Status` of each runtime object.
-The callback also stores that status on the MTG node so newly emitted organs use
-the same representation.
+The callback returns the status to PlantSimEngine, which owns it in the model
+registry. Runtime status is not an MTG attribute.
 
 ```@example psegrowth
 function initial_status(node)
@@ -205,15 +205,14 @@ function initial_status(node)
         data[:TT_cu_emergence] = 0.0
         data[:emitted] = 0
     end
-    status = PlantSimEngine.Status((; data...))
-    node[:plantsimengine_status] = status
-    return status
+    return PlantSimEngine.Status((; data...))
 end
 ```
 
 Important detail:
 
-- each MTG node keeps a reference to its PlantSimEngine status
+- resolve a node's runtime status with `PlantSimEngine.model_status(model, node)`
+- recover its exact MTG node with `PlantSimEngine.source_node(model, status)`
 - the growth application will target `:Internode` objects, including internodes
   registered during organogenesis
 
@@ -255,6 +254,13 @@ model = PlantSimEngine.CompositeModel(
             ),
         ),
     ),
+)
+
+initial_internode_status = PlantSimEngine.model_status(model, internode)
+@assert PlantSimEngine.source_node(model, initial_internode_status) === internode
+@assert !haskey(
+    MultiScaleTreeGraph.node_attributes(internode),
+    :plantsimengine_status,
 )
 
 request = PlantSimEngine.OutputRequest(

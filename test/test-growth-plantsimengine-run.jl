@@ -136,9 +136,7 @@ end
             data[:TT_cu_emergence] = 0.0
             data[:emitted] = 0
         end
-        status = PlantSimEngine.Status((; data...))
-        node[:plantsimengine_status] = status
-        return status
+        return PlantSimEngine.Status((; data...))
     end
 
     meteo = Weather(
@@ -173,6 +171,20 @@ end
             ),
         ),
     )
+
+    function assert_registered_growth_status(status)
+        @test PlantSimEngine.model_status(scene, status.node) === status
+        @test PlantSimEngine.source_node(scene, status) === status.node
+        @test !haskey(
+            MultiScaleTreeGraph.node_attributes(status.node),
+            :plantsimengine_status,
+        )
+    end
+
+    for object in PlantSimEngine.model_objects(scene)
+        assert_registered_growth_status(object.status)
+    end
+
     simulation = @test_nowarn PlantSimEngine.run!(
         scene;
         steps=3,
@@ -186,6 +198,9 @@ end
 
     internodes = PlantSimEngine.model_objects(scene; scale=:Internode)
     leaves = PlantSimEngine.model_objects(scene; scale=:Leaf)
+    for object in PlantSimEngine.model_objects(scene)
+        assert_registered_growth_status(object.status)
+    end
     @test length(internodes) == 4
     @test length(leaves) == 4
     @test only(PlantSimEngine.model_objects(scene; scale=:Scene)).status.TT_cu ≈ 30.0
