@@ -466,7 +466,14 @@ end
         Ref(MultiScaleTreeGraph.max_id(first_root) + 1),
     )
 
-    direct_scene = Node(NodeMTG(:/, :Scene, 1, 0), Dict{Symbol,Any}())
+    direct_scene = Node(
+        max(
+            MultiScaleTreeGraph.max_id(first_root),
+            MultiScaleTreeGraph.max_id(second_root),
+        ) + 1,
+        NodeMTG(:/, :Scene, 1, 0),
+        Dict{Symbol,Any}(),
+    )
     MultiScaleTreeGraph.addchild!(direct_scene, first_root)
     MultiScaleTreeGraph.addchild!(direct_scene, second_root)
     prepared = prepare_scene(direct_scene; relabel_ids=true)
@@ -647,7 +654,14 @@ end
         resolver_calls[] += 1
         resolver_calls[] == 1 ? node : "invalid owner"
     end
-    direct_scene = Node(NodeMTG(:/, :Scene, 1, 0), Dict{Symbol,Any}())
+    direct_scene = Node(
+        max(
+            MultiScaleTreeGraph.max_id(first_root),
+            MultiScaleTreeGraph.max_id(second_root),
+        ) + 1,
+        NodeMTG(:/, :Scene, 1, 0),
+        Dict{Symbol,Any}(),
+    )
     MultiScaleTreeGraph.addchild!(direct_scene, first_root)
     MultiScaleTreeGraph.addchild!(direct_scene, second_root)
 
@@ -696,7 +710,14 @@ end
         foreign_ownership.owner_node_id,
     )
 
-    direct_scene = Node(NodeMTG(:/, :Scene, 1, 0), Dict{Symbol,Any}())
+    direct_scene = Node(
+        max(
+            MultiScaleTreeGraph.max_id(first_root),
+            MultiScaleTreeGraph.max_id(second_root),
+        ) + 1,
+        NodeMTG(:/, :Scene, 1, 0),
+        Dict{Symbol,Any}(),
+    )
     MultiScaleTreeGraph.addchild!(direct_scene, first_root)
     MultiScaleTreeGraph.addchild!(direct_scene, second_root)
     nodes = MultiScaleTreeGraph.traverse(direct_scene, identity)
