@@ -3,7 +3,7 @@ Compatibility helpers for visualizing OPS scenes as they appeared in historical
 PlantGeom releases.
 
 Ordinary workflows should keep the `:Scene` root geometry-free and add real
-ground geometry with [`add_ground!`](@ref).
+ground geometry with [`PlantGeom.add_ground!`](@ref).
 """
 module LegacyOPS
 
@@ -14,8 +14,9 @@ using ..PlantGeom: Geometry, RefMesh, RGBA, _mesh, face3, has_geometry, point3
 
 Attach the historical translucent OPS plot-boundary quadrangle to the `:Scene`
 root. This is a visualization compatibility artifact, not scientific ground
-geometry. A scene with root geometry cannot be passed to [`prepare_scene`](@ref);
-prefer [`add_ground!`](@ref) in new code.
+geometry. A scene with root geometry cannot be passed to
+[`PlantGeom.prepare_scene`](@ref); prefer [`PlantGeom.add_ground!`](@ref) in new
+code.
 """
 function materialize_scene_boundary!(scene)
     has_geometry(scene) && throw(
