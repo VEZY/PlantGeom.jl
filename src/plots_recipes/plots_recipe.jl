@@ -87,9 +87,8 @@ See also [`diagram`](@ref) for the same plot with a `Makie.jl` backend.
 # Examples
 
 ```julia
-# import Pkg; Pkg.add("PlotlyJS")
 using Plots, PlantGeom
-plotlyjs()
+plotly()
 
 file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf")
 # file = joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","coffee.opf")
