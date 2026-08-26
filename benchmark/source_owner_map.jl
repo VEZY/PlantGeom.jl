@@ -67,9 +67,7 @@ function source_owner_map_source_plant(
 end
 
 function source_owner_map_status(node)
-    status = PlantSimEngine.Status(node=node)
-    node[:plantsimengine_status] = status
-    return status
+    return PlantSimEngine.Status(node=node)
 end
 
 function source_owner_map_runtime(root)
