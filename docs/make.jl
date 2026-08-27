@@ -11,7 +11,7 @@ using PlantSimEngine
 DocMeta.setdocmeta!(PlantGeom, :DocTestSetup, :(using PlantGeom; using MultiScaleTreeGraph; using Bonito; using Statistics; using PlantSimEngine); recursive=true)
 
 makedocs(;
-    modules=[PlantGeom, PlantGeom.LegacyOPS],
+    modules=[PlantGeom],
     authors="Rémi Vezy <VEZY@users.noreply.github.com> and contributors",
     repo=Documenter.Remotes.GitHub("VEZY", "PlantGeom.jl"),
     sitename="PlantGeom.jl",
