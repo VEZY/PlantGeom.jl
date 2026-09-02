@@ -40,6 +40,13 @@ jobs:
             version: "1.10"
     steps:
       - uses: actions/checkout@v7
+      - name: Check out PlantSimEngine
+        uses: actions/checkout@v7
+        with:
+          repository: VirtualPlantLab/PlantSimEngine.jl
+          ref: 82786fba91fad644d8068d75afc64d88282400c4
+          path: .ci-deps/PlantSimEngine
+          persist-credentials: false
       - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
@@ -52,10 +59,7 @@ jobs:
           using Pkg
           Pkg.develop([
               PackageSpec(path=pwd()),
-              PackageSpec(
-                  url="https://github.com/VirtualPlantLab/PlantSimEngine.jl",
-                  rev="82786fba91fad644d8068d75afc64d88282400c4",
-              ),
+              PackageSpec(path=joinpath(pwd(), ".ci-deps", "PlantSimEngine")),
           ])
           Pkg.instantiate()
       - name: Run tests
@@ -74,6 +78,13 @@ jobs:
       statuses: write
     steps:
       - uses: actions/checkout@v7
+      - name: Check out PlantSimEngine
+        uses: actions/checkout@v7
+        with:
+          repository: VirtualPlantLab/PlantSimEngine.jl
+          ref: 82786fba91fad644d8068d75afc64d88282400c4
+          path: .ci-deps/PlantSimEngine
+          persist-credentials: false
       - uses: julia-actions/setup-julia@v3
         with:
           version: "1"
@@ -84,10 +95,7 @@ jobs:
           using Pkg
           Pkg.develop([
               PackageSpec(path=pwd()),
-              PackageSpec(
-                  url="https://github.com/VirtualPlantLab/PlantSimEngine.jl",
-                  rev="82786fba91fad644d8068d75afc64d88282400c4",
-              ),
+              PackageSpec(path=joinpath(pwd(), ".ci-deps", "PlantSimEngine")),
           ])
           Pkg.instantiate()
       - uses: julia-actions/julia-buildpkg@v1
