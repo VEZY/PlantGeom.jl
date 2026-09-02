@@ -50,12 +50,18 @@ end
 const OWNERSHIP_ONE_FACE_TEMPLATE = ownership_one_face_organ_scene()
 const OWNERSHIP_ONE_FACE_PREPARED_DEFAULT =
     prepare_scene(deepcopy(OWNERSHIP_ONE_FACE_TEMPLATE))
-const OWNERSHIP_ONE_FACE_PREPARED_MINIMAL = prepare_scene(
-    deepcopy(OWNERSHIP_ONE_FACE_TEMPLATE);
-    compute_area=false,
-    compute_barycenter=false,
-    source_topology_id=false,
-)
+
+# The main baseline cannot infer SceneNodeData{T} when every typed summary is
+# `nothing`. Keep these cases on revisions with the explicit source-owner API;
+# Airspeed reports their unavailable baseline values as missing.
+if isdefined(PlantGeom, :SourceOwnerKey)
+    const OWNERSHIP_ONE_FACE_PREPARED_MINIMAL = prepare_scene(
+        deepcopy(OWNERSHIP_ONE_FACE_TEMPLATE);
+        compute_area=false,
+        compute_barycenter=false,
+        source_topology_id=false,
+    )
+end
 
 const SCENE_OWNERSHIP_SUITE = BenchmarkGroup()
 SCENE_OWNERSHIP_SUITE["prepare defaults, raw"] = @benchmarkable prepare_scene(tree) setup = (
@@ -63,22 +69,25 @@ SCENE_OWNERSHIP_SUITE["prepare defaults, raw"] = @benchmarkable prepare_scene(tr
 ) evals = 1
 SCENE_OWNERSHIP_SUITE["prepare defaults, refresh"] =
     @benchmarkable prepare_scene($OWNERSHIP_ONE_FACE_PREPARED_DEFAULT.mtg) evals = 1
-SCENE_OWNERSHIP_SUITE["prepare summaries disabled, raw"] = @benchmarkable prepare_scene(
-    tree;
-    compute_area=false,
-    compute_barycenter=false,
-    source_topology_id=false,
-) setup = (tree = deepcopy($OWNERSHIP_ONE_FACE_TEMPLATE)) evals = 1
-SCENE_OWNERSHIP_SUITE["prepare summaries disabled, refresh"] = @benchmarkable prepare_scene(
-    $OWNERSHIP_ONE_FACE_PREPARED_MINIMAL.mtg;
-    compute_area=false,
-    compute_barycenter=false,
-    source_topology_id=false,
-) evals = 1
 SCENE_OWNERSHIP_SUITE["make_scene defaults"] =
     @benchmarkable ownership_make_scene_default($OWNERSHIP_ONE_FACE_TEMPLATE) evals = 1
-SCENE_OWNERSHIP_SUITE["make_scene summaries disabled"] =
-    @benchmarkable ownership_make_scene_minimal($OWNERSHIP_ONE_FACE_TEMPLATE) evals = 1
+
+if isdefined(PlantGeom, :SourceOwnerKey)
+    SCENE_OWNERSHIP_SUITE["prepare summaries disabled, raw"] = @benchmarkable prepare_scene(
+        tree;
+        compute_area=false,
+        compute_barycenter=false,
+        source_topology_id=false,
+    ) setup = (tree = deepcopy($OWNERSHIP_ONE_FACE_TEMPLATE)) evals = 1
+    SCENE_OWNERSHIP_SUITE["prepare summaries disabled, refresh"] = @benchmarkable prepare_scene(
+        $OWNERSHIP_ONE_FACE_PREPARED_MINIMAL.mtg;
+        compute_area=false,
+        compute_barycenter=false,
+        source_topology_id=false,
+    ) evals = 1
+    SCENE_OWNERSHIP_SUITE["make_scene summaries disabled"] =
+        @benchmarkable ownership_make_scene_minimal($OWNERSHIP_ONE_FACE_TEMPLATE) evals = 1
+end
 
 if abspath(PROGRAM_FILE) == @__FILE__
     BenchmarkTools.tune!(SCENE_OWNERSHIP_SUITE)
