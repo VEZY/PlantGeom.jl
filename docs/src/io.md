@@ -127,7 +127,7 @@ mtg_topology = read_mtg(mtg_file)
 
 (
     opf_nodes_with_geometry=length(descendants(opf, :geometry; ignore_nothing=true, self=true)),
-    scene_objects=length(object_table),
+    model_objects=length(object_table),
     scene_children=length(children(scene)),
     mtg_nodes=length(descendants(mtg_topology; self=true)),
 )
@@ -252,3 +252,29 @@ If you only need a list for plotting, use `get_ref_meshes(opf)` (or
   available in `read_ops` and forwarded to embedded OPFs).
 - For reconstruction workflows from `.mtg`, see:
   [AMAP-Style Quickstart](build_and_simulate_3d_plants/reconstruct_from_mtg/amap_quickstart.md).
+
+## Compatibility Boundaries
+
+OPF, GWA, and OPS remain supported interchange formats. Compatibility is kept
+at their input or visualization boundary; it does not alter the canonical MTG
+representation used after loading.
+
+`read_opf(file; attr_type=Dict)`
+: Historical use: selected the pre-v0.15 MTG attribute container. Canonical
+  replacement: omit `attr_type`; use `attribute_types` only to override
+  individual OPF field types. This public API deprecation is tested in
+  `test-read_opf.jl`, warns now, and will be removed in PlantGeom v0.21.
+  `read_gwa` and `read_ops` do not retain this keyword because it never
+  affected either reader.
+
+Historical OPS files may contain scene dimensions used to draw the old boundary
+quadrangle. PlantGeom keeps that extent as metadata and never materializes it as
+MTG geometry. Use `plantviz(scene; show_scene_boundary=true)` for the ordinary
+plotting overlay, or [`scene_boundary_mesh`](@ref) for custom visualization.
+Neither path changes `scene`, its version, or its serialized data. The overlay is
+not an organ or radiative surface. Add real scientific ground as a separate
+`Ground` object with [`add_ground!`](@ref).
+
+The former `refmesh_to_mesh!` function was not a working compatibility path: it
+only raised an error. It has therefore been removed. Replace any remaining
+qualified call with the non-mutating [`refmesh_to_mesh`](@ref).

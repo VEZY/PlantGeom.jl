@@ -27,7 +27,8 @@ end
 Parse the reference meshes from OPF attributes into a dictionary.
 
 # Arguments
-- `opf_attr::Dict`: Dictionary containing OPF attributes including `:meshBDD`, `:materialBDD`, and `:shapeBDD`
+- `opf_attr::Dict`: Dictionary containing OPF attributes including `:meshBDD`
+  and `:shapeBDD`, and optionally `:materialBDD`
 
 # Returns
 - `Dict{Int, RefMesh}`: A dictionary mapping shape IDs to RefMesh objects
@@ -38,16 +39,16 @@ Parse the reference meshes from OPF attributes into a dictionary.
 - Shape IDs, mesh indices, and material indices are used as-is from the OPF file (0-based)
 """
 function parse_ref_meshes(x)
-    shapeBDD = x[:shapeBDD]
-    meshes = Dict{Int,RefMesh}()
-    sizehint!(meshes, length(shapeBDD))
     meshBDD = x[:meshBDD]
-    materialBDD = x[:materialBDD]
+    shapeBDD = x[:shapeBDD]
+    materialBDD = get(x, :materialBDD, Dict{Int,Phong}())
     fallback_material = if isempty(materialBDD)
         _default_phong_material()
     else
         first(values(materialBDD))
     end
+    meshes = Dict{Int,RefMesh}()
+    sizehint!(meshes, length(shapeBDD))
 
     for (id, shape) in shapeBDD
         mesh_entry = meshBDD[shape.mesh_index]

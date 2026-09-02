@@ -70,7 +70,3 @@ end
 function apply_transformation(transformation::Transformation, ref_mesh)
     apply_transformation_to_mesh(transformation, ref_mesh)
 end
-
-function refmesh_to_mesh!(node)
-    error("refmesh_to_mesh! is deprecated, use `refmesh_to_mesh` instead (non-mutating).")
-end

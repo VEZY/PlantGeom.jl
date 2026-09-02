@@ -13,6 +13,10 @@ using Unitful
 using PlantGeom
 using PlantSimEngine
 
+# Several historical fixtures are referenced as `files/...`; make their base
+# explicit so the suite behaves the same under Pkg.test and Kaimon.
+cd(@__DIR__)
+
 @testset "Read OPF" begin
     include("test-refmesh.jl")
 end
@@ -34,6 +38,9 @@ end
 
 include("test-write-cache-sanitization.jl")
 include("test-scene-placement.jl")
+include("test-scene-ownership.jl")
+include("test-source-owner-map.jl")
+include("test-scene-units.jl")
 
 @testset "Makie recipes" begin
     include("test-makie-recipes.jl")

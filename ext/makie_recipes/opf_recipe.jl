@@ -27,12 +27,33 @@ Makie.@recipe PlantViz (mtg,) begin
     visible = true
     "Cache the meshes computations for speeding-up plotting with only changes in coloring."
     cache = true
+    "Draw the OPS `scene_dimensions` as a pure outline overlay."
+    show_scene_boundary = false
 end
 
 Makie.args_preferred_axis(mtg::MultiScaleTreeGraph.Node) = Makie.LScene
 
 function Makie.plot!(plot::PlantViz{<:Tuple{MultiScaleTreeGraph.Node}})
-    plot_opf(plot, :mtg)
+    show_scene_boundary = Makie.to_value(plot[:show_scene_boundary])
+    plot_opf(
+        plot,
+        :mtg;
+        cache=show_scene_boundary ? false : Makie.to_value(plot[:cache]),
+    )
+    if show_scene_boundary
+        mesh = PlantGeom.scene_boundary_mesh(Makie.to_value(plot[:mtg]))
+        points = Makie.Point3f.(GeometryBasics.coordinates(mesh))
+        outline = copy(points)
+        push!(outline, first(points))
+        Makie.lines!(
+            plot,
+            outline;
+            color=RGBA(159 / 255, 182 / 255, 205 / 255, 1),
+            linewidth=2.0,
+            visible=Makie.to_value(plot[:visible]),
+        )
+    end
+    return plot
 end
 
 # To be able to call `Makie.Colorbar(fig[1,2], p)` directly.

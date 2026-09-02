@@ -267,7 +267,24 @@ function _to_nt(x::AbstractDict)
 end
 _to_nt(::Nothing) = NamedTuple()
 
-function emit_phytomer!(
+"""
+    emit_internode_leaf!(parent; internode=NamedTuple(), leaf=NamedTuple(),
+                          internode_index=0, leaf_index=0, scale=nothing,
+                          bump_scene=true)
+
+Emit an internode and a leaf as one topology update.
+
+When both organs are requested, the new `:Internode` is attached to `parent` and
+the new `:Leaf` is attached to that internode. Pass `nothing` for either organ to
+skip it. The return value is `(internode=..., leaf=...)`, with `nothing` for an
+organ that was skipped.
+
+This function does **not** create a `:Phytomer` node. It preserves the historical
+nested topology in which the leaf is a child of the emitted internode. For an MTG
+with explicit phytomer nodes and sibling organ children, construct that topology
+explicitly with `emit_internode!` and `emit_leaf!`.
+"""
+function emit_internode_leaf!(
     parent::MultiScaleTreeGraph.Node;
     internode=NamedTuple(),
     leaf=NamedTuple(),

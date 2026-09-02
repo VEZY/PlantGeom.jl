@@ -81,6 +81,47 @@
         @test abs(dir[1]) < 1e-3
     end
 
+    @testset "arbitrary world axis-angle rotation" begin
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        stem = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        stem[:Length] = 1.0
+        stem[:Width] = 0.1
+        stem[:Thickness] = 0.1
+        stem[:WorldAxisAngle] = pi / 2
+        stem[:WorldAxisX] = 0.0
+        stem[:WorldAxisY] = 1.0
+        stem[:WorldAxisZ] = 0.0
+        opts = AmapReconstructionOptions(world_axis_angle_unit=:rad)
+
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=opts,
+            root_align=false,
+        )
+
+        dir = LinearAlgebra.normalize(
+            SVector{3,Float64}(stem[:geometry].transformation(px)) -
+            SVector{3,Float64}(stem[:geometry].transformation(p0)),
+        )
+        @test dir ≈ -pz atol=1e-12
+
+        @test_throws ErrorException AmapReconstructionOptions(
+            world_axis_angle_unit=:turn,
+        )
+        stem[:WorldAxisX] = 0.0
+        stem[:WorldAxisY] = 0.0
+        stem[:WorldAxisZ] = 0.0
+        @test_throws ErrorException reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=opts,
+            root_align=false,
+        )
+    end
+
     @testset "orthotropy and stiffness angle precedence" begin
         mtg_ortho = Node(NodeMTG(:/, :Plant, 1, 1))
         stem_ortho = Node(mtg_ortho, NodeMTG(:/, :Internode, 1, 2))
@@ -122,6 +163,148 @@
             SVector{3,Float64}(stem_stiff[:geometry].transformation(p0)),
         )
         @test dir_stiff[3] < 0.0
+    end
+
+    @testset "validated frame-orientation hook" begin
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        first_internode = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        second_internode = Node(first_internode, NodeMTG(:<, :Internode, 2, 2))
+        for internode in (first_internode, second_internode)
+            internode[:Length] = 1.0
+            internode[:Width] = 0.1
+            internode[:Thickness] = 0.1
+        end
+
+        seen_length_axes = Symbol[]
+        replacement = SMatrix{3,3,Float64}(
+            0.0, 1.0, 0.0,
+            -1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0,
+        )
+        hook = function (node, _rotation, length_axis)
+            push!(seen_length_axes, length_axis)
+            return node === second_internode ? replacement : nothing
+        end
+        opts = AmapReconstructionOptions(frame_orientation_hook=hook)
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=opts,
+            root_align=false,
+        )
+
+        first_direction = LinearAlgebra.normalize(
+            SVector{3,Float64}(first_internode[:geometry].transformation(px)) -
+            SVector{3,Float64}(first_internode[:geometry].transformation(p0)),
+        )
+        second_direction = LinearAlgebra.normalize(
+            SVector{3,Float64}(second_internode[:geometry].transformation(px)) -
+            SVector{3,Float64}(second_internode[:geometry].transformation(p0)),
+        )
+        second_secondary = LinearAlgebra.normalize(
+            SVector{3,Float64}(second_internode[:geometry].transformation(py)) -
+            SVector{3,Float64}(second_internode[:geometry].transformation(p0)),
+        )
+        @test seen_length_axes == [:x, :x, :x]
+        @test first_direction ≈ px atol=1.0e-12
+        @test second_direction ≈ py atol=1.0e-12
+        @test second_secondary ≈ -px atol=1.0e-12
+
+        invalid_replacements = (
+            zeros(2, 2),
+            fill(NaN, 3, 3),
+            [1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 2.0],
+            [1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 -1.0],
+        )
+        for invalid in invalid_replacements
+            invalid_opts = AmapReconstructionOptions(
+                frame_orientation_hook=(_node, _rotation, _length_axis) -> invalid,
+            )
+            @test_throws ErrorException reconstruct_geometry_from_attributes!(
+                mtg,
+                ref_meshes;
+                convention=conv,
+                amap_options=invalid_opts,
+                root_align=false,
+            )
+        end
+    end
+
+    @testset "stateful gravity-bending hook" begin
+        mtg = Node(NodeMTG(:/, :Plant, 1, 1))
+        first_internode = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
+        second_internode = Node(first_internode, NodeMTG(:<, :Internode, 2, 2))
+        for internode in (first_internode, second_internode)
+            internode[:Length] = 1.0
+            internode[:Width] = 0.1
+            internode[:Thickness] = 0.1
+        end
+
+        seen_direction_z = Float64[]
+        hook = function (node, direction_z)
+            push!(seen_direction_z, direction_z)
+            return node === second_internode ? -pi / 6 : nothing
+        end
+        opts = AmapReconstructionOptions(gravity_bending_hook=hook)
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=opts,
+            root_align=false,
+        )
+
+        first_direction = LinearAlgebra.normalize(
+            SVector{3,Float64}(first_internode[:geometry].transformation(px)) -
+            SVector{3,Float64}(first_internode[:geometry].transformation(p0)),
+        )
+        second_direction = LinearAlgebra.normalize(
+            SVector{3,Float64}(second_internode[:geometry].transformation(px)) -
+            SVector{3,Float64}(second_internode[:geometry].transformation(p0)),
+        )
+        second_secondary = LinearAlgebra.normalize(
+            SVector{3,Float64}(second_internode[:geometry].transformation(py)) -
+            SVector{3,Float64}(second_internode[:geometry].transformation(p0)),
+        )
+        @test seen_direction_z == [0.0, 0.0, 0.0]
+        @test first_direction ≈ px atol=1.0e-12
+        @test second_direction ≈
+              SVector(cos(pi / 6), 0.0, -sin(pi / 6)) atol=1.0e-12
+        @test LinearAlgebra.dot(second_direction, second_secondary) ≈ 0.0 atol=1.0e-12
+        @test LinearAlgebra.dot(second_secondary, pz) > 0.8
+
+        zero_hook = AmapReconstructionOptions(
+            gravity_bending_hook=(_node, _direction_z) -> -0.0,
+        )
+        reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=zero_hook,
+            root_align=false,
+        )
+        zero_first_direction = LinearAlgebra.normalize(
+            SVector{3,Float64}(first_internode[:geometry].transformation(px)) -
+            SVector{3,Float64}(first_internode[:geometry].transformation(p0)),
+        )
+        zero_second_direction = LinearAlgebra.normalize(
+            SVector{3,Float64}(second_internode[:geometry].transformation(px)) -
+            SVector{3,Float64}(second_internode[:geometry].transformation(p0)),
+        )
+        @test zero_first_direction ≈ px atol=1.0e-12
+        @test zero_second_direction ≈ px atol=1.0e-12
+
+        invalid_opts = AmapReconstructionOptions(
+            gravity_bending_hook=(_node, _direction_z) -> NaN,
+        )
+        @test_throws ErrorException reconstruct_geometry_from_attributes!(
+            mtg,
+            ref_meshes;
+            convention=conv,
+            amap_options=invalid_opts,
+            root_align=false,
+        )
     end
 
     @testset "stiffness propagation to component children" begin

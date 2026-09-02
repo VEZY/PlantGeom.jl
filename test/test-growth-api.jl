@@ -54,31 +54,75 @@
     @test scene_ver(mtg) == 3
 
     v0 = scene_ver(mtg)
-    phy = emit_phytomer!(
+    organ_pair = emit_internode_leaf!(
         internode;
         internode=(length=0.18, width=0.02, y_euler=2.0),
         leaf=(length=0.09, width=0.03, y_insertion_angle=48.0, leaf_stage=:expanding),
     )
-    @test phy.internode !== nothing
-    @test phy.leaf !== nothing
-    @test symbol(phy.internode) == :Internode
-    @test symbol(phy.leaf) == :Leaf
+    @test organ_pair.internode !== nothing
+    @test organ_pair.leaf !== nothing
+    @test symbol(organ_pair.internode) == :Internode
+    @test symbol(organ_pair.leaf) == :Leaf
     @test scene_ver(mtg) == v0 + 1
 
-    grow_length!(phy.internode; delta=0.02, bump_scene=false)
-    @test phy.internode[:Length] ≈ 0.20
+    grow_length!(organ_pair.internode; delta=0.02, bump_scene=false)
+    @test organ_pair.internode[:Length] ≈ 0.20
 
-    grow_width!(phy.internode; delta=0.01, thickness_policy=:follow_width, bump_scene=false)
-    @test phy.internode[:Width] ≈ 0.03
-    @test phy.internode[:Thickness] ≈ 0.03
+    grow_width!(organ_pair.internode; delta=0.01, thickness_policy=:follow_width, bump_scene=false)
+    @test organ_pair.internode[:Width] ≈ 0.03
+    @test organ_pair.internode[:Thickness] ≈ 0.03
 
-    grow_width!(phy.internode; delta=0.01, thickness_policy=:match_increment, bump_scene=false)
-    @test phy.internode[:Width] ≈ 0.04
-    @test phy.internode[:Thickness] ≈ 0.04
+    grow_width!(organ_pair.internode; delta=0.01, thickness_policy=:match_increment, bump_scene=false)
+    @test organ_pair.internode[:Width] ≈ 0.04
+    @test organ_pair.internode[:Thickness] ≈ 0.04
 
-    set_growth_attributes!(phy.leaf; leaf_stage=:adult, age=4, bump_scene=false)
-    @test phy.leaf[:leaf_stage] == :adult
-    @test phy.leaf[:age] == 4
+    set_growth_attributes!(organ_pair.leaf; leaf_stage=:adult, age=4, bump_scene=false)
+    @test organ_pair.leaf[:leaf_stage] == :adult
+    @test organ_pair.leaf[:age] == 4
+end
+
+@testset "Growth API internode/leaf pair semantics and legacy wrapper" begin
+    scene_ver(node) = haskey(node, :_scene_version) ? node[:_scene_version] : 0
+
+    function emission_signature(emitter)
+        root = Node(NodeMTG(:/, :Plant, 1, 1))
+        result = emitter(
+            root;
+            internode=(length=0.18, width=0.02),
+            leaf=(length=0.09, width=0.03),
+            internode_index=3,
+            leaf_index=7,
+            scale=2,
+        )
+        nodes = collect(MultiScaleTreeGraph.traverse(root, identity))
+        return (
+            symbols=map(symbol, nodes),
+            indices=map(index, nodes),
+            scales=map(scale, nodes),
+            leaf_parent=symbol(parent(result.leaf)),
+            scene_version=scene_ver(root),
+        )
+    end
+
+    current = emission_signature(emit_internode_leaf!)
+    legacy = @test_deprecated r"does not create a `:Phytomer` node" emission_signature(
+        emit_phytomer!,
+    )
+    @test legacy == current
+    @test current.symbols == [:Plant, :Internode, :Leaf]
+    @test :Phytomer ∉ current.symbols
+    @test current.leaf_parent == :Internode
+
+    leaf_root = Node(NodeMTG(:/, :Plant, 1, 1))
+    leaf_only = emit_internode_leaf!(leaf_root; internode=nothing, leaf=(length=0.09,))
+    @test leaf_only.internode === nothing
+    @test symbol(leaf_only.leaf) == :Leaf
+    @test parent(leaf_only.leaf) === leaf_root
+
+    empty_root = Node(NodeMTG(:/, :Plant, 1, 1))
+    empty = emit_internode_leaf!(empty_root; internode=nothing, leaf=nothing)
+    @test empty == (internode=nothing, leaf=nothing)
+    @test scene_ver(empty_root) == 0
 end
 
 @testset "Growth API geometry rebuild + prototype_selector" begin

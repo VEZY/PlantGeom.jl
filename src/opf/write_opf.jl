@@ -5,7 +5,13 @@ using Printf: @sprintf
 @inline _opf_join_values(values) = join((_opf_scalar_string(v) for v in values), "\t")
 @inline _opf_attr_string(val::AbstractArray) = _opf_join_values(val)
 @inline _opf_attr_string(val) = _opf_scalar_string(val)
-@inline _opf_skip_attribute(key::Symbol) = key in (:ref_meshes, :geometry, :source_topology_id, :description) || startswith(String(key), "_scene_")
+@inline _opf_skip_attribute(key::Symbol) = key in (
+    :ref_meshes,
+    :geometry,
+    :source_topology_id,
+    :description,
+    :plantsimengine_status,
+) || startswith(String(key), "_scene_")
 @inline _opf_topology_id(node) = (haskey(node, :source_topology_id) && node[:source_topology_id] !== nothing && !ismissing(node[:source_topology_id])) ? node[:source_topology_id] : node_id(node)
 
 @inline _opf_geometry_material(geom::Geometry) = geom.ref_mesh.material
@@ -79,11 +85,16 @@ end
 
 
 """
-    write_opf(file, opf)
+    write_opf(file, opf; coordinate_scale=100.0)
 
 Write an MTG with explicit geometry to disk as an OPF file.
+
+`coordinate_scale` is the number of OPF coordinate units per internal PlantGeom
+coordinate unit. Its default value writes PlantGeom metres as OPF centimetres;
+use `1.0` when the in-memory coordinates are already expressed in centimetres.
 """
-function write_opf(file, mtg)
+function write_opf(file, mtg; coordinate_scale=100.0)
+    coordinate_scale = _validate_opf_coordinate_scale(coordinate_scale)
     clean_cache!(mtg)
 
     doc = XMLDocument()
@@ -103,8 +114,14 @@ function write_opf(file, mtg)
         mesh_elm["Id"] = id
         mesh_elm["enableScale"] = mesh_.taper
 
-        points_cm = Iterators.flatten((p[1] * 100, p[2] * 100, p[3] * 100) for p in _vertices(mesh_.mesh))
-        addelement!(mesh_elm, "points", string("\n", _opf_join_values(points_cm), "\n"))
+        points_opf = Iterators.flatten(
+            (
+                p[1] * coordinate_scale,
+                p[2] * coordinate_scale,
+                p[3] * coordinate_scale,
+            ) for p in _vertices(mesh_.mesh)
+        )
+        addelement!(mesh_elm, "points", string("\n", _opf_join_values(points_opf), "\n"))
 
         if length(mesh_.normals) == nelements(mesh_) && length(mesh_.normals) != nvertices(mesh_)
             vertex_normals = normals_vertex(mesh_)
@@ -177,7 +194,13 @@ function write_opf(file, mtg)
         shape_elm["class"] = attr_type_opf
     end
 
-    mtg_topology_to_xml!(mtg, opf_elm, nothing, serialized_geometries)
+    mtg_topology_to_xml!(
+        mtg,
+        opf_elm,
+        nothing,
+        serialized_geometries,
+        coordinate_scale,
+    )
 
     write(file, doc)
 
@@ -205,15 +228,33 @@ end
 
 Write the MTG topology, attributes and geometry into XML format.
 """
-function mtg_topology_to_xml!(node, xml_parent, xml_gtparent=nothing, serialized_geometries=IdDict{Any,NamedTuple{(:shape_index, :transformation, :dUp, :dDwn),Tuple{Int,Transformation,Float64,Float64}}}())
+function mtg_topology_to_xml!(node, xml_parent, xml_gtparent=nothing, serialized_geometries=IdDict{Any,NamedTuple{(:shape_index, :transformation, :dUp, :dDwn),Tuple{Int,Transformation,Float64,Float64}}}(), coordinate_scale=100.0)
     if isroot(node)
-        xml_parent = attributes_to_xml(node, xml_parent, xml_gtparent, serialized_geometries)
+        xml_parent = attributes_to_xml(
+            node,
+            xml_parent,
+            xml_gtparent,
+            serialized_geometries,
+            coordinate_scale,
+        )
     end
 
     if !isleaf(node)
         for chnode in children(node)
-            xml_node = attributes_to_xml(chnode, xml_parent, xml_gtparent, serialized_geometries)
-            mtg_topology_to_xml!(chnode, xml_node, xml_parent, serialized_geometries)
+            xml_node = attributes_to_xml(
+                chnode,
+                xml_parent,
+                xml_gtparent,
+                serialized_geometries,
+                coordinate_scale,
+            )
+            mtg_topology_to_xml!(
+                chnode,
+                xml_node,
+                xml_parent,
+                serialized_geometries,
+                coordinate_scale,
+            )
         end
     end
 end
@@ -223,7 +264,13 @@ end
 
 Write an MTG node into an XML node.
 """
-function attributes_to_xml(node, xml_parent, xml_gtparent, serialized_geometries)
+function attributes_to_xml(
+    node,
+    xml_parent,
+    xml_gtparent,
+    serialized_geometries,
+    coordinate_scale,
+)
     opf_link = isroot(node) ? "topology" : mtg_to_opf_link(link(node))
 
     xml_node = addelement!(xml_parent, opf_link)
@@ -231,6 +278,7 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, serialized_geometries
     xml_node["class"] = string(symbol(node))
     xml_node["scale"] = scale(node)
     xml_node["id"] = _opf_topology_id(node)
+    xml_node["index"] = index(node)
 
     for key in keys(node)
         if key == :geometry
@@ -244,7 +292,10 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, serialized_geometries
 
             addelement!(geom, "shapeIndex", string(serialized_geom.shape_index))
 
-            mat4x4 = get_transformation_matrix(serialized_geom.transformation)
+            mat4x4 = get_transformation_matrix(
+                serialized_geom.transformation;
+                coordinate_scale=coordinate_scale,
+            )
 
             addelement!(
                 geom,
@@ -273,13 +324,18 @@ function attributes_to_xml(node, xml_parent, xml_gtparent, serialized_geometries
     return xml_node
 end
 
-function get_transformation_matrix(trans::Transformation)
+function get_transformation_matrix(trans::Transformation; coordinate_scale=100.0)
+    coordinate_scale = _validate_opf_coordinate_scale(coordinate_scale)
     mat = transformation_matrix4(trans)
-    mat_cm = copy(mat)
-    mat_cm[1:3, 4] .*= 100
-    mat_cm
+    mat_opf = copy(mat)
+    mat_opf[1:3, 4] .*= coordinate_scale
+    mat_opf
 end
 
-function get_transformation_matrix(::T) where {T<:UniformScaling}
+function get_transformation_matrix(
+    ::T;
+    coordinate_scale=100.0,
+) where {T<:UniformScaling}
+    _validate_opf_coordinate_scale(coordinate_scale)
     Matrix{Float64}(I, 4, 4)
 end

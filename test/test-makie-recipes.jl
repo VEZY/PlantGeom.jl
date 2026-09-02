@@ -237,6 +237,69 @@ end
     @test length(cache.face2node) == PlantGeom.nelements(cache.mesh)
 end
 
+@testset "Makie recipes: OPS boundary is a pure outline overlay" begin
+    ops_file = joinpath(dirname(dirname(pathof(PlantGeom))), "test", "files", "scene.ops")
+    scene = read_ops(ops_file)
+    keys_before = Set(keys(scene))
+    version_before = scene_version(scene)
+    ref_mesh_count_before = length(get_ref_meshes(scene))
+    nodes_before = MultiScaleTreeGraph.traverse(scene, identity)
+    node_ids_before = MultiScaleTreeGraph.node_id.(nodes_before)
+    geometry_nodes_before = filter(PlantGeom.has_geometry, nodes_before)
+    geometry_node_ids_before = MultiScaleTreeGraph.node_id.(geometry_nodes_before)
+    surface_count_before = sum(
+        PlantGeom.nelements(refmesh_to_mesh(node)) for node in geometry_nodes_before
+    )
+    serialized_before = mktempdir() do tmp
+        before_file = joinpath(tmp, "before.ops")
+        @test_nowarn write_ops(
+            before_file,
+            scene;
+            write_objects=false,
+            preserve_file_paths=true,
+        )
+        read(before_file, String)
+    end
+
+    @test !haskey(scene, :_scene_cache)
+    plain_fig, plain_ax, plain_plot = plantviz(scene; cache=false)
+    fig, ax, p = plantviz(scene; show_scene_boundary=true)
+    @test length(p.plots) == length(plain_plot.plots) + 1
+    @test p.plots[end] isa Makie.Lines
+    outline = p.plots[end][1][]
+    @test length(outline) == 5
+    @test first(outline) == last(outline)
+    @test collect(GeometryBasics.coordinates(p.merged_mesh[])) ==
+          collect(GeometryBasics.coordinates(plain_plot.merged_mesh[]))
+    @test collect(GeometryBasics.faces(p.merged_mesh[])) ==
+          collect(GeometryBasics.faces(plain_plot.merged_mesh[]))
+    @test p.face2node[] == plain_plot.face2node[]
+    @test !PlantGeom.has_geometry(scene)
+    @test !haskey(scene, :_scene_cache)
+    @test Set(keys(scene)) == keys_before
+    @test scene_version(scene) == version_before
+    @test length(get_ref_meshes(scene)) == ref_mesh_count_before
+    nodes_after = MultiScaleTreeGraph.traverse(scene, identity)
+    @test MultiScaleTreeGraph.node_id.(nodes_after) == node_ids_before
+    geometry_nodes_after = filter(PlantGeom.has_geometry, nodes_after)
+    @test MultiScaleTreeGraph.node_id.(geometry_nodes_after) == geometry_node_ids_before
+    @test sum(
+        PlantGeom.nelements(refmesh_to_mesh(node)) for node in geometry_nodes_after
+    ) == surface_count_before
+
+    mktempdir() do tmp
+        after_file = joinpath(tmp, "after.ops")
+        @test_nowarn save(joinpath(tmp, "ops-boundary.png"), fig)
+        @test_nowarn write_ops(
+            after_file,
+            scene;
+            write_objects=false,
+            preserve_file_paths=true,
+        )
+        @test serialized_before == read(after_file, String)
+    end
+end
+
 @testset "Makie recipes: attribute coloring is robust on sparse OPS attributes" begin
     mktempdir() do tmp
         opf_path = joinpath(tmp, "dyn_sparse_attr.opf")

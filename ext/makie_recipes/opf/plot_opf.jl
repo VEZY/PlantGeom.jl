@@ -22,6 +22,9 @@ The plot object can have the following optional arguments:
 - `scale`: Plot only nodes with this scale. Should be an Int or a vector of.
 - `link`: Plot only nodes with this link. Prefer `Symbol` (or vector/tuple of symbols).
 - `cache=true`: Whether to cache the results.
+- `show_scene_boundary=false`: Draw the OPS `scene_dimensions` as a pure outline
+  overlay without changing the MTG. This option bypasses the MTG mesh cache for
+  the plotting call.
 
 # Examples
 
@@ -50,7 +53,11 @@ f, a, plot = plantviz(opf, color=:z_vertex, color_mode=:vertex)
 plot_opf(plot)
 ```
 """
-function plot_opf(plot, mtg_name=:mtg)
+function plot_opf(
+    plot,
+    mtg_name=:mtg;
+    cache=Makie.to_value(plot[:cache]),
+)
     # Register derived nodes on the ComputeGraph for clarity and reuse
     Makie.map!(plot.attributes, [:color, mtg_name], :colorant) do col, mtg
         PlantGeom.get_mtg_color(col, mtg)
@@ -83,9 +90,7 @@ function plot_opf(plot, mtg_name=:mtg)
         return f
     end
 
-    return plot_opf_merged(plot, mtg_name, Makie.to_value(plot[:cache]))
-
-    return plot
+    return plot_opf_merged(plot, mtg_name, cache)
 end
 
 function plot_opf_merged(plot, mtg_name, cache=true)

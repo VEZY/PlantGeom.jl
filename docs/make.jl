@@ -1,4 +1,5 @@
 using CairoMakie
+using Bonito
 using PlantGeom
 using Statistics
 using Documenter

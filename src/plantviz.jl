@@ -20,6 +20,9 @@ reference meshes and the associated transformation matrix.
     - `symbol`: Plot only nodes with this symbol. Prefer `Symbol` (or vector/tuple of symbols).
     - `scale`: Plot only nodes with this scale. Should be an Int or a vector of.
     - `link`: Plot only nodes with this link. Prefer `Symbol` (or vector/tuple of symbols).
+    - `show_scene_boundary=false`: Draw the pure OPS `scene_dimensions` outline
+      without adding geometry or a plotting cache to the MTG. See
+      [`scene_boundary_mesh`](@ref).
     
 # Examples
 

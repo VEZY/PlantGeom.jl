@@ -21,6 +21,13 @@ struct AmapReconstructionOptions
     azimuth_aliases::Vector{Symbol}
     elevation_aliases::Vector{Symbol}
     deviation_aliases::Vector{Symbol}
+    world_axis_angle_aliases::Vector{Symbol}
+    world_axis_x_aliases::Vector{Symbol}
+    world_axis_y_aliases::Vector{Symbol}
+    world_axis_z_aliases::Vector{Symbol}
+    world_axis_angle_unit::Symbol
+    frame_orientation_hook::Union{Nothing,Function}
+    gravity_bending_hook::Union{Nothing,Function}
     orthotropy_aliases::Vector{Symbol}
     stiffness_angle_aliases::Vector{Symbol}
     stiffness_aliases::Vector{Symbol}
@@ -132,6 +139,34 @@ Keyword reference:
 - `deviation_aliases`
   Column names used for deviation-angle rotation. This is an extra world-space
   directional adjustment applied after the main insertion stage.
+
+- `world_axis_angle_aliases`, `world_axis_x_aliases`,
+  `world_axis_y_aliases`, `world_axis_z_aliases`
+  Column names for an arbitrary world-space axis-angle rotation. The axis is
+  normalized internally and the rotation is applied after `deviation_aliases`.
+  If a nonzero angle is present, all three axis components must be numeric.
+
+- `world_axis_angle_unit::Symbol=:deg`
+  Unit used by the world-axis angle attribute. Accepted values are `:deg` and
+  `:rad`.
+
+- `frame_orientation_hook::Union{Nothing,Function}=nothing`
+  Optional frame-replacement callback called as `hook(node, rotation,
+  length_axis)` after insertion and azimuth/elevation but before gravity
+  bending and the remaining biomechanical stages. Return `nothing` to keep the
+  current frame or a finite orthonormal `3 × 3` matrix with determinant `+1` to
+  replace it. The callback may retain state between nodes, so callers should
+  supply a fresh hook for each reconstruction.
+
+- `gravity_bending_hook::Union{Nothing,Function}=nothing`
+  Optional sequential orientation callback called as `hook(node, direction_z)`
+  after insertion, azimuth/elevation, and optional frame replacement but before
+  the remaining biomechanical, deviation, world-axis, and Euler stages. Return
+  a finite bending angle in radians, positive toward world `+Z`, or `nothing` to
+  leave the frame unchanged. Returning positive or negative zero is also a
+  complete no-op, preserving the inherited transverse frame. The callback may
+  retain state between nodes, so callers should supply a fresh hook for each
+  reconstruction.
 
 - `orthotropy_aliases`
   Column names used for orthotropy-driven bending orientation. This is a
@@ -275,6 +310,13 @@ function AmapReconstructionOptions(;
     azimuth_aliases=[:Azimuth, :azimuth],
     elevation_aliases=[:Elevation, :elevation],
     deviation_aliases=[:DeviationAngle, :deviation_angle],
+    world_axis_angle_aliases=[:WorldAxisAngle, :world_axis_angle],
+    world_axis_x_aliases=[:WorldAxisX, :world_axis_x],
+    world_axis_y_aliases=[:WorldAxisY, :world_axis_y],
+    world_axis_z_aliases=[:WorldAxisZ, :world_axis_z],
+    world_axis_angle_unit::Symbol=:deg,
+    frame_orientation_hook::Union{Nothing,Function}=nothing,
+    gravity_bending_hook::Union{Nothing,Function}=nothing,
     orthotropy_aliases=[:Orthotropy, :orthotropy],
     stiffness_angle_aliases=[:StiffnessAngle, :stiffness_angle],
     stiffness_aliases=[:Stifness, :stifness, :Stiffness, :stiffness],
@@ -323,6 +365,8 @@ function AmapReconstructionOptions(;
         )
     order_override_mode in (:override, :missing_only) ||
         error("Invalid order_override_mode '$order_override_mode'. Expected :override or :missing_only.")
+    world_axis_angle_unit in (:deg, :rad) ||
+        error("Invalid world_axis_angle_unit '$world_axis_angle_unit'. Expected :deg or :rad.")
 
     AmapReconstructionOptions(
         _amap_normalize_aliases(insertion_mode_aliases),
@@ -333,6 +377,13 @@ function AmapReconstructionOptions(;
         _amap_normalize_aliases(azimuth_aliases),
         _amap_normalize_aliases(elevation_aliases),
         _amap_normalize_aliases(deviation_aliases),
+        _amap_normalize_aliases(world_axis_angle_aliases),
+        _amap_normalize_aliases(world_axis_x_aliases),
+        _amap_normalize_aliases(world_axis_y_aliases),
+        _amap_normalize_aliases(world_axis_z_aliases),
+        world_axis_angle_unit,
+        frame_orientation_hook,
+        gravity_bending_hook,
         _amap_normalize_aliases(orthotropy_aliases),
         _amap_normalize_aliases(stiffness_angle_aliases),
         _amap_normalize_aliases(stiffness_aliases),

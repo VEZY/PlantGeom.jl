@@ -1,4 +1,12 @@
-mtg = read_opf("files/simple_plant.opf", attr_type=Dict)
+mtg = read_opf("files/simple_plant.opf")
+
+@testset "read_opf: deprecated attr_type compatibility boundary" begin
+    legacy = @test_deprecated r"attr_type.*v0.21" read_opf(
+        "files/simple_plant.opf";
+        attr_type=Dict,
+    )
+    @test length(legacy) == length(mtg)
+end
 
 @testset "read_opf: simple_plant.opf -> attributes" begin
     @test length(mtg) == 7
@@ -30,7 +38,10 @@ end
 @testset "read_opf: simple_plant.opf -> meshes" begin
     Internode = get_node(mtg, 4)
 
-    @test sort(collect(keys(Internode))) == [:Length, :Width, :XEuler, :geometry, :source_topology_id]
+    @test sort(collect(keys(Internode))) ==
+          [:Length, :Width, :geometry, :source_topology_id]
+    @test !haskey(Internode, :XEuler)
+    @test get(node_attributes(Internode), :XEuler, nothing) === nothing
     @test sort(names(Internode)) == [:Length, :Width, :XEuler, :geometry, :source_topology_id]
     @test isa(Internode[:geometry], PlantGeom.Geometry)
 
@@ -42,7 +53,7 @@ end
 end
 
 @testset "read_opf: read coffee.opf" begin
-    mtg = read_opf("files/coffee.opf", attr_type=Dict)
+    mtg = read_opf("files/coffee.opf")
     @test length(mtg) == 4191
     @test sort(get_attributes(mtg)) ==
           [
@@ -55,12 +66,77 @@ end
 
 @testset "read_opf: triangulate polygon faces and fallback material" begin
     quad_file = joinpath(pathof(PlantGeom) |> dirname |> dirname, "test", "files", "quad_empty_material.opf")
-    mtg_quad = @test_nowarn read_opf(quad_file, attr_type=Dict)
+    mtg_quad = @test_nowarn read_opf(quad_file)
     @test length(mtg_quad[:ref_meshes]) == 1
     # Use actual ID (0) instead of 1-based index
     mesh_key = first(keys(mtg_quad[:ref_meshes]))
     @test PlantGeom.nelements(mtg_quad[:ref_meshes][mesh_key]) == 2
     @test isa(mtg_quad[:ref_meshes][mesh_key].material, Phong)
+end
+
+@testset "read_opf: capitalized OPF tags and configurable coordinates" begin
+    mktempdir() do tmp
+        opf_path = joinpath(tmp, "legacy_capitalized_tags.opf")
+        open(opf_path, "w") do io
+            write(
+                io,
+                """
+<?xml version="1.0" encoding="UTF-8"?>
+<opf version="2.0">
+    <MeshBDD>
+        <Mesh name="LegacyMesh" shape="legacy" Id="1" enableScale="false">
+            <Points>0 0 0 1 0 0 0 1 0</Points>
+            <Normals>0 0 1 0 0 1 0 0 1</Normals>
+            <Faces><Face Id="0">0 1 2</Face></Faces>
+        </Mesh>
+    </MeshBDD>
+    <MaterialBDD></MaterialBDD>
+    <ShapeBDD>
+        <Shape Id="1">
+            <Name>LegacyMesh</Name>
+            <MeshIndex>1</MeshIndex>
+            <MaterialIndex>1</MaterialIndex>
+        </Shape>
+    </ShapeBDD>
+    <topology class="Plant" scale="1" id="1">
+        <geometry class="Mesh">
+            <shapeIndex>1</shapeIndex>
+            <mat>1 0 0 2 0 1 0 3 0 0 1 4</mat>
+            <dUp>1.0</dUp>
+            <dDwn>1.0</dDwn>
+        </geometry>
+    </topology>
+</opf>
+""",
+            )
+        end
+
+        legacy_units = @test_nowarn read_opf(
+            opf_path;
+            coordinate_scale=1.0,
+        )
+        @test collect(keys(legacy_units[:ref_meshes])) == [1]
+        @test legacy_units[:ref_meshes][1].name == "LegacyMesh"
+        @test PlantGeom.has_geometry(legacy_units)
+        @test collect(
+            legacy_units[:geometry].transformation(SVector{3,Float64}(0.0, 0.0, 0.0)),
+        ) ≈ [2.0, 3.0, 4.0]
+        @test collect(first(GeometryBasics.coordinates(legacy_units[:ref_meshes][1].mesh))) ≈
+              [0.0, 0.0, 0.0]
+        @test collect(GeometryBasics.coordinates(legacy_units[:ref_meshes][1].mesh)[2]) ≈
+              [1.0, 0.0, 0.0]
+
+        default_units = read_opf(opf_path)
+        @test collect(
+            default_units[:geometry].transformation(SVector{3,Float64}(0.0, 0.0, 0.0)),
+        ) ≈ [0.02, 0.03, 0.04]
+        @test collect(GeometryBasics.coordinates(default_units[:ref_meshes][1].mesh)[2]) ≈
+              [0.01, 0.0, 0.0]
+    end
+
+    @test_throws ArgumentError read_opf("unused.opf"; coordinate_scale=0.0)
+    @test_throws ArgumentError read_opf("unused.opf"; coordinate_scale=Inf)
+    @test_throws ArgumentError read_opf("unused.opf"; coordinate_scale="cm")
 end
 
 @testset "read_opf: dynamic attributes without attributeBDD widen to broader types" begin
@@ -122,14 +198,14 @@ end
             )
         end
 
-        mtg_dyn = @test_nowarn read_opf(opf_path, attr_type=Dict)
+        mtg_dyn = @test_nowarn read_opf(opf_path)
         vals = descendants(mtg_dyn, :DynamicValue, ignore_nothing=true)
         @test vals == Any[1, 2.5, "hello"]
     end
 end
 
 @testset "read_opf: attribute_types overrides OPF or dynamic typing" begin
-    mtg_string_len = read_opf("files/simple_plant.opf", attr_type=Dict, attribute_types=Dict("Length" => String))
+    mtg_string_len = read_opf("files/simple_plant.opf", attribute_types=Dict("Length" => String))
     length_vals = descendants(mtg_string_len, :Length, ignore_nothing=true)
     @test length_vals == Any["0.1", "0.2", "0.1", "0.2"]
 end

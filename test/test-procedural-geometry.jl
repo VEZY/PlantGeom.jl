@@ -2,6 +2,7 @@
     mtg = Node(NodeMTG(:/, :Plant, 1, 1))
     static_node = Node(mtg, NodeMTG(:/, :Internode, 1, 2))
     procedural_node = Node(mtg, NodeMTG(:/, :Internode, 2, 2))
+    trailing_static_node = Node(mtg, NodeMTG(:/, :Internode, 3, 2))
 
     static_mesh = GeometryBasics.mesh(
         GeometryBasics.Cylinder(
@@ -12,6 +13,9 @@
     )
     static_node[:geometry] = PlantGeom.Geometry(
         ref_mesh=RefMesh("StaticCylinder", static_mesh),
+    )
+    trailing_static_node[:geometry] = PlantGeom.Geometry(
+        ref_mesh=RefMesh("TrailingStaticCylinder", static_mesh),
     )
 
     procedural_node[:geometry] = ExtrudedTubeGeometry(
@@ -39,19 +43,29 @@
     @test length(batches.generic) == 1
 
     meshes, node_ids, ne_per_mesh = PlantGeom.materialize_geometry_jobs(batches)
-    @test length(meshes) == 2
-    @test length(node_ids) == 2
-    @test length(ne_per_mesh) == 2
+    @test length(meshes) == 3
+    @test length(node_ids) == 3
+    @test length(ne_per_mesh) == 3
 
     expected_ids = Set([
         MultiScaleTreeGraph.node_id(static_node),
         MultiScaleTreeGraph.node_id(procedural_node),
+        MultiScaleTreeGraph.node_id(trailing_static_node),
     ])
     @test Set(node_ids) == expected_ids
+
+    _, ordered_node_ids, _, seqs = PlantGeom._materialize_geometry_jobs(batches)
+    @test seqs == [1, 2, 3]
+    @test ordered_node_ids == MultiScaleTreeGraph.node_id.([
+        static_node,
+        procedural_node,
+        trailing_static_node,
+    ])
 
     merged_mesh, face2node = PlantGeom.build_merged_mesh_with_map(mtg)
     @test nelements(merged_mesh) == length(face2node)
     @test Set(face2node) == expected_ids
+    @test unique(face2node) == ordered_node_ids
 end
 
 struct ParabolicLift

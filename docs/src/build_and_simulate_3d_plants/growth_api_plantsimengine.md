@@ -22,8 +22,8 @@ The point of this workflow is to keep the responsibilities separate:
 We build a very small dynamic plant model where:
 
 - a `:Scene` node accumulates thermal time from meteorology
-- each internode emits **one new phytomer** once enough thermal time has accumulated
-- the growth event is implemented inside a PlantSimEngine model using `emit_phytomer!`
+- each internode emits **one new internode/leaf pair** once enough thermal time has accumulated
+- the growth event is implemented inside a PlantSimEngine model using `emit_internode_leaf!`
 - after the simulation, we rebuild geometry and visualize the result
 
 This example is fully runnable as shown.
@@ -90,7 +90,8 @@ prototypes = Dict(
 This is the key integration point.
 
 The model receives `TT_cu` from the `:Scene` scale.  
-When the thermal-time threshold is reached, it calls `emit_phytomer!` from PlantGeom.
+When the thermal-time threshold is reached, it calls `emit_internode_leaf!` from
+PlantGeom. This helper adds the two organ nodes; it does not create a `:Phytomer` node.
 
 ```@example psegrowth
 PlantSimEngine.@process "plantgeom_docs_emergence" verbose = false
@@ -101,29 +102,31 @@ end
 
 PlantGeomDocsEmergenceModel(; TT_emergence=10.0) = PlantGeomDocsEmergenceModel(TT_emergence)
 
-PlantSimEngine.inputs_(::PlantGeomDocsEmergenceModel) = (TT_cu=-Inf,)
+PlantSimEngine.inputs_(::PlantGeomDocsEmergenceModel) =
+    (TT_cu=PlantSimEngine.Required(Float64),)
 PlantSimEngine.outputs_(::PlantGeomDocsEmergenceModel) = (TT_cu_emergence=0.0, emitted=0,)
 
 function PlantSimEngine.run!(
     m::PlantGeomDocsEmergenceModel,
-    models,
     status,
-    meteo,
-    constants=nothing,
-    sim_object=nothing,
+    environment,
+    constants,
+    context,
 )
     if status.emitted == 0 && status.TT_cu - status.TT_cu_emergence >= m.TT_emergence
         # Count the number of internodes already emitted to alternate phyllotaxy:
-        phase = isodd(length(sim_object.statuses[:Internode])) ? 180.0 : 0.0
-        println("Emitting new phytomer at node $(status.node) with phase $phase")
-        new_organs = emit_phytomer!(
+        runtime = PlantSimEngine.runtime_model(context)
+        phase = isodd(length(PlantSimEngine.model_objects(runtime; scale=:Internode))) ?
+                180.0 : 0.0
+        emit_internode_leaf!(
             status,
-            sim_object;
+            context;
             internode=(
                 length=0.16,
                 width=0.015,
                 thickness=0.015,
                 prototype=:Internode,
+                initial_status=(TT_cu_emergence=status.TT_cu, emitted=0),
             ),
             leaf=(
                 length=0.24,
@@ -137,17 +140,11 @@ function PlantSimEngine.run!(
             ),
             internode_index=1,
             leaf_index=1,
-            check=true,
             bump_scene=false,
         )
 
         status.TT_cu_emergence = status.TT_cu
         status.emitted = 1
-
-        if new_organs.internode !== nothing
-            new_organs.internode.TT_cu_emergence = status.TT_cu
-            new_organs.internode.emitted = 0
-        end
     end
 
     return nothing
@@ -192,36 +189,32 @@ leaf[:GeometryPrototypeOverrides] = (bend=0.20, tip_drop=0.05)
 mtg
 ```
 
-## 5. Create the PlantSimEngine model mapping
+## 5. Create the PlantSimEngine composite model
 
-This is where PlantSimEngine decides which models and status templates apply to each scale.
+First define how MTG attributes become the initial `Status` of each runtime object.
+The callback returns the status to PlantSimEngine, which owns it in the model
+registry. Runtime status is not an MTG attribute.
 
 ```@example psegrowth
-mapping = PlantSimEngine.ModelMapping(
-    :Scene => (
-        ToyDegreeDaysCumulModel(),
-    ),
-    :Internode => (
-        MultiScaleModel(
-            model=PlantGeomDocsEmergenceModel(TT_emergence=10.0),
-            mapped_variables=[:TT_cu => (:Scene => :TT_cu)],
-        ),
-        PlantSimEngine.Status(
-            TT_cu=0.0,
-            TT_cu_emergence=0.0,
-            emitted=0,
-            Length=0.0,
-            Width=0.0,
-            Thickness=0.0,
-        ),
-    )
-)
+function initial_status(node)
+    data = Dict{Symbol,Any}(:node => node)
+    for (key, value) in pairs(MultiScaleTreeGraph.node_attributes(node))
+        data[Symbol(key)] = value
+    end
+    if MultiScaleTreeGraph.symbol(node) == :Internode
+        data[:TT_cu_emergence] = 0.0
+        data[:emitted] = 0
+    end
+    return PlantSimEngine.Status((; data...))
+end
 ```
 
 Important detail:
 
-- the growth model is attached to `:Internode`
-- new internodes and leaves created during the simulation receive their status templates from this mapping. In this example, no model is attached to `:Leaf`, but you could add one if you wanted to simulate leaf growth dynamics instead of just emergence.
+- resolve a node's runtime status with `PlantSimEngine.model_status(model, node)`
+- recover its exact MTG node with `PlantSimEngine.source_node(model, status)`
+- the growth application will target `:Internode` objects, including internodes
+  registered during organogenesis
 
 ## 6. Define meteo and run the simulation
 
@@ -237,22 +230,52 @@ meteo = Weather(
     ],
 )
 
-sim = PlantSimEngine.GraphSimulation(
-    mtg,
-    mapping;
-    nsteps=PlantSimEngine.get_nsteps(meteo),
-    outputs=Dict(
-        :Scene => (:TT_cu,),
-        :Internode => (:TT_cu_emergence, :emitted),
+model = PlantSimEngine.CompositeModel(
+    mtg;
+    status=initial_status,
+    environment=meteo,
+    applications=(
+        PlantSimEngine.ModelSpec(
+            ToyDegreeDaysCumulModel();
+            name=:degree_days,
+            on=PlantSimEngine.One(scale=:Scene),
+        ),
+        PlantSimEngine.ModelSpec(
+            PlantGeomDocsEmergenceModel(TT_emergence=10.0);
+            name=:emergence,
+            on=PlantSimEngine.Many(scale=:Internode),
+            inputs=(
+                :TT_cu => PlantSimEngine.One(
+                    scale=:Scene,
+                    within=PlantSimEngine.SceneScope(),
+                    application=:degree_days,
+                    var=:TT_cu,
+                ),
+            ),
+        ),
     ),
-    check=true,
 )
 
-outputs = run!(sim, meteo, executor=PlantSimEngine.SequentialEx())
+initial_internode_status = PlantSimEngine.model_status(model, internode)
+@assert PlantSimEngine.source_node(model, initial_internode_status) === internode
+@assert !haskey(
+    MultiScaleTreeGraph.node_attributes(internode),
+    :plantsimengine_status,
+)
+
+request = PlantSimEngine.OutputRequest(
+    PlantSimEngine.Many(scale=:Internode),
+    :TT_cu_emergence;
+    name=:internode_emergence,
+    application=:emergence,
+)
+simulation = PlantSimEngine.run!(model; steps=3, outputs=request)
+
+internodes = PlantSimEngine.model_objects(model; scale=:Internode)
 (
-    scene_TT_cu=sim.statuses[:Scene][1].TT_cu,
-    n_internodes=length(sim.statuses[:Internode]),
-    emergence_times=[st.TT_cu_emergence for st in sim.statuses[:Internode]],
+    scene_TT_cu=only(PlantSimEngine.model_objects(model; scale=:Scene)).status.TT_cu,
+    n_internodes=length(internodes),
+    emergence_times=sort([object.status.TT_cu_emergence for object in internodes]),
 )
 ```
 
@@ -277,6 +300,6 @@ This example shows the intended split:
 So the recommended pattern is:
 
 1. write a PlantSimEngine model that triggers growth events
-2. call `emit_internode!`, `emit_leaf!`, or `emit_phytomer!` inside that model
-3. run the simulation with `run!(sim, meteo)`
+2. call `emit_internode!`, `emit_leaf!`, or `emit_internode_leaf!` inside that model
+3. run the simulation with `PlantSimEngine.run!(model; steps=...)`
 4. rebuild geometry when you want a visual or exportable 3D plant

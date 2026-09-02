@@ -12,6 +12,46 @@ function _approx_mesh(a, b; atol=1e-10)
     _approx_mesh_value(GeometryBasics.coordinates(a), GeometryBasics.coordinates(b); atol=atol)
 end
 
+@testset "write_opf: configurable coordinate scale preserves legacy units" begin
+    stem_ref = RefMesh(
+        "scaled_stem",
+        GeometryBasics.mesh(
+            GeometryBasics.Cylinder(
+                Point(0.0, 0.0, 0.0),
+                Point(1.0, 0.0, 0.0),
+                0.5,
+            ),
+        ),
+    )
+    plant = Node(NodeMTG(:/, :Plant, 1, 1))
+    plant[:geometry] = PlantGeom.Geometry(
+        stem_ref,
+        PlantGeom.Translation(2.0, 3.0, 4.0),
+        1.0,
+        1.0,
+    )
+
+    tmp_file = tempname() * ".opf"
+    @test_nowarn write_opf(tmp_file, plant; coordinate_scale=1.0)
+    roundtrip = read_opf(tmp_file; coordinate_scale=1.0)
+
+    @test collect(
+        roundtrip[:geometry].transformation(SVector{3,Float64}(0.0, 0.0, 0.0)),
+    ) ≈ [2.0, 3.0, 4.0]
+    @test _approx_mesh(refmesh_to_mesh(plant), refmesh_to_mesh(roundtrip))
+
+    matrix_default = get_transformation_matrix(plant[:geometry].transformation)
+    matrix_legacy = get_transformation_matrix(
+        plant[:geometry].transformation;
+        coordinate_scale=1.0,
+    )
+    @test matrix_default[1:3, 4] ≈ [200.0, 300.0, 400.0]
+    @test matrix_legacy[1:3, 4] ≈ [2.0, 3.0, 4.0]
+
+    @test_throws ArgumentError write_opf(tmp_file, plant; coordinate_scale=-1.0)
+    @test_throws ArgumentError write_opf(tmp_file, plant; coordinate_scale=NaN)
+end
+
 @testset "write_opf: rebuilt growth plant round-trip preserves materialized meshes" begin
     stem_ref = RefMesh(
         "stem",
@@ -46,13 +86,13 @@ end
     )
 
     plant = Node(NodeMTG(:/, :Plant, 1, 1))
-    first_phy = emit_phytomer!(
+    first_pair = emit_internode_leaf!(
         plant;
         internode=(link=:/, index=1, length=0.20, width=0.022),
         leaf=(index=1, offset=0.15, length=0.22, width=0.05, thickness=0.02, y_insertion_angle=52.0),
     )
-    emit_phytomer!(
-        first_phy.internode;
+    emit_internode_leaf!(
+        first_pair.internode;
         internode=(index=2, length=0.18, width=0.020),
         leaf=(index=2, offset=0.14, length=0.24, width=0.055, thickness=0.02, phyllotaxy=180.0, y_insertion_angle=54.0),
     )
@@ -67,7 +107,7 @@ end
     tmp_file = tempname() * ".opf"
     @test_nowarn write_opf(tmp_file, plant)
 
-    roundtrip = read_opf(tmp_file, attr_type=Dict)
+    roundtrip = read_opf(tmp_file)
     nodes_after = collect(MultiScaleTreeGraph.traverse(roundtrip, node -> node))
 
     @test length(nodes_before) == length(nodes_after)
@@ -77,6 +117,7 @@ end
         @test symbol(node_before) == symbol(node_after)
         @test scale(node_before) == scale(node_after)
         @test link(node_before) == link(node_after)
+        @test index(node_before) == index(node_after)
 
         if PlantGeom.has_geometry(node_before)
             @test PlantGeom.has_geometry(node_after)

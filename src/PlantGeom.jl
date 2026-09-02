@@ -26,7 +26,7 @@ import EzXML: XMLDocument, ElementNode, setroot!, addelement!, hasnodename
 import EzXML: prettyprint # to remove
 import StaticArrays: SMatrix, SVector
 import StaticArrays
-import LinearAlgebra: I, UniformScaling, Diagonal, norm, cross, dot # Used for geometry parsing in OPF
+import LinearAlgebra: I, UniformScaling, Diagonal, det, norm, cross, dot # Used for geometry parsing in OPF
 import RecipesBase
 import Base
 import OrderedCollections
@@ -55,11 +55,13 @@ include("gwa/write_gwa.jl")
 include("ops/read_ops_file.jl")
 include("ops/scene_helpers.jl")
 include("ops/read_ops.jl")
+include("ops/scene_boundary.jl")
 include("ops/write_ops.jl")
 include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
 include("meshes/extrusion.jl")
 include("meshes/scene_merge.jl")
+include("ops/scene_units.jl")
 include("ops/scene_geometry.jl")
 include("plots_recipes/plots_recipe.jl")
 include("colors/get_color_type.jl")
@@ -83,10 +85,13 @@ export diagram, diagram!
 # export nvertices, nelements
 export read_opf, read_gwa, write_opf, write_gwa
 export read_ops_file, read_ops, write_ops, write_ops_file
+export scene_boundary_mesh
 export scene_object_transformation, place_in_scene!
-export SceneGeometry, SceneNodeData, SceneBuilder
+export SceneGeometry, SceneNodeData, SceneBuilder, SceneUnits, SourceOwnerKey
 export make_scene, prepare_scene, add_plant!, add_object!, add_ground!
-export scene_node, scene_node_ids, node_areas, node_barycenters
+export scene_node, scene_node_ids, source_owner, source_owners, node_areas, node_barycenters
+export compile_source_owner_map, source_owner_map_iscurrent
+export scene_length_unit, scene_area_unit
 export taper
 export refmesh_to_mesh, get_ref_meshes_color
 export xmax, ymax, zmax, xmin, ymin, zmin
@@ -119,7 +124,7 @@ export transformation_from_attributes
 export geometry_from_attributes
 export reconstruct_geometry_from_attributes!
 export set_geometry_from_attributes!
-export emit_internode!, emit_leaf!, emit_phytomer!
+export emit_internode!, emit_leaf!, emit_internode_leaf!, emit_phytomer!
 export grow_length!, grow_width!, set_growth_attributes!, rebuild_geometry!
 
 function colorbar end # Extended in PlantGeomMakie extension
@@ -130,7 +135,7 @@ function to_geometrybasics end # Extended in PlantGeomMeshesInterop extension
 export to_meshes, to_geometrybasics
 
 export get_transformation_matrix
-export bump_scene_version!
+export scene_version, bump_scene_version!
 
 # Defining the main functions for PlantViz:
 include("plantviz.jl")

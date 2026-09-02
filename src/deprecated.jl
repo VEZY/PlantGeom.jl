@@ -1,5 +1,16 @@
 @deprecate geometry(; ref_mesh, ref_mesh_index=nothing, transformation=IdentityTransformation(), dUp=1.0, dDwn=1.0, mesh=nothing) Geometry(; ref_mesh, transformation=IdentityTransformation(), dUp=1.0, dDwn=1.0)
 
+@noinline function _deprecate_attr_type!(attr_type)
+    attr_type === nothing && return nothing
+    Base.depwarn(
+        "`read_opf(...; attr_type=...)` is deprecated because `attr_type` has been " *
+        "ignored since MultiScaleTreeGraph v0.15. Remove the keyword; compatibility " *
+        "will be removed in PlantGeom v0.21.",
+        :read_opf,
+    )
+    return nothing
+end
+
 # Placement APIs now use the explicit `at=` keyword. Keyword-only renames cannot
 # be represented safely with `@deprecate` because Julia does not dispatch on
 # keyword names, so the affected methods call this helper directly.
@@ -29,4 +40,42 @@ end
 function viz!(mesh::T, args...; kwars...) where {T<:MultiScaleTreeGraph.Node}
     @warn "The `viz!` function is deprecated, use `plantviz!` instead."
     plantviz!(mesh, args...; kwars...)
+end
+
+@noinline function _deprecate_emit_phytomer!()
+    Base.depwarn(
+        "`emit_phytomer!` is deprecated because it does not create a `:Phytomer` node; " *
+        "use `emit_internode_leaf!` for the same internode/leaf emission behavior.",
+        :emit_phytomer!,
+    )
+    return nothing
+end
+
+"""
+    emit_phytomer!(parent; kwargs...)
+
+Deprecated compatibility wrapper for [`emit_internode_leaf!`](@ref).
+
+Despite its historical name, this function does not create a `:Phytomer` node.
+It preserves the former behavior of emitting an `:Internode`, a `:Leaf`, or both.
+"""
+function emit_phytomer!(
+    parent::MultiScaleTreeGraph.Node;
+    internode=NamedTuple(),
+    leaf=NamedTuple(),
+    internode_index::Integer=0,
+    leaf_index::Integer=0,
+    scale=nothing,
+    bump_scene::Bool=true,
+)
+    _deprecate_emit_phytomer!()
+    return emit_internode_leaf!(
+        parent;
+        internode=internode,
+        leaf=leaf,
+        internode_index=internode_index,
+        leaf_index=leaf_index,
+        scale=scale,
+        bump_scene=bump_scene,
+    )
 end

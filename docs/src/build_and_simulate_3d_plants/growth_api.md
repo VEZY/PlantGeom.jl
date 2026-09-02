@@ -15,7 +15,7 @@ It is designed for simulations where you want to:
 
 This is the key idea:
 
-1. create nodes and write attributes with `emit_internode!`, `emit_leaf!`, `emit_phytomer!`
+1. create nodes and write attributes with `emit_internode!`, `emit_leaf!`, `emit_internode_leaf!`
 2. update attributes with `grow_length!`, `grow_width!`, `set_growth_attributes!`
 3. call `rebuild_geometry!` when you want geometry to be materialized from those attributes
 
@@ -54,7 +54,7 @@ That style is useful because:
 | --- | --- |
 | Add one internode | `emit_internode!` |
 | Add one leaf | `emit_leaf!` |
-| Add one internode + one leaf together | `emit_phytomer!` |
+| Add one internode + one leaf together | `emit_internode_leaf!` |
 | Increase length over time | `grow_length!` |
 | Increase width or thickness over time | `grow_width!` |
 | Set any node attribute explicitly | `set_growth_attributes!` |
@@ -66,7 +66,8 @@ In this page:
 
 - an **internode** can follow or branch from its bearer
 - a **leaf** always branches from its bearer
-- a **phytomer** is one internode plus one leaf emitted together
+- a **phytomer** is a botanical structural unit that may be represented by an explicit MTG node
+- an **internode/leaf pair** is the two-organ topology update created by `emit_internode_leaf!`; the helper does not create a `:Phytomer` node
 - a **prototype** is the reusable geometry rule used to create 3D geometry from node attributes
 
 ## Approaches
@@ -82,7 +83,7 @@ The structure only mode is ideal when you want to build plant structure in Julia
 | --- | --- |
 | `emit_internode!(parent; kwargs...)` | adds an `:Internode` child node and writes growth attributes |
 | `emit_leaf!(parent; kwargs...)` | adds a `:Leaf` child node and writes growth attributes |
-| `emit_phytomer!(parent; internode=..., leaf=...)` | emits one internode and one leaf in one call |
+| `emit_internode_leaf!(parent; internode=..., leaf=...)` | emits one internode and one leaf in one call, without creating a `:Phytomer` node |
 | `grow_length!(x; delta)` | increments `:Length` |
 | `grow_width!(x; delta, thickness_policy=...)` | increments `:Width` and optionally `:Thickness` |
 | `set_growth_attributes!(x; kwargs...)` | writes arbitrary attributes on the node |
@@ -307,21 +308,30 @@ rebuild_geometry!(plant, prototypes)
 plantviz(plant, figure=(size=(980, 700),))
 ```
 
-## Using `emit_phytomer!`
+## Using `emit_internode_leaf!`
 
-If your growth logic is naturally "one internode plus one leaf", `emit_phytomer!` is shorter and clearer.
+If your growth logic is naturally "one internode plus one leaf", `emit_internode_leaf!`
+keeps that topology update concise. When both organs are present, the leaf is attached to
+the newly emitted internode. No `:Phytomer` node is created. If your schema uses an
+explicit phytomer with sibling organ children, create those children separately with
+`emit_internode!` and `emit_leaf!`.
+
+!!! compat
+    `emit_phytomer!` is a deprecated compatibility alias for
+    `emit_internode_leaf!`. It preserves the same internode/leaf behavior, but its
+    historical name incorrectly suggests that it creates a `:Phytomer` node.
 
 ```@example growth_api
 small_plant = Node(NodeMTG(:/, :Plant, 1, 1))
 
-first_phy = emit_phytomer!(
+first_pair = emit_internode_leaf!(
     small_plant;
     internode=(link=:/, index=1, length=0.20, width=0.022),
     leaf=(index=1, offset=0.15, length=0.22, width=0.05, thickness=0.02, y_insertion_angle=52.0),
 )
 
-second_phy = emit_phytomer!(
-    first_phy.internode;
+second_pair = emit_internode_leaf!(
+    first_pair.internode;
     internode=(index=2, length=0.18, width=0.020),
     leaf=(index=2, offset=0.14, length=0.24, width=0.055, thickness=0.02, phyllotaxy=180.0, y_insertion_angle=54.0),
 )
@@ -401,7 +411,7 @@ PlantGeom still handles topology and geometry metadata, while PlantSimEngine sti
 For a complete runnable example with:
 
 - a custom PlantSimEngine growth model
-- a `ModelMapping`
+- a `CompositeModel` assembled from `ModelSpec` applications
 - meteorological forcing
 - a call to `run!`
 - and a final 3D reconstruction

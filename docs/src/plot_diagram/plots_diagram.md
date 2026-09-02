@@ -9,14 +9,16 @@
 ```@setup usepkg
 using PlantGeom
 using Plots
-plotlyjs()
+plotly()
 opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 ```
 
 `PlantGeom.jl` provides recipes to make plots using `Plots.jl`. The only recipe so far is to make a diagram of the MTG tree.
 This is especially useful to control the integrity of and MTG (where it branches, where are the different scales...).
 
-To use this recipe, simply use `Plots.jl` and any backend, though we recommend `PlotlyJS` to make the plot interactive.
+To use this recipe, load `Plots.jl` and select any backend. The built-in
+`plotly()` backend is a convenient option for interactive HTML output and does
+not require an additional plotting-backend dependency.
 
 The plot recipe provides some arguments to customize the plot:
 
@@ -28,8 +30,7 @@ The plot recipe provides some arguments to customize the plot:
 
 ```@example usepkg
 using Plots
-# import Pkg; Pkg.add("PlotlyJS")
-plotlyjs()
+plotly()
 opf = read_opf(joinpath(dirname(dirname(pathof(PlantGeom))),"test","files","simple_plant.opf"))
 plot(opf, node_color = :Length)
 savefig("mtgplot.html"); nothing # hide

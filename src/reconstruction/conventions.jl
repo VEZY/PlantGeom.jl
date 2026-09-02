@@ -1551,6 +1551,94 @@ function _apply_azimuth_elevation_stage(node, rot::SMatrix{3,3,Float64,9}, optio
     return raz * rey
 end
 
+function _apply_frame_orientation_hook_stage(
+    node,
+    rot::SMatrix{3,3,Float64,9},
+    length_axis::Symbol,
+    options::AmapReconstructionOptions,
+)
+    hook = options.frame_orientation_hook
+    hook === nothing && return rot
+
+    replacement = hook(node, rot, length_axis)
+    replacement === nothing && return rot
+    replacement isa AbstractMatrix || error(
+        "frame_orientation_hook must return a finite proper orthonormal 3 × 3 matrix or nothing.",
+    )
+    size(replacement) == (3, 3) || error(
+        "frame_orientation_hook must return a finite proper orthonormal 3 × 3 matrix or nothing.",
+    )
+    all(value -> value isa Real && isfinite(value), replacement) || error(
+        "frame_orientation_hook must return a finite proper orthonormal 3 × 3 matrix or nothing.",
+    )
+
+    candidate = SMatrix{3,3,Float64}(replacement)
+    isapprox(candidate' * candidate, _I3; atol=1e-10, rtol=1e-10) || error(
+        "frame_orientation_hook must return a finite proper orthonormal 3 × 3 matrix or nothing.",
+    )
+    isapprox(det(candidate), 1.0; atol=1e-10, rtol=1e-10) || error(
+        "frame_orientation_hook must return a finite proper orthonormal 3 × 3 matrix or nothing.",
+    )
+    return candidate
+end
+
+function _apply_gravity_bending_hook_stage(
+    node,
+    rot::SMatrix{3,3,Float64,9},
+    length_axis::Symbol,
+    options::AmapReconstructionOptions,
+)
+    hook = options.gravity_bending_hook
+    hook === nothing && return rot
+
+    dir = _safe_normalize(
+        rot * _unit_axis(length_axis),
+        _unit_axis(length_axis),
+    )
+    direction_z = clamp(dot(dir, _UP3), -1.0, 1.0)
+    angle = hook(node, direction_z)
+    angle === nothing && return rot
+    angle isa Real || error(
+        "gravity_bending_hook must return a finite real angle in radians or nothing.",
+    )
+    isfinite(angle) || error(
+        "gravity_bending_hook must return a finite real angle in radians or nothing.",
+    )
+    iszero(angle) && return rot
+
+    secondary = _normalize_perpendicular(
+        _UP3,
+        dir,
+        _any_perpendicular(dir, _unit_axis(:x)),
+    )
+    bend_axis = _normalize_perpendicular(
+        cross(dir, secondary),
+        dir,
+        _any_perpendicular(dir, _unit_axis(:y)),
+    )
+    bent = _axis_angle_world_rotation(bend_axis, Float64(angle)) * rot
+    bent_dir = _safe_normalize(
+        bent * _unit_axis(length_axis),
+        dir,
+    )
+    bent_secondary = _normalize_perpendicular(
+        _UP3,
+        bent_dir,
+        _any_perpendicular(bent_dir, _unit_axis(:x)),
+    )
+    bent_normal = _normalize_perpendicular(
+        cross(bent_dir, bent_secondary),
+        bent_dir,
+        _any_perpendicular(bent_dir, _unit_axis(:y)),
+    )
+    return _build_rotation_from_local_axes(
+        length_axis,
+        bent_dir,
+        bent_secondary,
+        bent_normal,
+    )
+end
+
 function _apply_orthotropy_stiffness_stage(
     node,
     rot::SMatrix{3,3,Float64,9},
@@ -1596,6 +1684,36 @@ function _apply_deviation_stage(node, rot::SMatrix{3,3,Float64,9}, options::Amap
     end
     rdev = SMatrix{3,3,Float64}(RotMatrix(RotZ(deg2rad(dev))))
     return rdev * rot
+end
+
+function _required_world_axis_component(node, aliases::Vector{Symbol}, label::Symbol)
+    value, found = _resolve_alias(node, aliases)
+    found === nothing && error(
+        "World-axis rotation requires a numeric $label component. Expected one of $(aliases).",
+    )
+    value === nothing && error(
+        "World-axis rotation $label component '$found' must be numeric.",
+    )
+    return value
+end
+
+function _apply_world_axis_angle_stage(
+    node,
+    rot::SMatrix{3,3,Float64,9},
+    options::AmapReconstructionOptions,
+)
+    angle, found = _resolve_alias(node, options.world_axis_angle_aliases)
+    (found === nothing || angle === nothing) && return rot
+    angle == 0.0 && return rot
+
+    axis = SVector{3,Float64}(
+        _required_world_axis_component(node, options.world_axis_x_aliases, :x),
+        _required_world_axis_component(node, options.world_axis_y_aliases, :y),
+        _required_world_axis_component(node, options.world_axis_z_aliases, :z),
+    )
+    norm(axis) > 1e-12 || error("World-axis rotation axis must be nonzero.")
+    angle_rad = options.world_axis_angle_unit == :deg ? deg2rad(angle) : angle
+    return _axis_angle_world_rotation(axis, angle_rad) * rot
 end
 
 function _apply_normal_up_projection(rot::SMatrix{3,3,Float64,9}, length_axis::Symbol)
@@ -2474,8 +2592,21 @@ function reconstruct_geometry_from_attributes!(mtg, prototypes::AbstractDict;
         else
             r = _rotation_part(base_t ∘ local_insertion_t)
             r = _apply_azimuth_elevation_stage(node, r, amap_cfg)
+            r = _apply_frame_orientation_hook_stage(
+                node,
+                r,
+                node_convention.length_axis,
+                amap_cfg,
+            )
+            r = _apply_gravity_bending_hook_stage(
+                node,
+                r,
+                node_convention.length_axis,
+                amap_cfg,
+            )
             r = _apply_orthotropy_stiffness_stage(node, r, node_convention.length_axis, amap_cfg)
             r = _apply_deviation_stage(node, r, amap_cfg)
+            r = _apply_world_axis_angle_stage(node, r, amap_cfg)
             r = r * _rotation_part(local_euler_t)
             r = _apply_projection_stage(node, r, node_convention.length_axis, amap_cfg)
             _apply_geometry_constraint_stage(
