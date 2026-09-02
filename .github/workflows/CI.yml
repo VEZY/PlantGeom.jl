@@ -52,6 +52,10 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v3
+        with:
+          # v2 invalidates an incomplete cache saved by a cancelled dependency setup.
+          cache-name: "julia-cache-v2;workflow=${{ github.workflow }};job=${{ github.job }}"
+          save-always: false
       - uses: julia-actions/julia-buildpkg@v1
       - name: Configure test environment
         shell: julia --project=test --color=yes {0}
@@ -89,6 +93,8 @@ jobs:
         with:
           version: "1"
       - uses: julia-actions/cache@v3
+        with:
+          save-always: false
       - name: Configure doc environment
         shell: julia --project=docs --color=yes {0}
         run: |
