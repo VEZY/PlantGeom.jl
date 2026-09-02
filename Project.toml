@@ -31,9 +31,6 @@ PlantGeomMakie = "Makie"
 PlantGeomMeshesInterop = "Meshes"
 PlantGeomPlantSimEngineExt = "PlantSimEngine"
 
-[sources]
-PlantSimEngine = {url = "https://github.com/VirtualPlantLab/PlantSimEngine.jl", rev = "82786fba91fad644d8068d75afc64d88282400c4"}
-
 [compat]
 ColorSchemes = "3"
 Colors = "0.12, 0.13"
