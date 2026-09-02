@@ -186,11 +186,16 @@ end
 include(joinpath(@__DIR__, "scene_ownership.jl"))
 SUITE["Scene ownership"] = SCENE_OWNERSHIP_SUITE
 
-include(joinpath(@__DIR__, "source_owner_map.jl"))
-SUITE["Source owner map"] = SOURCE_OWNER_MAP_SUITE
+# AirspeedVelocity also runs this script against the baseline revision, where
+# SceneUnits does not exist yet. Revision-specific results are supported and
+# appear without a baseline ratio.
+if isdefined(PlantGeom, :SceneUnits)
+    include(joinpath(@__DIR__, "scene_units.jl"))
+    SUITE["Scene units"] = SCENE_UNITS_SUITE
+end
 
-include(joinpath(@__DIR__, "scene_units.jl"))
-SUITE["Scene units"] = SCENE_UNITS_SUITE
+# Keep source_owner_map.jl focused until the benchmark baseline supports
+# PlantSimEngine 0.15 and can provide a meaningful comparison.
 
 # ---------
 # IO

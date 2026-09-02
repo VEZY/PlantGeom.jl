@@ -24,6 +24,3 @@ jobs:
         with:
           julia-version: ${{ matrix.version }}
           bench-on: ${{ github.event.pull_request.head.sha || github.sha }}
-          # main only supports PlantSimEngine <= 0.14, so it is not a valid
-          # baseline for this PlantSimEngine 0.15 integration branch.
-          rev: ${{ github.event.pull_request.head.sha || github.sha }}
