@@ -18,4 +18,3 @@ WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 
 [sources]
 PlantGeom = {path = ".."}
-PlantSimEngine = {url = "https://github.com/VirtualPlantLab/PlantSimEngine.jl", rev = "82786fba91fad644d8068d75afc64d88282400c4"}
