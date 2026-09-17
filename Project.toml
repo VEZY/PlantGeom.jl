@@ -47,6 +47,7 @@ RecipesBase = "1"
 Rotations = "1"
 StaticArrays = "1"
 Tables = "1"
+UUIDs = "1.10"
 Unitful = "1.17"
 julia = "1.10"
 
