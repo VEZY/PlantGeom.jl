@@ -40,13 +40,6 @@ jobs:
             version: "1.10"
     steps:
       - uses: actions/checkout@v7
-      - name: Check out PlantSimEngine
-        uses: actions/checkout@v7
-        with:
-          repository: VirtualPlantLab/PlantSimEngine.jl
-          ref: 82786fba91fad644d8068d75afc64d88282400c4
-          path: .ci-deps/PlantSimEngine
-          persist-credentials: false
       - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
@@ -61,11 +54,12 @@ jobs:
         shell: julia --project=test --color=yes {0}
         run: |
           using Pkg
-          Pkg.develop([
-              PackageSpec(path=pwd()),
-              PackageSpec(path=joinpath(pwd(), ".ci-deps", "PlantSimEngine")),
-          ])
+          Pkg.develop(PackageSpec(path=pwd()))
+          Pkg.add(PackageSpec(name="PlantSimEngine", version="0.15.0"))
           Pkg.instantiate()
+          using PlantGeom, PlantSimEngine
+          @assert pkgversion(PlantSimEngine) == v"0.15.0"
+          @info "Release dependencies" plantgeom=pathof(PlantGeom) plantsimengine=pathof(PlantSimEngine)
       - name: Run tests
         shell: julia --project=test --color=yes --check-bounds=yes --depwarn=yes --code-coverage=user {0}
         run: include(joinpath(pwd(), "test", "runtests.jl"))
@@ -82,13 +76,6 @@ jobs:
       statuses: write
     steps:
       - uses: actions/checkout@v7
-      - name: Check out PlantSimEngine
-        uses: actions/checkout@v7
-        with:
-          repository: VirtualPlantLab/PlantSimEngine.jl
-          ref: 82786fba91fad644d8068d75afc64d88282400c4
-          path: .ci-deps/PlantSimEngine
-          persist-credentials: false
       - uses: julia-actions/setup-julia@v3
         with:
           version: "1"
@@ -99,11 +86,12 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Pkg
-          Pkg.develop([
-              PackageSpec(path=pwd()),
-              PackageSpec(path=joinpath(pwd(), ".ci-deps", "PlantSimEngine")),
-          ])
+          Pkg.develop(PackageSpec(path=pwd()))
+          Pkg.add(PackageSpec(name="PlantSimEngine", version="0.15.0"))
           Pkg.instantiate()
+          using PlantGeom, PlantSimEngine
+          @assert pkgversion(PlantSimEngine) == v"0.15.0"
+          @info "Release dependencies" plantgeom=pathof(PlantGeom) plantsimengine=pathof(PlantSimEngine)
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-docdeploy@v1
         env:
