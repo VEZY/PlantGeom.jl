@@ -99,7 +99,7 @@ export transform_mesh!
 export pose, scale3, rotate_x, rotate_y, rotate_z
 export extrude_profile_mesh, extrude_profile_refmesh, extrude_tube_mesh
 export ExtrudedTubeGeometry
-export PointMappedGeometry
+export PointMappedGeometry, OrientedPointMap
 export RationalBezierCurve, LaminaMidribMap, lamina_midrib, lamina_mesh, lamina_refmesh
 export LaminaTwistRollMap, LaminaAnticlasticWaveMap, ComposedPointMap, compose_point_maps
 export PointMapFrame, with_point_map_frame
