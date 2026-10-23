@@ -143,8 +143,18 @@ function _materialization_signature(geometry::ExtrudedTubeGeometry)
 end
 
 function _count_materialization!(cache::GeometryMaterializationCache, name::Symbol)
-    counts = cache.last
-    cache.last = merge(counts, NamedTuple{(name,)}((getproperty(counts, name) + 1,)))
+    c = cache.last
+    if name === :hits
+        cache.last = (hits=c.hits + 1, misses=c.misses, fallbacks=c.fallbacks, evictions=c.evictions)
+    elseif name === :misses
+        cache.last = (hits=c.hits, misses=c.misses + 1, fallbacks=c.fallbacks, evictions=c.evictions)
+    elseif name === :fallbacks
+        cache.last = (hits=c.hits, misses=c.misses, fallbacks=c.fallbacks + 1, evictions=c.evictions)
+    elseif name === :evictions
+        cache.last = (hits=c.hits, misses=c.misses, fallbacks=c.fallbacks, evictions=c.evictions + 1)
+    else
+        error("Unknown materialization counter: $name")
+    end
     return nothing
 end
 
