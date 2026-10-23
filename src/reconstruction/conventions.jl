@@ -197,7 +197,14 @@ function _resolve_alias(node, aliases::Vector{Symbol})
     for name in aliases
         raw, present = _try_attr(node, name)
         present || continue
-        return _as_float(raw), name
+        raw === nothing && continue
+        raw === missing && continue
+        value = _as_float(raw)
+        value === nothing && throw(ArgumentError(
+            "Mapped attribute '$name' must be numeric; got $(repr(raw)). " *
+            "Use nothing or missing for an unavailable measurement.",
+        ))
+        return value, name
     end
     return nothing, nothing
 end
@@ -217,10 +224,6 @@ function _resolve_value(node, aliases::Vector{Symbol}, label::Symbol; default=0.
     value, found = _resolve_alias(node, aliases)
     if found === nothing
         warn_missing && @warn "No mapped value found for '$label'. Using default $default." aliases = aliases
-        return Float64(default)
-    end
-    if value === nothing
-        warn_missing && @warn "Mapped value for '$label' is not numeric. Using default $default." attr = found
         return Float64(default)
     end
     return value
@@ -266,6 +269,12 @@ end
 
 Build a `CoordinateTransformations.Transformation` from node attributes using a
 `GeometryConvention`.
+
+Numeric aliases are checked in their configured order. Absent attributes,
+`nothing`, and `missing` are skipped. The first supplied value must be numeric
+(or a parseable numeric string); otherwise an `ArgumentError` is raised rather
+than falling back to another alias or a default. Defaults apply only when every
+alias is unavailable.
 """
 function transformation_from_attributes(node; convention=default_geometry_convention(), warn_missing=false)
     t = IdentityTransformation()
@@ -1353,10 +1362,8 @@ function _resolve_bool_alias(node, aliases::Vector{Symbol}; default::Bool=false)
 end
 
 function _resolve_order_value(node, order_attr::Symbol)
-    raw, present = _try_attr(node, order_attr)
-    present || return nothing
-    value = _as_float(raw)
-    value === nothing && return nothing
+    value, found = _resolve_alias(node, [order_attr])
+    found === nothing && return nothing
     return Int(round(value))
 end
 
@@ -1366,9 +1373,8 @@ function _mtg_has_numeric_attribute(mtg, attr::Symbol)
         if found[]
             return
         end
-        raw, present = _try_attr(node, attr)
-        present || return
-        found[] = _as_float(raw) !== nothing
+        _, name = _resolve_alias(node, [attr])
+        found[] = name !== nothing
     end
     return found[]
 end
@@ -1431,11 +1437,8 @@ function _resolve_angle_rad(
         found = :override
     end
 
-    if !has_value && found === nothing
+    if !has_value
         warn_missing && @warn "No mapped value found for angle. Skipping." axis = angle.axis aliases = angle.names
-        return 0.0, false
-    elseif !has_value
-        warn_missing && @warn "Mapped angle value is not numeric. Skipping." attr = found axis = angle.axis
         return 0.0, false
     end
 
@@ -1808,12 +1811,8 @@ end
 
 @inline function _constraint_float_from_source(source, names::Vector{Symbol})
     source === nothing && return nothing
-    for name in names
-        value = _field_or_key(source, name, nothing)
-        f = _as_float(value)
-        f !== nothing && return f
-    end
-    return nothing
+    value, _ = _resolve_alias(source, names)
+    return value
 end
 
 @inline function _constraint_float_from_node(node, aliases::Vector{Symbol})

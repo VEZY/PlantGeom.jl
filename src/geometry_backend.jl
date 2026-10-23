@@ -71,7 +71,11 @@ function transformation_matrix4(transformation::Transformation)
     p0 = _svec3(transformation(origin))
 
     linear = try
-        Matrix{Float64}(CoordinateTransformations.transform_deriv(transformation, origin))
+        derivative = CoordinateTransformations.transform_deriv(transformation, origin)
+        # Identity and translation derivatives are dimensionless `I`. Supplying
+        # the dimension avoids throwing before the basis-vector fallback.
+        derivative isa UniformScaling ? Matrix{Float64}(derivative, 3, 3) :
+        Matrix{Float64}(derivative)
     catch
         nothing
     end

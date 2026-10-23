@@ -206,7 +206,57 @@ You do **not** need to memorize these tables. Use them when:
 - you want to understand which aliases are accepted out of the box
 - you want to build a custom `GeometryConvention` from the default one
 
-The phrase **"first matching alias wins"** means that PlantGeom checks the names in order and uses the first one it finds on the node.
+For **numeric measurements**, PlantGeom checks aliases in the listed order and
+uses the first supplied numeric value. Absent attributes, `nothing`, and
+`missing` do not supply a measurement, so lookup continues to the next alias.
+An invalid supplied value raises an `ArgumentError`; it does not select a
+later alias or silently restore a default. Once a valid value is selected,
+lower-priority aliases are not inspected.
+
+### Numeric alias lookup and migration
+
+Columnar MTGs can expose optional columns on nodes where no measurement exists.
+Those empty entries now behave like an absent column. For example, the default
+length aliases are `Length`, `length`, `L`, then `l`:
+
+```julia
+columns = Dict{Symbol,Any}(
+    :Length => nothing,
+    :length => 2.0,
+    :ZEuler => missing,
+    :zeuler => 90.0,
+)
+pose = transformation_from_attributes(columns)
+# Uses length 2.0 and a Z Euler angle of 90 degrees.
+```
+
+If both `Length=2.0` and `length=3.0` are supplied, `Length` wins. Reorder the
+aliases in a custom `GeometryConvention` to choose a different priority.
+Dictionary insertion order does not change this priority. If every alias is
+absent, `nothing`, or `missing`, the documented default still applies.
+
+!!! compat "Numeric alias migration"
+    Previously, an existing null alias could hide a later numeric alias, and
+    some invalid measurements silently selected a default or skipped an angle.
+    Null aliases now continue lookup, and invalid supplied measurements are
+    errors. This is the current contract; there is no historical lookup mode.
+
+    For imported data, convert unavailable markers such as `"NA"`, `"missing"`,
+    or empty strings to Julia `missing` or `nothing`. Correct malformed numeric
+    measurements rather than depending on a fallback. For example,
+    `Dict(:Length => "unknown", :length => 2.0)` now raises an error naming
+    `Length`; replace `"unknown"` with `missing` to use `length`.
+
+The rule covers scalar numeric geometry and AMAP mappings: scale, Euler and
+insertion angles, translation, pivots, offsets, endpoints, allometry, order,
+stiffness, and scalar constraint parameters. Supplied numeric angles are also
+validated before applying an order-based override. Numeric strings retain
+their existing conversion, and this change does not introduce new unit,
+boolean, or finite-value rules. Text and boolean reconstruction options retain
+their own parsers. Raw constraint payload aliases skip null entries, while
+their selected scalar numeric parameters follow the rule above. OPF/OPS
+placement and geometry stored as explicit transformations are not reinterpreted
+by numeric alias lookup.
 
 ### 3.1 Geometry Convention (`default_amap_geometry_convention()`)
 
@@ -290,7 +340,7 @@ These columns matter only when node position is reconstructed from topology inst
 | Insertion mode | `InsertionMode`, `insertion_mode`, `Insertion`, `insertion` | `CENTER`, `BORDER` (`SURFACE` alias), `WIDTH`, `HEIGHT` | `BORDER` |
 | Phyllotaxy | `Phyllotaxy`, `phyllotaxy`, `PHYLLOTAXY` | Fallback insertion azimuth when `XInsertionAngle` is missing | `0` |
 
-First matching alias wins.
+Numeric aliases follow the unavailable-value and priority rules described above.
 
 ## 4. Parameter Guide for First-Time Users
 
