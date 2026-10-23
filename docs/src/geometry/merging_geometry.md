@@ -24,44 +24,6 @@ Plant architecture is often represented at multiple scales - from fine details l
 
 PlantGeom provides tools to merge fine-scale geometries into coarser representations while preserving the complete geometric detail. Note: the PlantViz plotting recipe renders using a single merged mesh by default for performance; the utilities in this page are about structurally merging geometry across MTG scales.
 
-## Reuse unchanged organ meshes during growth
-
-When a reconstructed plant changes between frames, some organs can keep exactly
-the same final shape and pose. The experimental materialization cache reuses
-their individual meshes while rebuilding the merged mesh and face–organ map:
-
-```julia
-cache = GeometryMaterializationCache()
-mesh, face_to_node = PlantGeom.build_merged_mesh_with_map(
-    mtg; materialization_cache=cache,
-)
-
-# After updating the plant and reconstructing its geometry:
-mesh, face_to_node = PlantGeom.build_merged_mesh_with_map(
-    mtg; materialization_cache=cache,
-)
-materialization_cache_stats(cache) # entries, last-call and cumulative counters
-empty!(cache)                    # release meshes when resetting/changing plants
-```
-
-This opt-in prototype supports `ExtrudedTubeGeometry` with ordinary numeric
-inputs and supported affine transformations. Shape, dimensions, material and
-the complete transformation must match exactly, including copied mutable array
-contents. Changed organs are rematerialized; removed or excluded organs are
-evicted. Unsupported geometry or transformations use ordinary materialization.
-Ambiguous organ identifiers force a full materialization of that call.
-
-Use one cache per logical plant with unique node identifiers, sequentially.
-Clear it when switching plants; it retains individual meshes and copied numeric
-inputs, without owning MTG nodes. A failed public merge clears its entries.
-Omitting the keyword keeps the ordinary uncached behavior.
-
-!!! note "Materialization is one stage of reconstruction"
-    This cache does not skip reconstruction, frame calculations, callbacks,
-    random draws, final merging, or display updates. Measure the complete pipeline
-    before enabling it: checking keys and retaining meshes have a cost, and a
-    changed supporting frame can invalidate many organ meshes.
-
 ## The `merge_children_geometry!` Function
 
 Advanced: structural merging across scales

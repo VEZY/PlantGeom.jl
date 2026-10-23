@@ -42,7 +42,6 @@ include("geometry/materialize.jl")
 include("geometry/metadata.jl")
 include("reconstruction/amap_reconstruction.jl")
 include("reconstruction/prototypes.jl")
-include("reconstruction/frame_cache.jl")
 include("reconstruction/conventions.jl")
 include("growth/growth_api.jl")
 include("equality.jl")
@@ -61,7 +60,6 @@ include("ops/write_ops.jl")
 include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
 include("meshes/extrusion.jl")
-include("meshes/materialization_cache.jl")
 include("meshes/scene_merge.jl")
 include("ops/scene_units.jl")
 include("ops/scene_geometry.jl")
@@ -124,7 +122,6 @@ export RefMeshPrototype, PointMapPrototype, ExtrusionPrototype, RawMeshPrototype
 export available_parameters, effective_parameters
 export transformation_from_attributes
 export geometry_from_attributes
-export ReconstructionFrameCache, reconstruction_frame_cache_stats
 export reconstruct_geometry_from_attributes!
 export set_geometry_from_attributes!
 export emit_internode!, emit_leaf!, emit_internode_leaf!, emit_phytomer!
@@ -139,7 +136,6 @@ export to_meshes, to_geometrybasics
 
 export get_transformation_matrix
 export scene_version, bump_scene_version!
-export GeometryMaterializationCache, materialization_cache_stats
 
 # Defining the main functions for PlantViz:
 include("plantviz.jl")

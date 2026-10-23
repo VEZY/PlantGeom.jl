@@ -383,7 +383,6 @@ function rebuild_geometry!(
     warn_missing=false,
     root_align=true,
     bump_scene::Bool=true,
-    reconstruction_cache=nothing,
 )
     reconstruct_geometry_from_attributes!(
         mtg,
@@ -402,7 +401,6 @@ function rebuild_geometry!(
         dDwn=dDwn,
         warn_missing=warn_missing,
         root_align=root_align,
-        reconstruction_cache=reconstruction_cache,
     )
     bump_scene && bump_scene_version!(mtg)
     return mtg

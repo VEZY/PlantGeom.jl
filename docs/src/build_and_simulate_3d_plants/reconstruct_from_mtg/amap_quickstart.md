@@ -232,45 +232,6 @@ If you are building your own measurement workflow, a good order is:
 
 This gives a useful reconstruction without measuring every advanced AMAP variable.
 
-## Experimental partial frame reconstruction
-
-Repeated growth reconstructions can reuse unchanged frame calculations with an
-explicit cache:
-
-```julia
-cache = ReconstructionFrameCache()
-rebuild_geometry!(mtg, prototypes; reconstruction_cache=cache)
-
-# After changing the plant, reconstruct with the same cache.
-rebuild_geometry!(mtg, prototypes; reconstruction_cache=cache)
-reconstruction_frame_cache_stats(cache) # entries, last-call and total counters
-empty!(cache)                          # clear when resetting or changing plants
-```
-
-This prototype compares local placement inputs and incoming parent frames exactly.
-A changed parent frame invalidates dependent descendants; changed dimensions,
-insertion, endpoints and relevant sibling ordering also invalidate placement.
-After running the orientation and bending hooks, their actual output and the
-remaining orientation inputs determine whether the final frame can be reused.
-
-Every node is still visited, and all hooks, selectors and prototype constructors
-run in their original order. The cache stores copied frame values, without
-owning MTG nodes or geometry. It does not skip complete callback subtrees or mesh
-materialization. Unsupported coordinate rewiring, nested decomposition,
-constraints, input representations and warning-enabled calls use ordinary
-reconstruction. Some unsupported cases disable reuse for the entire call.
-
-Use one cache per logical plant, sequentially, with fixed conventions/options
-during each reconstruction. AMAPSim's disposable views use stable `SourceNodeID`
-values across frames; ordinary MTGs use their node IDs. Reset the cache when
-changing plant identity. Removed entries are evicted, and public reconstruction
-errors clear the cache.
-
-!!! note "Measure the complete workload"
-    Exact key checks and snapshots also cost time and memory. The default remains
-    uncached. Inspect the counters and compare full reconstruction on your own
-    workload before enabling this experimental option.
-
 ## Where To Go Next
 
 - To decide which **explicit coordinate mode** to use:
