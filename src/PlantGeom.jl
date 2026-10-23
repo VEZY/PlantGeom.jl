@@ -60,6 +60,7 @@ include("ops/write_ops.jl")
 include("meshes/summary_coordinates.jl")
 include("meshes/transformations.jl")
 include("meshes/extrusion.jl")
+include("meshes/materialization_cache.jl")
 include("meshes/scene_merge.jl")
 include("ops/scene_units.jl")
 include("ops/scene_geometry.jl")
@@ -136,6 +137,7 @@ export to_meshes, to_geometrybasics
 
 export get_transformation_matrix
 export scene_version, bump_scene_version!
+export GeometryMaterializationCache, materialization_cache_stats
 
 # Defining the main functions for PlantViz:
 include("plantviz.jl")

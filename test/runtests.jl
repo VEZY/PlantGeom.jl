@@ -55,6 +55,7 @@ end
 include("test-simplify_geometry.jl")
 include("test-extrusion-mesh.jl")
 include("test-procedural-geometry.jl")
+include("test-materialization-cache.jl")
 include("test-manual-transform-helpers.jl")
 include("test-procedural-visual-regression.jl")
 include("test-growth-api.jl")

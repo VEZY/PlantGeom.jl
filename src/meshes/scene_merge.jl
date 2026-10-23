@@ -291,8 +291,77 @@ function materialize_geometry_jobs(batches::GeometryJobBatches)
     return meshes, node_ids, ne_per_mesh
 end
 
-function _materialize_merged_geometry(batches::GeometryJobBatches)
-    meshes, node_ids, ne_per_mesh, seqs = _materialize_geometry_jobs(batches)
+function _materialize_geometry_jobs(
+    batches::GeometryJobBatches, cache::GeometryMaterializationCache,
+)
+    cache.last = _zero_materialization_counts()
+    kept = Set{Int}()
+    seqs, node_ids, meshes, ne_per_mesh = Int[], Int[], Any[], Int[]
+    try
+        # A cache is scoped to unique organ identifiers. Preserve existing
+        # behavior for ambiguous inputs by materializing that complete call.
+        identifiers = Set{Int}()
+        duplicate_identifiers = false
+        job_count = 0
+        for grouped in (batches.static, batches.generic), jobs in values(grouped), job in jobs
+            job_count += 1
+            job.node_id in identifiers && (duplicate_identifiers = true)
+            push!(identifiers, job.node_id)
+        end
+        if duplicate_identifiers
+            cache.last = (
+                hits=0, misses=0,
+                fallbacks=job_count,
+                evictions=0,
+            )
+            result = _materialize_geometry_jobs(batches)
+            _finish_materialization!(cache, kept)
+            return result
+        end
+        for jobs in values(batches.static)
+            for _ in jobs
+                _count_materialization!(cache, :fallbacks)
+            end
+            _materialize_batch!(seqs, node_ids, meshes, ne_per_mesh, jobs)
+        end
+        for jobs in values(batches.generic)
+            _materialize_cached_batch!(seqs, node_ids, meshes, ne_per_mesh, jobs, cache, kept)
+        end
+        if !issorted(seqs)
+            permutation = sortperm(seqs)
+            seqs, node_ids = seqs[permutation], node_ids[permutation]
+            meshes, ne_per_mesh = meshes[permutation], ne_per_mesh[permutation]
+        end
+        _finish_materialization!(cache, kept)
+    catch
+        # A failed call must not retain a partially refreshed scene.
+        empty!(cache.entries)
+        rethrow()
+    end
+    return meshes, node_ids, ne_per_mesh, seqs
+end
+
+function _materialize_cached_batch!(
+    seqs, node_ids, meshes, ne_per_mesh,
+    jobs::Vector{GenericGeometryJob{G}}, cache, kept,
+) where {G}
+    for job in jobs
+        mesh = _cached_geometry_mesh!(cache, kept, job.node_id, job.geometry)
+        mesh === nothing && continue
+        push!(seqs, job.seq)
+        push!(node_ids, job.node_id)
+        push!(meshes, mesh)
+        push!(ne_per_mesh, nelements(mesh))
+    end
+    return nothing
+end
+
+function _materialize_merged_geometry(batches::GeometryJobBatches, materialization_cache=nothing)
+    meshes, node_ids, ne_per_mesh, seqs = if materialization_cache === nothing
+        _materialize_geometry_jobs(batches)
+    else
+        _materialize_geometry_jobs(batches, materialization_cache)
+    end
     isempty(meshes) && error("No geometry meshes found to merge.")
 
     face2node = Vector{Int}(undef, sum(ne_per_mesh))
@@ -318,6 +387,7 @@ function _build_merged_mesh_with_map(
     link=nothing,
     source_roots=nothing,
     newly_namespaced_roots=nothing,
+    materialization_cache::Union{Nothing,GeometryMaterializationCache}=nothing,
 )
     batches, any_node_selected = if source_roots === nothing
         compile_geometry_jobs(
@@ -343,7 +413,7 @@ function _build_merged_mesh_with_map(
     end
     any_node_selected || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
 
-    merged_mesh, face2node, _, _, _ = _materialize_merged_geometry(batches)
+    merged_mesh, face2node, _, _, _ = _materialize_merged_geometry(batches, materialization_cache)
     return merged_mesh, face2node
 end
 
@@ -356,6 +426,7 @@ function _build_merged_mesh_with_map(
     link=nothing,
     source_roots=nothing,
     newly_namespaced_roots=nothing,
+    materialization_cache::Union{Nothing,GeometryMaterializationCache}=nothing,
 )
     geometry_nodes = typeof(mtg)[]
     geometry_ownership =
@@ -384,7 +455,7 @@ function _build_merged_mesh_with_map(
     any_node_selected || error("No corresponding node found for the selection given as the combination of `symbol`, `scale`, `link` and `filter_fun` arguments. ")
 
     merged_mesh, face2node, node_ids, ne_per_mesh, seqs =
-        _materialize_merged_geometry(batches)
+        _materialize_merged_geometry(batches, materialization_cache)
     return merged_mesh,
         face2node,
         node_ids,
@@ -405,6 +476,7 @@ function _build_merged_mesh_with_map(
     collect_nodes::Bool=false,
     source_roots=nothing,
     newly_namespaced_roots=nothing,
+    materialization_cache::Union{Nothing,GeometryMaterializationCache}=nothing,
 )
     return _build_merged_mesh_with_map(
         Val(collect_nodes),
@@ -415,26 +487,44 @@ function _build_merged_mesh_with_map(
         link=link,
         source_roots=source_roots,
         newly_namespaced_roots=newly_namespaced_roots,
+        materialization_cache=materialization_cache,
     )
 end
 
 """
-    build_merged_mesh_with_map(mtg; filter_fun=nothing, symbol=nothing, scale=nothing, link=nothing)
+    build_merged_mesh_with_map(mtg; filter_fun=nothing, symbol=nothing, scale=nothing, link=nothing,
+                               materialization_cache=nothing)
 
 Traverse selected MTG nodes and merge their geometry meshes into a single mesh.
 
 Returns a merged `mesh` and a `face2node::Vector{Int}` mapping each face index in the
 merged mesh to the originating MTG node id (`MultiScaleTreeGraph.node_id(node)`).
+
+Pass a [`GeometryMaterializationCache`](@ref) to reuse unchanged supported tube
+meshes between calls. The final mesh and owner ordering are always rebuilt. Use
+one cache per logical MTG with unique node identifiers; clear it when switching
+plants. No cache is created or retained by default.
 """
-function build_merged_mesh_with_map(mtg; filter_fun=nothing, symbol=nothing, scale=nothing, link=nothing)
-    return _build_merged_mesh_with_map(
-        Val(false),
-        mtg;
-        filter_fun=filter_fun,
-        symbol=symbol,
-        scale=scale,
-        link=link,
-    )
+function build_merged_mesh_with_map(
+    mtg; filter_fun=nothing, symbol=nothing, scale=nothing, link=nothing,
+    materialization_cache::Union{Nothing,GeometryMaterializationCache}=nothing,
+)
+    previous_total = materialization_cache === nothing ? nothing : materialization_cache.total
+    try
+        return _build_merged_mesh_with_map(
+            Val(false),
+            mtg;
+            filter_fun=filter_fun,
+            symbol=symbol,
+            scale=scale,
+            link=link,
+            materialization_cache=materialization_cache,
+        )
+    catch
+        materialization_cache === nothing ||
+            _abort_materialization!(materialization_cache, previous_total)
+        rethrow()
+    end
 end
 
 """
@@ -442,8 +532,14 @@ end
 
 Alias to [`build_merged_mesh_with_map`](@ref). Threaded implementation removed.
 """
-function build_merged_mesh_with_map_threaded(mtg; filter_fun=nothing, symbol=nothing, scale=nothing, link=nothing)
-    build_merged_mesh_with_map(mtg; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link)
+function build_merged_mesh_with_map_threaded(
+    mtg; filter_fun=nothing, symbol=nothing, scale=nothing, link=nothing,
+    materialization_cache::Union{Nothing,GeometryMaterializationCache}=nothing,
+)
+    build_merged_mesh_with_map(
+        mtg; filter_fun=filter_fun, symbol=symbol, scale=scale, link=link,
+        materialization_cache=materialization_cache,
+    )
 end
 
 """
