@@ -677,6 +677,125 @@ function transform_mesh!(node::MultiScaleTreeGraph.Node, transformation::Transfo
     end
 end
 
+function _normal_cofactor(linear)
+    matrix = SMatrix{3,3,Float64}(linear)
+    magnitude = maximum(abs, matrix)
+    isfinite(magnitude) || throw(ArgumentError("normal transformation must be finite"))
+    iszero(magnitude) && return zero(matrix)
+    scales = SVector(maximum(abs, matrix[:, 1]), maximum(abs, matrix[:, 2]),
+        maximum(abs, matrix[:, 3]))
+    smallest = minimum(value -> iszero(value) ? Inf : value, scales)
+    if smallest / magnitude >= sqrt(floatmin(Float64))
+        # Ordinary scales need no logarithms. The common positive factor
+        # disappears when the transported normal is normalized.
+        matrix /= magnitude
+        return hcat(cross(matrix[:, 2], matrix[:, 3]),
+            cross(matrix[:, 3], matrix[:, 1]), cross(matrix[:, 1], matrix[:, 2]))
+    end
+
+    # A = B*diag(scales), so cofactor(A)[:,i] is cofactor(B)[:,i]
+    # times the OTHER two scales. Balance these products logarithmically only
+    # for extreme anisotropy; zero columns retain the rank-two cofactor rule.
+    balanced = hcat(ntuple(i -> iszero(scales[i]) ? zero(matrix[:, i]) :
+        matrix[:, i] / scales[i], 3)...)
+    cofactor = hcat(cross(balanced[:, 2], balanced[:, 3]),
+        cross(balanced[:, 3], balanced[:, 1]),
+        cross(balanced[:, 1], balanced[:, 2]))
+    column_scales = SVector(maximum(abs, cofactor[:, 1]),
+        maximum(abs, cofactor[:, 2]), maximum(abs, cofactor[:, 3]))
+    columns = hcat(ntuple(i -> iszero(column_scales[i]) ? zero(cofactor[:, i]) :
+        cofactor[:, i] / column_scales[i], 3)...)
+    log_weights = SVector{3,Float64}(ntuple(3) do i
+        j, k = mod1(i + 1, 3), mod1(i + 2, 3)
+        if iszero(column_scales[i]) || iszero(scales[j]) || iszero(scales[k])
+            -Inf
+        else
+            log(column_scales[i]) + log(scales[j]) + log(scales[k])
+        end
+    end)
+    return (; columns, log_weights)
+end
+
+function _normal_layout(normals)
+    flat = !isempty(normals) && all(n -> n isa Real, normals)
+    if flat
+        length(normals) % 3 == 0 || throw(ArgumentError("flat normals require 3N components"))
+        return [vec3(normals[i], normals[i + 1], normals[i + 2])
+            for i in 1:3:length(normals)], true
+    end
+    return vec3.(normals), false
+end
+
+function _transform_ref_mesh_normals(t, ref_mesh::RefMesh, transformed_mesh)
+    isempty(ref_mesh.normals) && return ref_mesh.normals
+    if !all(normal -> normal isa Real, ref_mesh.normals)
+        all(normal -> applicable(length, normal) && length(normal) == 3,
+            ref_mesh.normals) || throw(ArgumentError("normals require three components"))
+    end
+    source, flat = _normal_layout(ref_mesh.normals)
+    all(normal -> all(isfinite, normal), source) ||
+        throw(ArgumentError("source normals must be finite"))
+    linear = _affine_linear_part(t)
+    transported = if linear === nothing
+        # An arbitrary deformation has no known constant normal matrix. Keep
+        # the association, but recompute normals from its materialized surface.
+        if length(source) == _nvertices(ref_mesh.mesh)
+            normals_vertex(transformed_mesh)
+        elseif length(source) == _nfaces(ref_mesh.mesh)
+            vertices = _vertices(transformed_mesh)
+            [face_normal(vertices[f[1]], vertices[f[2]], vertices[f[3]])
+                for f in _faces(transformed_mesh)]
+        else
+            throw(ArgumentError("non-affine normal recomputation requires vertex or face normals"))
+        end
+    else
+        cofactor = _normal_cofactor(linear)
+        # Cofactors equal det(A)*inv(A)' when invertible. A reflected mesh has
+        # its face winding reversed as well, so cancel that determinant sign.
+        parity = _affine_orientation_parity(t) === -1 ? -1 : 1
+        map(source) do normal
+            components = _svec3(normal)
+            source_scale = maximum(abs, components)
+            iszero(source_scale) && return vec3(0.0, 0.0, 0.0)
+            direction = if cofactor isa NamedTuple
+                log_terms = SVector{3,Float64}(ntuple(3) do i
+                    iszero(components[i]) ? -Inf :
+                        cofactor.log_weights[i] + log(abs(components[i]))
+                end)
+                shift = maximum(log_terms)
+                shift == -Inf && return vec3(0.0, 0.0, 0.0)
+                weights = SVector{3,Float64}(ntuple(3) do i
+                    log_terms[i] == -Inf ? 0.0 :
+                        copysign(exp(log_terms[i] - shift), components[i])
+                end)
+                cofactor.columns * weights
+            else
+                cofactor * (components / source_scale)
+            end
+            direction *= parity
+            magnitude = maximum(abs, direction)
+            iszero(magnitude) && return vec3(0.0, 0.0, 0.0)
+            direction /= magnitude
+            vec3(direction / norm(direction))
+        end
+    end
+    return flat ? Float64[value for normal in transported for value in normal] : transported
+end
+
+"""
+    apply(transformation, ref_mesh::RefMesh)
+
+Transform a reference mesh without mutating its shared source. Known affine
+reflections preserve the authored side by reversing triangle winding. Stored
+normals are transported by the normalized inverse transpose (cofactor form
+also handles singular scales); a normal collapsed by the map becomes zero.
+
+For other transformations, vertex/face normals are recomputed from the
+materialized mesh. Empty normals remain lazy. Vector and flat `3N` normal
+layouts, texture coordinates, material and taper metadata are preserved.
+"""
 function apply(t::Transformation, x::RefMesh)
-    RefMesh(x.name, apply_transformation_to_mesh(t, x.mesh), x.normals, x.texture_coords, x.material, x.taper)
+    mesh = apply_transformation_to_mesh(t, x.mesh)
+    transformed_normals = _transform_ref_mesh_normals(t, x, mesh)
+    RefMesh(x.name, mesh, transformed_normals, x.texture_coords, x.material, x.taper)
 end

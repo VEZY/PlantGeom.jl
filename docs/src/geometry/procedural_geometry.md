@@ -45,6 +45,38 @@ Use procedural extrusion when:
 - geometry is easier to define from centerlines and section evolution
 - you want to build geometry directly from node parameters
 
+## Face Orientation and Normals
+
+A flat `lamina_mesh` has its upper (adaxial) face toward local `+Z`. Closed
+extrusions have outward faces and end caps for convex sections in the local
+XY plane, consistent scale handedness and regular, unfolded sweeps.
+Reflections supplied as known affine transforms
+reverse triangle winding automatically, preserving the authored side of the
+surface. Ground meshes face upward.
+
+For a custom deformation, declare its handedness when it is known throughout
+the mesh domain:
+
+```@example procgeom
+blade = lamina_refmesh("oriented_blade"; length=1.0, max_width=0.2)
+mirror = OrientedPointMap(p -> (-p[1], p[2], p[3]); orientation=-1)
+mirrored_blade = PlantGeom.geometry_to_mesh(PointMappedGeometry(blade, mirror))
+(vertices=PlantGeom.nvertices(mirrored_blade), faces=PlantGeom.nelements(mirrored_blade))
+```
+
+`orientation=1` declares an orientation-preserving map; `orientation=-1`
+declares an orientation-reversing map. Arbitrary callables without that
+declaration retain their face order. A single orientation declaration applies
+throughout the domain; it does not make a folded or self-intersecting mesh valid.
+
+`PlantGeom.apply(transform, ref_mesh)` also updates stored normals. Affine
+transforms use normalized inverse-transpose transport; singular transforms
+retain a direction where the transformed surface has one and use zero for
+collapsed normals. Other transforms recompute vertex/face normals from their
+materialized triangles. Shared reference geometry, texture coordinates and
+material metadata are preserved. Prototype normalization applies the same
+normal transport when rescaling its reference mesh.
+
 ## Point-Mapped Geometry
 
 `PointMappedGeometry` fills the gap between rigid instancing (`Geometry`) and

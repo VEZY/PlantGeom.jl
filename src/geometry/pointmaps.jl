@@ -459,6 +459,10 @@ end
 
 Build a flat cereal-like leaf mesh aligned with the AMAP convention:
 length along local `+X`, width along `+Y`, thickness along `+Z`.
+The upper (adaxial) front of every nondegenerate triangle points toward local
+`+Z`. Negative `length` or `max_width` mirror the blade coordinates while
+retaining this front convention. Zero dimensions produce a degenerate mesh
+without a defined surface normal.
 
 This mesh is intended to be used with [`PointMappedGeometry`](@ref), especially
 with [`LaminaMidribMap`](@ref).
@@ -495,14 +499,22 @@ function lamina_mesh(
     idx(i, j) = i * cols + j + n_half_i + 1
     faces = Face3[]
     sizehint!(faces, 2 * n_long_i * (cols - 1))
+    # Increasing width followed by increasing length points toward -Z for
+    # positive dimensions. Account for either signed scalar reflection.
+    flip_faces = (len > 0.0 && width > 0.0) || (len < 0.0 && width < 0.0)
     for i in 0:(n_long_i - 1)
         for j in (-n_half_i):(n_half_i - 1)
             a = idx(i, j)
             b = idx(i, j + 1)
             c = idx(i + 1, j + 1)
             d = idx(i + 1, j)
-            push!(faces, face3(a, b, c))
-            push!(faces, face3(a, c, d))
+            if flip_faces
+                push!(faces, face3(a, c, b))
+                push!(faces, face3(a, d, c))
+            else
+                push!(faces, face3(a, b, c))
+                push!(faces, face3(a, c, d))
+            end
         end
     end
 

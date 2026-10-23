@@ -144,6 +144,111 @@ end
     @test ref.name == "CerealLeaf"
 end
 
+@testset "lamina upper surface orientation and physical boundary" begin
+    function lamina_surface_metrics(mesh)
+        points = collect(GeometryBasics.coordinates(mesh))
+        faces = collect(GeometryBasics.faces(mesh))
+        areas = Float64[]
+        normals = SVector{3,Float64}[]
+        # The historical end rows contain coincident vertices. Identify these
+        # positions for the physical boundary, excluding zero-area triangles.
+        position_ids = Dict{NTuple{3,Float64},Int}()
+        welded_ids = [get!(position_ids, ntuple(k -> iszero(p[k]) ? 0.0 : Float64(p[k]), 3),
+            length(position_ids) + 1) for p in points]
+        edges = Dict{Tuple{Int,Int},Int}()
+        orientation = Dict{Tuple{Int,Int},Int}()
+        used = Set{Int}()
+        positive_faces = 0
+        for face in faces
+            a, b, c = (SVector{3,Float64}(points[Int(i)]) for i in face)
+            twice_normal = cross(b - a, c - a)
+            twice_area = norm(twice_normal)
+            push!(areas, twice_area / 2)
+            iszero(twice_area) && continue
+            push!(normals, twice_normal / twice_area)
+            positive_faces += 1
+            ids = ntuple(i -> welded_ids[Int(face[i])], 3)
+            union!(used, ids)
+            for (i, j) in ((ids[1], ids[2]), (ids[2], ids[3]), (ids[3], ids[1]))
+                edge = minmax(i, j)
+                edges[edge] = get(edges, edge, 0) + 1
+                orientation[edge] = get(orientation, edge, 0) + (i < j ? 1 : -1)
+            end
+        end
+        boundary = [edge for (edge, count) in edges if count == 1]
+        boundary_degree = Dict{Int,Int}()
+        for edge in boundary, vertex in edge
+            boundary_degree[vertex] = get(boundary_degree, vertex, 0) + 1
+        end
+        positions = Dict(value => key for (key, value) in position_ids)
+        perimeter = sum(norm(SVector{3,Float64}(positions[i]) -
+            SVector{3,Float64}(positions[j])) for (i, j) in boundary; init=0.0)
+        return (; areas, normals, edges, orientation, boundary, boundary_degree,
+            perimeter, euler=length(used) - length(edges) + positive_faces)
+    end
+
+    # For width_power=1 the sampled blade silhouette has trapezoidal-rule
+    # area |length * width| * cot(pi / (2n)) / n, independently of its triangles.
+    for (blade_length, blade_width) in ((2.5, 0.37), (-2.5, 0.37),
+        (2.5, -0.37), (-2.5, -0.37))
+        n = 8
+        mesh = PlantGeom.lamina_mesh(blade_length, blade_width;
+            n_long=n, n_half=2, width_power=1.0)
+        metrics = lamina_surface_metrics(mesh)
+        expected_area = abs(blade_length * blade_width) / (n * tan(pi / (2n)))
+        half_widths = [abs(blade_width) * sinpi(i / n) / 2 for i in 0:n]
+        expected_perimeter = 2 * sum(hypot(abs(blade_length) / n,
+            half_widths[i + 1] - half_widths[i]) for i in 1:n)
+        @test !isempty(metrics.normals)
+        @test all(normal -> normal ≈ SVector(0.0, 0.0, 1.0), metrics.normals)
+        @test sum(metrics.areas) ≈ expected_area atol=1e-12 rtol=1e-12
+        @test metrics.perimeter ≈ expected_perimeter atol=1e-12 rtol=1e-12
+        @test all(count -> count in (1, 2), values(metrics.edges))
+        @test all(edge -> metrics.orientation[edge] == 0,
+            (edge for (edge, count) in metrics.edges if count == 2))
+        @test all(==(2), values(metrics.boundary_degree))
+        @test length(metrics.boundary) == 2n
+        @test metrics.euler == 1
+    end
+
+    default_metrics = lamina_surface_metrics(PlantGeom.lamina_mesh())
+    @test !isempty(default_metrics.normals)
+    @test all(normal -> normal ≈ SVector(0.0, 0.0, 1.0), default_metrics.normals)
+
+    # This is an open blade with zero thickness, so zero length or width has
+    # no positive-area surface and must not be assigned an arbitrary normal.
+    for (blade_length, blade_width) in ((0.0, 0.37), (2.5, 0.0), (0.0, 0.0))
+        mesh = PlantGeom.lamina_mesh(blade_length, blade_width;
+            n_long=8, n_half=2, width_power=1.0)
+        metrics = lamina_surface_metrics(mesh)
+        @test all(p -> all(isfinite, p), GeometryBasics.coordinates(mesh))
+        @test all(iszero, metrics.areas)
+        @test isempty(metrics.normals)
+        @test isempty(metrics.boundary)
+    end
+
+    ref = PlantGeom.lamina_refmesh("UpperBlade"; length=2.5, max_width=0.37,
+        n_long=8, n_half=2, width_power=1.0)
+    source_points = copy(collect(GeometryBasics.coordinates(ref.mesh)))
+    source_faces = copy(collect(GeometryBasics.faces(ref.mesh)))
+    source_normals = copy(ref.normals)
+    geom = PlantGeom.Geometry(ref_mesh=ref,
+        transformation=PlantGeom.Translation(0.5, -0.7, 0.2))
+    first_mesh = PlantGeom.geometry_to_mesh(geom)
+    rebuilt_mesh = PlantGeom.geometry_to_mesh(geom)
+    @test geom.ref_mesh === ref
+    @test collect(GeometryBasics.coordinates(first_mesh)) ==
+        collect(GeometryBasics.coordinates(rebuilt_mesh))
+    @test collect(GeometryBasics.faces(first_mesh)) == collect(GeometryBasics.faces(rebuilt_mesh))
+    @test collect(GeometryBasics.coordinates(ref.mesh)) == source_points
+    @test collect(GeometryBasics.faces(ref.mesh)) == source_faces
+    @test ref.normals == source_normals
+    @test all(normal -> normal ≈ SVector(0.0, 0.0, 1.0),
+        lamina_surface_metrics(rebuilt_mesh).normals)
+    @test sum(lamina_surface_metrics(rebuilt_mesh).areas) ≈
+        sum(lamina_surface_metrics(ref.mesh).areas) atol=1e-12
+end
+
 @testset "cereal leaf point mapping responds to base angle and bend" begin
     mild_map = PlantGeom.LaminaMidribMap(base_angle_deg=20.0, bend=0.20, tip_drop=0.04)
     steep_map = PlantGeom.LaminaMidribMap(base_angle_deg=48.0, bend=0.70, tip_drop=0.22)

@@ -151,10 +151,16 @@ function _normalize_ref_mesh_to_unit(ref_mesh::RefMesh; length_axis::Symbol=:x, 
     end
 
     normalized_mesh = _mesh(normalized_vertices, _faces(ref_mesh.mesh))
+    scales = ones(3)
+    scales[idx_l] = inv(lden)
+    scales[idx_t1] = inv(t1den)
+    scales[idx_t2] = inv(t2den)
+    normalized_normals = _transform_ref_mesh_normals(
+        LinearMap(Diagonal(SVector{3,Float64}(scales))), ref_mesh, normalized_mesh)
     normalized_ref_mesh = RefMesh(
         ref_mesh.name,
         normalized_mesh,
-        ref_mesh.normals,
+        normalized_normals,
         ref_mesh.texture_coords,
         ref_mesh.material,
         ref_mesh.taper,

@@ -18,5 +18,10 @@
         "markdown-it": "^14.1.0",
         "vitepress": "^1.6.4",
         "vitepress-plugin-tabs": "^0.8.0"
+    },
+    "overrides": {
+        "@nolebase/vitepress-plugin-enhanced-readabilities": {
+            "@nolebase/ui": "2.18.2"
+        }
     }
 }

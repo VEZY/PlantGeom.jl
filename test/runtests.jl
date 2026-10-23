@@ -55,6 +55,7 @@ end
 include("test-simplify_geometry.jl")
 include("test-extrusion-mesh.jl")
 include("test-procedural-geometry.jl")
+include("test-normal-orientation.jl")
 include("test-manual-transform-helpers.jl")
 include("test-transformation-matrix.jl")
 include("test-explicit-terrain-reconstruction.jl")
