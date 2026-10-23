@@ -144,3 +144,132 @@
     @test lathe_g1 === lathe_g2
     @test lathe_g1 !== lathe_g3
 end
+
+@testset "Extrusion closed-section winding" begin
+    # These checks use geometric triangle normals and an independent polygonal
+    # frustum volume, not shading normals or the generator's index order.
+    function winding_metrics(mesh, base, tip)
+        points = [Float64.(collect(point)) for point in GeometryBasics.coordinates(mesh)]
+        faces = [Tuple(Int.(collect(face))) for face in GeometryBasics.faces(mesh)]
+        base, tip = Float64.(base), Float64.(tip)
+        main = (tip - base) / norm(tip - base)
+        height = norm(tip - base)
+        origin = reduce(+, points) / length(points)
+        side_outward = caps_outward = true
+        area = signed_volume = 0.0
+        degenerate = 0
+        edges = Dict{Tuple{Int,Int},Vector{Int}}()
+        for face in faces
+            a, b, c = points[collect(face)]
+            twice_normal = cross(b - a, c - a)
+            twice_area = norm(twice_normal)
+            area += twice_area / 2
+            signed_volume += dot(a - origin, cross(b - origin, c - origin)) / 6
+            for (u, v) in ((face[1], face[2]), (face[2], face[3]), (face[3], face[1]))
+                push!(get!(edges, minmax(u, v), Int[]), u < v ? 1 : -1)
+            end
+            if twice_area <= 1.0e-12
+                degenerate += 1
+                continue
+            end
+            normal = twice_normal / twice_area
+            axial = [dot(point - base, main) for point in (a, b, c)]
+            if all(abs(value) <= 1.0e-11 for value in axial)
+                caps_outward &= dot(normal, -main) > 1 - 1.0e-11
+            elseif all(abs(value - height) <= 1.0e-11 for value in axial)
+                caps_outward &= dot(normal, main) > 1 - 1.0e-11
+            else
+                centroid = (a + b + c) / 3
+                radial = centroid - base - dot(centroid - base, main) * main
+                side_outward &= dot(normal, radial) > 1.0e-11
+            end
+        end
+        return (; points, faces, area, signed_volume, side_outward, caps_outward,
+            degenerate,
+            boundary_edges=count(value -> length(value) == 1, values(edges)),
+            nonmanifold_edges=count(value -> length(value) > 2, values(edges)),
+            orientation_conflicts=count(value -> length(value) == 2 && sum(value) != 0,
+                values(edges)))
+    end
+
+    rectangle = [Point(-1.0, -0.5, 0.0), Point(1.0, -0.5, 0.0),
+        Point(1.0, 0.5, 0.0), Point(-1.0, 0.5, 0.0)]
+    circle = circle_section_profile(8; radius=0.5, close_loop=false)
+    profiles = ((rectangle, 2.0), (circle, 8 * 0.5^2 * sin(2pi / 8) / 2))
+    directions = ([1.0, 0.0, 0.0], [-1.0, 0.0, 0.0], [2.0, -3.0, 6.0] / 7)
+    scales = ((1.6, 0.7), (-1.6, 0.7), (1.6, -0.7), (-1.6, -0.7))
+    base = [1.25, -2.5, 0.75]
+    path_length = 3.0
+    start_scale, end_scale = 1.25, 0.5
+    for (profile, section_area) in profiles, reversed in (false, true),
+        direction in directions, (width, height) in scales
+        section = reversed ? reverse(profile) : profile
+        tip = base + path_length * direction
+        path = [Point(base...), Point(tip...)]
+        mesh = extrude_profile_mesh(section, path;
+            widths=[start_scale * width, end_scale * width],
+            heights=[start_scale * height, end_scale * height],
+            close_section=true, cap_ends=true)
+        observed = winding_metrics(mesh, base, tip)
+        expected_volume = section_area * abs(width * height) * path_length / 3 *
+            (start_scale^2 + start_scale * end_scale + end_scale^2)
+        @test all(all(isfinite, point) for point in observed.points)
+        @test observed.degenerate == 0
+        @test observed.side_outward
+        @test observed.caps_outward
+        @test observed.signed_volume > 0
+        @test observed.signed_volume ≈ expected_volume atol=1.0e-11 rtol=1.0e-11
+        @test observed.boundary_edges == 0
+        @test observed.nonmanifold_edges == 0
+        @test observed.orientation_conflicts == 0
+        @test observed.area > 0
+    end
+
+    # An explicit repeated endpoint is removed before assessing section order.
+    path = [Point(0.0, 0.0, 0.0), Point(3.0, 0.0, 0.0)]
+    for (profile, _) in profiles, reversed in (false, true)
+        section = reversed ? reverse(profile) : profile
+        plain = extrude_profile_mesh(section, path; close_section=true, cap_ends=true)
+        repeated = extrude_profile_mesh(vcat(section, [first(section)]), path;
+            cap_ends=true)
+        @test collect(GeometryBasics.coordinates(repeated)) ==
+            collect(GeometryBasics.coordinates(plain))
+        @test collect(GeometryBasics.faces(repeated)) == collect(GeometryBasics.faces(plain))
+    end
+
+    # A zero initial ring must not hide the reflection of the later nonzero ring.
+    for (width, height) in ((1.0, 1.0), (-1.0, 1.0), (-1.0, -1.0))
+        cone = extrude_profile_mesh(circle, path; widths=[0.0, width],
+            heights=[0.0, height], close_section=true, cap_ends=true)
+        observed = winding_metrics(cone, [0.0, 0.0, 0.0], [3.0, 0.0, 0.0])
+        expected_volume = profiles[2][2] * 3.0 / 3
+        @test all(all(isfinite, point) for point in observed.points)
+        @test observed.degenerate > 0
+        @test observed.side_outward
+        @test observed.caps_outward
+        @test observed.signed_volume ≈ expected_volume atol=1.0e-11
+    end
+
+    # An open ribbon has no solid interior. Retain its historical face order;
+    # reversing the authored profile is the caller's choice of surface side.
+    open_profile = [Point(-1.0, 0.0, 0.0), Point(0.0, 0.4, 0.0), Point(1.0, 0.0, 0.0)]
+    ribbons = [extrude_profile_mesh(section, path; close_section=false)
+        for section in (open_profile, reverse(open_profile))]
+    oriented_areas = Vector{Float64}[]
+    for ribbon in ribbons
+        points = collect(GeometryBasics.coordinates(ribbon))
+        faces = collect(GeometryBasics.faces(ribbon))
+        @test Tuple.(faces) == [(1, 2, 5), (1, 5, 4), (2, 3, 6), (2, 6, 5)]
+        oriented = zeros(3)
+        area = 0.0
+        for face in faces
+            a, b, c = points[Int.(collect(face))]
+            normal = cross(b - a, c - a)
+            oriented += normal / 2
+            area += norm(normal) / 2
+        end
+        @test area ≈ 6 * hypot(1.0, 0.4) atol=1.0e-11
+        push!(oriented_areas, oriented)
+    end
+    @test oriented_areas[1] ≈ -oriented_areas[2] atol=1.0e-11
+end

@@ -20,6 +20,12 @@ This is an AMAP-style extrusion primitive (similar in spirit to AMAPStudio's
 - `cap_ends`: if `true` and section is closed, adds start/end caps.
 
 The returned mesh is expressed in local coordinates, ready to be wrapped in `RefMesh`.
+Closed simple sections in the local XY plane have outward winding for either input order when
+the nonzero width/height products keep a constant sign along the path. Open
+sections retain their supplied orientation. Caps use a center fan, so a convex
+section is required for valid caps; concave sections and folded or self-intersecting
+sweeps are not made valid by the winding correction. Zero scales can still
+produce degenerate faces.
 """
 function extrude_profile_mesh(
     section::AbstractVector,
@@ -53,6 +59,26 @@ function extrude_profile_mesh(
     width_vals = _expand_profile_scale(widths, n_path, 1.0)
     height_vals = _expand_profile_scale(heights, n_path, 1.0)
 
+    # The local -v embedding reflects section XY. For closed sections, account
+    # for both their authored order and any constant signed scale reflection.
+    # Use the first noncollapsed ring; a collapsed ring has no orientation.
+    section_area = 0.0
+    if section_is_closed
+        for i in 1:n_section
+            next = i == n_section ? 1 : i + 1
+            section_area += section_pts[i][1] * section_pts[next][2] -
+                section_pts[next][1] * section_pts[i][2]
+        end
+    end
+    scale_parity = 0.0
+    for j in eachindex(width_vals)
+        product = width_vals[j] * height_vals[j]
+        iszero(product) && continue
+        scale_parity = sign(product)
+        break
+    end
+    flip_faces = section_is_closed && section_area * scale_parity > 0.0
+
     vertices = _Point3[]
     sizehint!(vertices, n_path * n_section + (cap_ends ? 2 : 0))
 
@@ -83,8 +109,13 @@ function extrude_profile_mesh(
             b = idx(j, i2)
             c = idx(j + 1, i2)
             d = idx(j + 1, i)
-            push!(faces, face3(a, b, c))
-            push!(faces, face3(a, c, d))
+            if flip_faces
+                push!(faces, face3(a, c, b))
+                push!(faces, face3(a, d, c))
+            else
+                push!(faces, face3(a, b, c))
+                push!(faces, face3(a, c, d))
+            end
         end
     end
 
@@ -107,8 +138,13 @@ function extrude_profile_mesh(
 
         for i in 1:n_section
             i2 = i == n_section ? 1 : i + 1
-            push!(faces, face3(start_id, idx(1, i2), idx(1, i)))
-            push!(faces, face3(end_id, idx(n_path, i), idx(n_path, i2)))
+            if flip_faces
+                push!(faces, face3(start_id, idx(1, i), idx(1, i2)))
+                push!(faces, face3(end_id, idx(n_path, i2), idx(n_path, i)))
+            else
+                push!(faces, face3(start_id, idx(1, i2), idx(1, i)))
+                push!(faces, face3(end_id, idx(n_path, i), idx(n_path, i2)))
+            end
         end
     end
 
