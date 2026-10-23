@@ -102,6 +102,9 @@ end
 mutable struct _FrameCacheContext
     cache::ReconstructionFrameCache
     names::Set{Symbol}
+    parent_names::Set{Symbol}
+    post_names::Set{Symbol}
+    verticil_mode::Symbol
     enabled::Bool
     next::Dict{Int,_ReconstructionFrameEntry}
     counts::Vector{Int}
@@ -133,7 +136,8 @@ function _frame_cache_key(node)
 end
 
 function _frame_cache_begin(cache::ReconstructionFrameCache, mtg, configuration,
-    convention, conventions, options, aliases, coordinate_mode, warn_missing)
+    convention, conventions, options, aliases, coordinate_mode, warn_missing,
+    verticil_mode)
     names = Set{Symbol}()
     _frame_collect_names!(names, convention)
     _frame_collect_names!(names, conventions)
@@ -144,6 +148,26 @@ function _frame_cache_begin(cache::ReconstructionFrameCache, mtg, configuration,
             _frame_collect_names!(names, getfield(options, name))
     end
     push!(names, options.order_attribute)
+    # Parent orientation is already represented by the actual inherited frame.
+    # Only lateral offset/border placement reads parent dimensions afresh.
+    parent_names = Set{Symbol}()
+    _frame_collect_names!(parent_names, convention.scale_map)
+    for other in values(conventions)
+        other isa GeometryConvention || continue
+        _frame_collect_names!(parent_names, other.scale_map)
+    end
+    union!(parent_names, _TOP_WIDTH_ALIASES, _TOP_HEIGHT_ALIASES)
+    # Dimensions, insertion, Euler, endpoints and azimuth/elevation were
+    # resolved before hooks. The postfix reads only these orientation stages.
+    post_names = Set{Symbol}()
+    for name in (:stiffness_angle_aliases, :orthotropy_aliases, :deviation_aliases,
+                 :world_axis_angle_aliases, :world_axis_x_aliases,
+                 :world_axis_y_aliases, :world_axis_z_aliases,
+                 :normal_up_aliases, :plagiotropy_aliases,
+                 :geometry_constraint_aliases)
+        _frame_collect_names!(post_names, getfield(options, name))
+    end
+    union!(post_names, _CONSTRAINT_TYPE_ALIASES)
     snapshot = _frame_value_snapshot(configuration)
     enabled = coordinate_mode === :topology_default && !warn_missing &&
               snapshot !== _UNSUPPORTED_FRAME_INPUT
@@ -166,8 +190,8 @@ function _frame_cache_begin(cache::ReconstructionFrameCache, mtg, configuration,
         empty!(cache.entries)
     end
     cache.configuration = snapshot
-    return _FrameCacheContext(cache, names, enabled,
-        Dict{Int,_ReconstructionFrameEntry}(), counts)
+    return _FrameCacheContext(cache, names, parent_names, post_names,
+        verticil_mode, enabled, Dict{Int,_ReconstructionFrameEntry}(), counts)
 end
 
 function _frame_attributes_snapshot(node, names)
@@ -191,6 +215,18 @@ function _frame_attributes_snapshot(node, names)
     return values
 end
 
+function _frame_has_constraint(node, options)
+    for aliases in (options.geometry_constraint_aliases, _CONSTRAINT_TYPE_ALIASES)
+        for name in aliases
+            value, present = _try_attr(node, name)
+            if present && value !== nothing && !ismissing(value)
+                return true
+            end
+        end
+    end
+    return false
+end
+
 function _frame_cache_lookup(ctx::_FrameCacheContext, node, parent_node,
     base_pos, top_pos, direction, base_rot, options)
     key = _frame_cache_key(node)
@@ -200,16 +236,13 @@ function _frame_cache_lookup(ctx::_FrameCacheContext, node, parent_node,
     end
     # Constraints keep a cross-node frame cache; leave their complete stage
     # untouched. Component stiffness propagation remains active on all paths.
-    for name in options.geometry_constraint_aliases
-        value, present = _try_attr(node, name)
-        if present && value !== nothing && !ismissing(value)
-            ctx.counts[5] += 1
-            return nothing, nothing, key
-        end
+    if _frame_has_constraint(node, options)
+        ctx.counts[5] += 1
+        return nothing, nothing, key
     end
     attrs = _frame_attributes_snapshot(node, ctx.names)
-    parent_attrs = parent_node === nothing ? nothing :
-                   _frame_attributes_snapshot(parent_node, ctx.names)
+    parent_attrs = parent_node === nothing || link(node) !== :+ ? nothing :
+                   _frame_attributes_snapshot(parent_node, ctx.parent_names)
     if attrs === _UNSUPPORTED_FRAME_INPUT || parent_attrs === _UNSUPPORTED_FRAME_INPUT
         ctx.counts[5] += 1
         return nothing, nothing, key
@@ -226,9 +259,13 @@ function _frame_cache_lookup(ctx::_FrameCacheContext, node, parent_node,
     else
         nothing
     end
-    siblings = parent_node === nothing ? nothing :
+    siblings = if parent_node !== nothing && link(node) === :+ &&
+                  ctx.verticil_mode === :rotation360
         [(_frame_cache_key(child), link(child), symbol(child), index(child), scale(child))
          for child in children(parent_node)]
+    else
+        nothing
+    end
     signature = (symbol(node), index(node), scale(node), link(node), attrs,
         parent_attrs, parent_frame, anchor_frame, siblings)
     entry = get(ctx.cache.entries, key, nothing)

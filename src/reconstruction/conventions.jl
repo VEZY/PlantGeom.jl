@@ -2326,6 +2326,7 @@ function _reconstruct_geometry_from_attributes_impl!(mtg, prototypes::AbstractDi
         convention, conventions, amap_cfg,
         (offset_aliases_norm, border_offset_aliases_norm, insertion_mode_aliases_norm,
          phyllotaxy_aliases_norm), coordinate_mode, warn_missing,
+        effective_verticil_mode,
     )
 
     traverse!(mtg) do node
@@ -2605,11 +2606,9 @@ function _reconstruct_geometry_from_attributes_impl!(mtg, prototypes::AbstractDi
             )
         end
         post_attrs = frame_cache === nothing ? nothing :
-            _frame_attributes_snapshot(node, frame_cache.names)
-        post_constraints = frame_cache !== nothing && any(amap_cfg.geometry_constraint_aliases) do name
-            value, present = _try_attr(node, name)
-            present && value !== nothing && !ismissing(value)
-        end
+            _frame_attributes_snapshot(node, frame_cache.post_names)
+        post_constraints = frame_cache !== nothing &&
+                           _frame_has_constraint(node, amap_cfg)
         postfix_signature = post_attrs === _UNSUPPORTED_FRAME_INPUT || post_constraints ?
             nothing : (hook_rot, post_attrs)
         postfix_hit = frame_entry !== nothing && postfix_signature !== nothing &&

@@ -286,3 +286,47 @@ end
     @test isequal(siblings_run(true, cache), siblings_run(true, nothing))
     @test reconstruction_frame_cache_stats(cache).last.prefix_misses >= 2
 end
+
+@testset "Post-hook dimension writes do not change already resolved frames" begin
+    cache = ReconstructionFrameCache()
+    dimension = Ref(2.0)
+    function dimension_run(cache)
+        tree = _frame_test_tree()
+        hook = function (node, rotation, _axis)
+            node[:Length] = dimension[]
+            node[:Width] = dimension[]
+            return rotation
+        end
+        rebuild_geometry!(tree[1], _frame_test_library();
+            reconstruction_cache=cache, bump_scene=false, verticil_mode=:none,
+            amap_options=AmapReconstructionOptions(
+                frame_orientation_hook=hook, verticil_mode=:none,
+                allometry_enabled=false, auto_compute_branching_order=false))
+        return _frame_test_record(tree[1])
+    end
+    @test isequal(dimension_run(cache), dimension_run(nothing))
+    dimension[] = 3.0
+    @test isequal(dimension_run(cache), dimension_run(nothing))
+    # The stem and successor keep their pre-hook dimensions; lateral offset
+    # still sees the newly written parent length and must be recomputed.
+    @test reconstruction_frame_cache_stats(cache).last.prefix_hits == 2
+    @test reconstruction_frame_cache_stats(cache).last.postfix_hits == 2
+    @test reconstruction_frame_cache_stats(cache).last.prefix_misses == 1
+end
+
+@testset "Type-only constraint aliases conservatively opt out" begin
+    cache = ReconstructionFrameCache()
+    library = _frame_test_library()
+    function type_constraint_run(cache)
+        tree = _frame_test_tree()
+        tree[2][:ConstraintType] = :plane
+        tree[2][:ConstraintNormalX] = 0.0
+        tree[2][:ConstraintNormalY] = 0.0
+        tree[2][:ConstraintNormalZ] = 1.0
+        tree[2][:ConstraintPlaneD] = 0.0
+        return _frame_test_rebuild(tree[1], library, cache)
+    end
+    @test isequal(type_constraint_run(cache), type_constraint_run(nothing))
+    @test isequal(type_constraint_run(cache), type_constraint_run(nothing))
+    @test reconstruction_frame_cache_stats(cache).last.fallbacks >= 2
+end
