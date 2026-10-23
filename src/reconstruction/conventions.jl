@@ -2268,40 +2268,7 @@ function _fallback_insertion_x_angle_deg_amap(
     return extra
 end
 
-"""
-    reconstruct_geometry_from_attributes!(mtg, prototypes;
-        convention=default_amap_geometry_convention(),
-        conventions=Dict(),
-        offset_aliases=[:Offset, :offset],
-        border_offset_aliases=[:BorderInsertionOffset, :border_insertion_offset, :BorderOffset, :border_offset],
-        insertion_mode_aliases=[:InsertionMode, :insertion_mode],
-        phyllotaxy_aliases=[:Phyllotaxy, :phyllotaxy, :PHYLLOTAXY],
-        verticil_mode=:rotation360,
-        amap_options=default_amap_reconstruction_options(),
-        prototype_selector=nothing,
-        prototype_overrides=nothing,
-        dUp=1.0,
-        dDwn=1.0,
-        warn_missing=false,
-        root_align=true,
-    )
-
-Reconstruct node geometries from attribute conventions and MTG topology.
-
-When no explicit translation attributes are found (`XX/YY/ZZ` by default), placement follows a
-topological convention close to AMAP:
-
-- `:<`: attach to predecessor top
-- `:+`: attach to bearer at `Offset` (or bearer length if missing)
-- `:+`: default insertion mode is `BORDER`, adding a lateral offset of
-  `BorderInsertionOffset` (or bearer top width / 2)
-- `:/`: attach to parent base
-
-If endpoint attributes (`EndX`/`EndY`/`EndZ` aliases) are present, they override angle-derived
-orientation and `Length` for that node: base position comes from translation/topology, and
-orientation+length are inferred from `(base -> end)`.
-"""
-function reconstruct_geometry_from_attributes!(mtg, prototypes::AbstractDict;
+function _reconstruct_geometry_from_attributes_impl!(mtg, prototypes::AbstractDict;
     convention=default_amap_geometry_convention(),
     conventions=Dict(),
     offset_aliases=[:Offset, :offset],
@@ -2316,6 +2283,7 @@ function reconstruct_geometry_from_attributes!(mtg, prototypes::AbstractDict;
     dDwn=1.0,
     warn_missing=false,
     root_align=true,
+    reconstruction_cache=nothing,
 )
     offset_aliases_norm = _normalize_aliases(offset_aliases)
     border_offset_aliases_norm = _normalize_aliases(border_offset_aliases)
@@ -2350,6 +2318,15 @@ function reconstruct_geometry_from_attributes!(mtg, prototypes::AbstractDict;
     direction = IdDict{Any,SVector{3,Float64}}()
     base_rot = IdDict{Any,SMatrix{3,3,Float64,9}}()
     constraint_cache = Dict{Any,Any}()
+    frame_cache = reconstruction_cache === nothing ? nothing : _frame_cache_begin(
+        reconstruction_cache, mtg,
+        (convention, conventions, amap_cfg, offset_aliases_norm,
+         border_offset_aliases_norm, insertion_mode_aliases_norm,
+         phyllotaxy_aliases_norm, effective_verticil_mode, root_align, dUp, dDwn),
+        convention, conventions, amap_cfg,
+        (offset_aliases_norm, border_offset_aliases_norm, insertion_mode_aliases_norm,
+         phyllotaxy_aliases_norm), coordinate_mode, warn_missing,
+    )
 
     traverse!(mtg) do node
         node_convention = _resolve_node_convention(node, convention, conventions)
@@ -2360,282 +2337,325 @@ function reconstruct_geometry_from_attributes!(mtg, prototypes::AbstractDict;
         parent_node = isroot(node) ? nothing : parent(node)
         link_type = isroot(node) ? nothing : link(node)
 
-        current_base_rot = root_rotation
-        current_base_pos = _ZERO3
-
-        if !explicit_translation && parent_node !== nothing
-            if link_type == :<
-                anchor_node = _successor_anchor_node(parent_node, top_pos)
-                if haskey(base_rot, anchor_node)
-                    current_base_rot = base_rot[anchor_node]
-                    current_base_pos = get(top_pos, anchor_node, _ZERO3)
-                elseif haskey(base_rot, parent_node)
-                    current_base_rot = base_rot[parent_node]
-                    current_base_pos = get(top_pos, parent_node, _ZERO3)
-                end
-            elseif link_type == :+
-                if haskey(base_rot, parent_node)
-                    parent_conv = _resolve_node_convention(parent_node, convention, conventions)
-                    parent_length = _resolve_value(
-                        parent_node,
-                        parent_conv.scale_map[:length],
-                        :length;
-                        default=1.0,
-                        warn_missing=false,
-                    )
-                    offset_val = _offset_value(node, offset_aliases_norm, parent_length)
-                    current_base_rot = base_rot[parent_node]
-                    current_base_pos = get(base_pos, parent_node, _ZERO3) +
-                                       get(direction, parent_node, _unit_axis(parent_conv.length_axis)) * offset_val
-                end
-            elseif link_type == :/
-                if haskey(base_rot, parent_node)
-                    current_base_rot = base_rot[parent_node]
-                    current_base_pos = get(base_pos, parent_node, _ZERO3)
-                end
-            else
-                if haskey(base_rot, parent_node)
-                    current_base_rot = base_rot[parent_node]
-                    current_base_pos = get(base_pos, parent_node, _ZERO3)
-                end
-            end
-        end
-
-        world_t = nothing
-        world_angles_t = nothing
-
-        conv_euler_only = _convention_euler_angles_only(node_convention)
-
-        if _resolve_bool_alias(node, amap_cfg.orientation_reset_aliases; default=false)
-            current_base_rot = root_rotation
-        end
-
-        if explicit_translation
-            tx = _resolve_value(node, node_convention.translation_map[:x], :x; default=0.0, warn_missing=warn_missing)
-            ty = _resolve_value(node, node_convention.translation_map[:y], :y; default=0.0, warn_missing=warn_missing)
-            tz = _resolve_value(node, node_convention.translation_map[:z], :z; default=0.0, warn_missing=warn_missing)
-            current_base_pos = SVector{3,Float64}(tx, ty, tz)
-            if !isroot(node) && !_resolve_bool_alias(node, amap_cfg.orientation_reset_aliases; default=false)
-                current_base_rot = _I3
-            end
-        end
-
-        delegate2_current = false
-        if coordinate_mode == :explicit_rewire_previous && explicit_translation
-            delegate2_current = true
-
-            if link_type == :/ && parent_node !== nothing && haskey(base_pos, parent_node)
-                # CoordinateDelegate2 behavior: decomposition child is anchored
-                # at complex base position (not at explicit coordinate).
-                current_base_pos = get(base_pos, parent_node, current_base_pos)
-            else
-                prev_node = _coordinate_delegate2_previous_node(parent_node, link_type)
-                if prev_node !== nothing
-                    _apply_coordinate_delegate2_previous!(
-                        prev_node,
-                        current_base_pos,
-                        convention,
-                        conventions,
-                        prepared_prototypes,
-                        prototype_selector,
-                        prototype_overrides,
-                        base_pos,
-                        top_pos,
-                        direction,
-                        base_rot;
-                        dUp=dUp,
-                        dDwn=dDwn,
-                        warn_missing=warn_missing,
-                    )
-                end
-            end
-        end
-
-        endpoint_pos = _resolve_endpoint_position(node, amap_cfg; warn_missing=warn_missing)
-        endpoint_override = false
-        endpoint_length = nothing
-        if coordinate_mode == :explicit_start_end_required && explicit_translation && endpoint_pos === nothing
-            # CoordinateDelegate3 strict mode: explicit start without explicit end
-            # yields an undefined segment geometry for this node.
-            warn_missing &&
-                @warn "Explicit translation without complete EndX/EndY/EndZ in :explicit_start_end_required mode; skipping node geometry."
-            p0 = current_base_pos
-            p1 = current_base_pos
-            r0 = current_base_rot
-            d0 = _normalize_direction(p1 - p0, r0, node_convention.length_axis)
-
-            base_pos[node] = p0
-            top_pos[node] = p1
-            direction[node] = d0
-            base_rot[node] = r0
-            node[:geometry] = nothing
-            return
-        elseif !delegate2_current && endpoint_pos !== nothing
-            endpoint_vec = endpoint_pos - current_base_pos
-            endpoint_length_val = norm(endpoint_vec)
-            if endpoint_length_val > 1e-12
-                current_base_rot = _rotation_from_direction_with_hint(
-                    endpoint_vec,
-                    node_convention.length_axis,
-                    current_base_rot,
-                )
-                endpoint_override = true
-                endpoint_length = endpoint_length_val
-            else
-                warn_missing && @warn "Degenerate endpoint (base == end) ignored for node."
-            end
-        end
-
-        order_value = _resolve_order_value(node, amap_cfg.order_attribute)
-        insertion_y_override = _effective_override_value(order_value, amap_cfg.insertion_y_by_order)
-        phyllotaxy_override = _effective_override_value(order_value, amap_cfg.phyllotaxy_by_order)
-
-        override_by_axis = Dict{Symbol,Float64}()
-        if insertion_y_override !== nothing
-            override_by_axis[:y] = insertion_y_override
-        end
-
-        local_insertion_t = endpoint_override ? IdentityTransformation() : _angles_transform(
-            node,
-            conv_insertion_only.angle_map;
-            warn_missing=warn_missing,
-            override_axis_deg=override_by_axis,
-            override_mode=amap_cfg.order_override_mode,
-        )
-        local_euler_t = endpoint_override ? IdentityTransformation() :
-                        transformation_from_attributes(node; convention=conv_euler_only, warn_missing=warn_missing)
-
-        if !endpoint_override && link_type == :+ && parent_node !== nothing
-            extra_x_deg = _fallback_insertion_x_angle_deg_amap(
-                node,
-                parent_node,
-                node_convention,
-                effective_phyllotaxy_aliases,
-                effective_verticil_mode,
-                phyllotaxy_override,
-                amap_cfg.order_override_mode,
-            )
-            if extra_x_deg != 0.0
-                # Keep fallback XInsertionAngle in the same stage/order as insertion angles.
-                # Appending on the right applies it first and can cancel azimuth spread.
-                local_insertion_t = LinearMap(RotX(deg2rad(extra_x_deg))) ∘ local_insertion_t
-            end
-        end
-
-        base_t = _frame_transform(current_base_rot, current_base_pos)
-
-        if !endpoint_override && !explicit_translation &&
-           link_type == :+ && parent_node !== nothing && haskey(base_rot, parent_node)
-            mode_aliases = _compose_aliases(insertion_mode_aliases_norm, amap_insertion_mode_aliases)
-            mode = _insertion_mode(node, mode_aliases)
-            if mode != :CENTER
-                parent_conv = _resolve_node_convention(parent_node, convention, conventions)
-                parent_dir = _safe_normalize(
-                    get(direction, parent_node, _unit_axis(parent_conv.length_axis)),
-                    _unit_axis(parent_conv.length_axis),
-                )
-
-                insertion_rot = _rotation_part(base_t ∘ local_insertion_t)
-                main_dir = _safe_normalize(
-                    insertion_rot * _unit_axis(node_convention.length_axis),
-                    _unit_axis(node_convention.length_axis),
-                )
-                fallback_dir = _safe_normalize(
-                    insertion_rot * _unit_axis(_normal_axis(node_convention.length_axis)),
-                    _unit_axis(_secondary_axis(node_convention.length_axis)),
-                )
-                parent_secondary = _safe_normalize(current_base_rot * _unit_axis(:y), _unit_axis(:y))
-                parent_normal = _safe_normalize(current_base_rot * _unit_axis(:z), _unit_axis(:z))
-
-                border_dir = nothing
-                if mode == :BORDER
-                    border_dir = _project_on_plane(parent_dir, main_dir)
-                    if border_dir === nothing || dot(border_dir, border_dir) <= 0.01
-                        border_dir = _project_on_plane(parent_dir, fallback_dir)
-                        border_dir === nothing || (border_dir = -border_dir)
-                    end
-                elseif mode == :WIDTH
-                    border_dir = dot(parent_secondary, main_dir) >= 0.0 ? parent_secondary : -parent_secondary
-                elseif mode == :HEIGHT
-                    border_dir = dot(parent_normal, main_dir) >= 0.0 ? parent_normal : -parent_normal
-                end
-
-                if border_dir !== nothing
-                    border_dir = _safe_normalize(border_dir, _unit_axis(_secondary_axis(node_convention.length_axis)))
-                    parent_top_width = _top_width(parent_node, parent_conv)
-                    parent_top_height = _top_height(parent_node, parent_conv)
-                    default_border_offset = if mode == :HEIGHT
-                        parent_top_height / 2
-                    else
-                        parent_top_width / 2
-                    end
-                    border_offset = _offset_value(node, border_offset_aliases_norm, default_border_offset)
-                    if border_offset != 0.0
-                        current_base_pos = current_base_pos + border_dir * border_offset
-                        base_t = _frame_transform(current_base_rot, current_base_pos)
-                    end
-                end
-            end
-        end
-
-        length_val, width_val, thickness_val = _resolve_scale_values(
-            node,
-            node_convention;
-            warn_missing=warn_missing,
-            length_override=endpoint_length,
-        )
-
-        rot = if delegate2_current
-            _I3
-        elseif endpoint_override
-            current_base_rot
+        frame_entry, frame_signature, frame_key = if frame_cache === nothing
+            (nothing, nothing, nothing)
         else
-            r = _rotation_part(base_t ∘ local_insertion_t)
-            r = _apply_azimuth_elevation_stage(node, r, amap_cfg)
+            _frame_cache_lookup(frame_cache, node, parent_node,
+                base_pos, top_pos, direction, base_rot, amap_cfg)
+        end
+        if frame_entry === nothing
+            current_base_rot = root_rotation
+            current_base_pos = _ZERO3
+
+            if !explicit_translation && parent_node !== nothing
+                if link_type == :<
+                    anchor_node = _successor_anchor_node(parent_node, top_pos)
+                    if haskey(base_rot, anchor_node)
+                        current_base_rot = base_rot[anchor_node]
+                        current_base_pos = get(top_pos, anchor_node, _ZERO3)
+                    elseif haskey(base_rot, parent_node)
+                        current_base_rot = base_rot[parent_node]
+                        current_base_pos = get(top_pos, parent_node, _ZERO3)
+                    end
+                elseif link_type == :+
+                    if haskey(base_rot, parent_node)
+                        parent_conv = _resolve_node_convention(parent_node, convention, conventions)
+                        parent_length = _resolve_value(
+                            parent_node,
+                            parent_conv.scale_map[:length],
+                            :length;
+                            default=1.0,
+                            warn_missing=false,
+                        )
+                        offset_val = _offset_value(node, offset_aliases_norm, parent_length)
+                        current_base_rot = base_rot[parent_node]
+                        current_base_pos = get(base_pos, parent_node, _ZERO3) +
+                                           get(direction, parent_node, _unit_axis(parent_conv.length_axis)) * offset_val
+                    end
+                elseif link_type == :/
+                    if haskey(base_rot, parent_node)
+                        current_base_rot = base_rot[parent_node]
+                        current_base_pos = get(base_pos, parent_node, _ZERO3)
+                    end
+                else
+                    if haskey(base_rot, parent_node)
+                        current_base_rot = base_rot[parent_node]
+                        current_base_pos = get(base_pos, parent_node, _ZERO3)
+                    end
+                end
+            end
+
+            world_t = nothing
+            world_angles_t = nothing
+
+            conv_euler_only = _convention_euler_angles_only(node_convention)
+
+            if _resolve_bool_alias(node, amap_cfg.orientation_reset_aliases; default=false)
+                current_base_rot = root_rotation
+            end
+
+            if explicit_translation
+                tx = _resolve_value(node, node_convention.translation_map[:x], :x; default=0.0, warn_missing=warn_missing)
+                ty = _resolve_value(node, node_convention.translation_map[:y], :y; default=0.0, warn_missing=warn_missing)
+                tz = _resolve_value(node, node_convention.translation_map[:z], :z; default=0.0, warn_missing=warn_missing)
+                current_base_pos = SVector{3,Float64}(tx, ty, tz)
+                if !isroot(node) && !_resolve_bool_alias(node, amap_cfg.orientation_reset_aliases; default=false)
+                    current_base_rot = _I3
+                end
+            end
+
+            delegate2_current = false
+            if coordinate_mode == :explicit_rewire_previous && explicit_translation
+                delegate2_current = true
+
+                if link_type == :/ && parent_node !== nothing && haskey(base_pos, parent_node)
+                    # CoordinateDelegate2 behavior: decomposition child is anchored
+                    # at complex base position (not at explicit coordinate).
+                    current_base_pos = get(base_pos, parent_node, current_base_pos)
+                else
+                    prev_node = _coordinate_delegate2_previous_node(parent_node, link_type)
+                    if prev_node !== nothing
+                        _apply_coordinate_delegate2_previous!(
+                            prev_node,
+                            current_base_pos,
+                            convention,
+                            conventions,
+                            prepared_prototypes,
+                            prototype_selector,
+                            prototype_overrides,
+                            base_pos,
+                            top_pos,
+                            direction,
+                            base_rot;
+                            dUp=dUp,
+                            dDwn=dDwn,
+                            warn_missing=warn_missing,
+                        )
+                    end
+                end
+            end
+
+            endpoint_pos = _resolve_endpoint_position(node, amap_cfg; warn_missing=warn_missing)
+            endpoint_override = false
+            endpoint_length = nothing
+            if coordinate_mode == :explicit_start_end_required && explicit_translation && endpoint_pos === nothing
+                # CoordinateDelegate3 strict mode: explicit start without explicit end
+                # yields an undefined segment geometry for this node.
+                warn_missing &&
+                    @warn "Explicit translation without complete EndX/EndY/EndZ in :explicit_start_end_required mode; skipping node geometry."
+                p0 = current_base_pos
+                p1 = current_base_pos
+                r0 = current_base_rot
+                d0 = _normalize_direction(p1 - p0, r0, node_convention.length_axis)
+
+                base_pos[node] = p0
+                top_pos[node] = p1
+                direction[node] = d0
+                base_rot[node] = r0
+                node[:geometry] = nothing
+                return
+            elseif !delegate2_current && endpoint_pos !== nothing
+                endpoint_vec = endpoint_pos - current_base_pos
+                endpoint_length_val = norm(endpoint_vec)
+                if endpoint_length_val > 1e-12
+                    current_base_rot = _rotation_from_direction_with_hint(
+                        endpoint_vec,
+                        node_convention.length_axis,
+                        current_base_rot,
+                    )
+                    endpoint_override = true
+                    endpoint_length = endpoint_length_val
+                else
+                    warn_missing && @warn "Degenerate endpoint (base == end) ignored for node."
+                end
+            end
+
+            order_value = _resolve_order_value(node, amap_cfg.order_attribute)
+            insertion_y_override = _effective_override_value(order_value, amap_cfg.insertion_y_by_order)
+            phyllotaxy_override = _effective_override_value(order_value, amap_cfg.phyllotaxy_by_order)
+
+            override_by_axis = Dict{Symbol,Float64}()
+            if insertion_y_override !== nothing
+                override_by_axis[:y] = insertion_y_override
+            end
+
+            local_insertion_t = endpoint_override ? IdentityTransformation() : _angles_transform(
+                node,
+                conv_insertion_only.angle_map;
+                warn_missing=warn_missing,
+                override_axis_deg=override_by_axis,
+                override_mode=amap_cfg.order_override_mode,
+            )
+            local_euler_t = endpoint_override ? IdentityTransformation() :
+                            transformation_from_attributes(node; convention=conv_euler_only, warn_missing=warn_missing)
+
+            if !endpoint_override && link_type == :+ && parent_node !== nothing
+                extra_x_deg = _fallback_insertion_x_angle_deg_amap(
+                    node,
+                    parent_node,
+                    node_convention,
+                    effective_phyllotaxy_aliases,
+                    effective_verticil_mode,
+                    phyllotaxy_override,
+                    amap_cfg.order_override_mode,
+                )
+                if extra_x_deg != 0.0
+                    # Keep fallback XInsertionAngle in the same stage/order as insertion angles.
+                    # Appending on the right applies it first and can cancel azimuth spread.
+                    local_insertion_t = LinearMap(RotX(deg2rad(extra_x_deg))) ∘ local_insertion_t
+                end
+            end
+
+            base_t = _frame_transform(current_base_rot, current_base_pos)
+
+            if !endpoint_override && !explicit_translation &&
+               link_type == :+ && parent_node !== nothing && haskey(base_rot, parent_node)
+                mode_aliases = _compose_aliases(insertion_mode_aliases_norm, amap_insertion_mode_aliases)
+                mode = _insertion_mode(node, mode_aliases)
+                if mode != :CENTER
+                    parent_conv = _resolve_node_convention(parent_node, convention, conventions)
+                    parent_dir = _safe_normalize(
+                        get(direction, parent_node, _unit_axis(parent_conv.length_axis)),
+                        _unit_axis(parent_conv.length_axis),
+                    )
+
+                    insertion_rot = _rotation_part(base_t ∘ local_insertion_t)
+                    main_dir = _safe_normalize(
+                        insertion_rot * _unit_axis(node_convention.length_axis),
+                        _unit_axis(node_convention.length_axis),
+                    )
+                    fallback_dir = _safe_normalize(
+                        insertion_rot * _unit_axis(_normal_axis(node_convention.length_axis)),
+                        _unit_axis(_secondary_axis(node_convention.length_axis)),
+                    )
+                    parent_secondary = _safe_normalize(current_base_rot * _unit_axis(:y), _unit_axis(:y))
+                    parent_normal = _safe_normalize(current_base_rot * _unit_axis(:z), _unit_axis(:z))
+
+                    border_dir = nothing
+                    if mode == :BORDER
+                        border_dir = _project_on_plane(parent_dir, main_dir)
+                        if border_dir === nothing || dot(border_dir, border_dir) <= 0.01
+                            border_dir = _project_on_plane(parent_dir, fallback_dir)
+                            border_dir === nothing || (border_dir = -border_dir)
+                        end
+                    elseif mode == :WIDTH
+                        border_dir = dot(parent_secondary, main_dir) >= 0.0 ? parent_secondary : -parent_secondary
+                    elseif mode == :HEIGHT
+                        border_dir = dot(parent_normal, main_dir) >= 0.0 ? parent_normal : -parent_normal
+                    end
+
+                    if border_dir !== nothing
+                        border_dir = _safe_normalize(border_dir, _unit_axis(_secondary_axis(node_convention.length_axis)))
+                        parent_top_width = _top_width(parent_node, parent_conv)
+                        parent_top_height = _top_height(parent_node, parent_conv)
+                        default_border_offset = if mode == :HEIGHT
+                            parent_top_height / 2
+                        else
+                            parent_top_width / 2
+                        end
+                        border_offset = _offset_value(node, border_offset_aliases_norm, default_border_offset)
+                        if border_offset != 0.0
+                            current_base_pos = current_base_pos + border_dir * border_offset
+                            base_t = _frame_transform(current_base_rot, current_base_pos)
+                        end
+                    end
+                end
+            end
+
+            length_val, width_val, thickness_val = _resolve_scale_values(
+                node,
+                node_convention;
+                warn_missing=warn_missing,
+                length_override=endpoint_length,
+            )
+
+            local_euler_rot = nothing
+            pre_hook_rot = if delegate2_current
+                _I3
+            elseif endpoint_override
+                current_base_rot
+            else
+                _apply_azimuth_elevation_stage(
+                    node, _rotation_part(base_t ∘ local_insertion_t), amap_cfg,
+                )
+            end
+        else
+            frame_prefix = frame_entry.prefix
+            current_base_pos = frame_prefix.current_base_pos
+            delegate2_current = frame_prefix.delegate2_current
+            endpoint_override = frame_prefix.endpoint_override
+            endpoint_pos = frame_prefix.endpoint_pos
+            length_val = frame_prefix.length_val
+            width_val = frame_prefix.width_val
+            thickness_val = frame_prefix.thickness_val
+            local_euler_rot = frame_prefix.local_euler_rot
+            pre_hook_rot = frame_prefix.pre_hook_rot
+        end
+        # Hooks execute once on every path, even when the pure prefix is reused.
+        # Their fresh results and post-hook attribute changes decide whether
+        # the dependent frame postfix can also be reused.
+        hook_rot = if delegate2_current || endpoint_override
+            pre_hook_rot
+        else
             r = _apply_frame_orientation_hook_stage(
-                node,
-                r,
-                node_convention.length_axis,
-                amap_cfg,
+                node, pre_hook_rot, node_convention.length_axis, amap_cfg,
             )
-            r = _apply_gravity_bending_hook_stage(
-                node,
-                r,
-                node_convention.length_axis,
-                amap_cfg,
-            )
-            r = _apply_orthotropy_stiffness_stage(node, r, node_convention.length_axis, amap_cfg)
-            r = _apply_deviation_stage(node, r, amap_cfg)
-            r = _apply_world_axis_angle_stage(node, r, amap_cfg)
-            r = r * _rotation_part(local_euler_t)
-            r = _apply_projection_stage(node, r, node_convention.length_axis, amap_cfg)
-            _apply_geometry_constraint_stage(
-                node,
-                r,
-                current_base_pos,
-                node_convention.length_axis,
-                length_val,
-                amap_cfg,
-                constraint_cache,
+            _apply_gravity_bending_hook_stage(
+                node, r, node_convention.length_axis, amap_cfg,
             )
         end
-
-        if delegate2_current
-            length_val = 0.0
+        post_attrs = frame_cache === nothing ? nothing :
+            _frame_attributes_snapshot(node, frame_cache.names)
+        post_constraints = frame_cache !== nothing && any(amap_cfg.geometry_constraint_aliases) do name
+            value, present = _try_attr(node, name)
+            present && value !== nothing && !ismissing(value)
         end
+        postfix_signature = post_attrs === _UNSUPPORTED_FRAME_INPUT || post_constraints ?
+            nothing : (hook_rot, post_attrs)
+        postfix_hit = frame_entry !== nothing && postfix_signature !== nothing &&
+                      isequal(frame_entry.postfix_signature, postfix_signature)
+        if postfix_hit
+            frame_cache.counts[3] += 1
+            cached_frame = frame_entry.frame
+            p0, p1, dir, rot = cached_frame
+        else
+            if frame_cache !== nothing && frame_signature !== nothing
+                frame_cache.counts[4] += 1
+            end
+            rot = if delegate2_current || endpoint_override
+                hook_rot
+            else
+                r = _apply_orthotropy_stiffness_stage(node, hook_rot, node_convention.length_axis, amap_cfg)
+                r = _apply_deviation_stage(node, r, amap_cfg)
+                r = _apply_world_axis_angle_stage(node, r, amap_cfg)
+                # Resolve Euler rotation at the original stage, after hooks
+                # and world-axis rotation. Cache only the resulting value.
+                if local_euler_rot === nothing
+                    local_euler_rot = _rotation_part(local_euler_t)
+                end
+                r = r * local_euler_rot
+                r = _apply_projection_stage(node, r, node_convention.length_axis, amap_cfg)
+                _apply_geometry_constraint_stage(
+                    node, r, current_base_pos, node_convention.length_axis,
+                    length_val, amap_cfg, constraint_cache,
+                )
+            end
 
-        lin = rot * _scale_linear(node_convention.length_axis, length_val, width_val, thickness_val)
-        world_t = AffineMap(Matrix(lin), current_base_pos)
-        world_angles_t = AffineMap(Matrix(rot), current_base_pos)
-
-        p0 = _to_svec3(world_t(_ZERO3))
-        p1 = _to_svec3(world_t(_unit_axis(node_convention.length_axis)))
-        if endpoint_override
-            p0 = current_base_pos
-            p1 = endpoint_pos
+            if delegate2_current
+                length_val = 0.0
+            end
+            lin = rot * _scale_linear(node_convention.length_axis, length_val, width_val, thickness_val)
+            world_t = AffineMap(Matrix(lin), current_base_pos)
+            world_angles_t = AffineMap(Matrix(rot), current_base_pos)
+            p0 = _to_svec3(world_t(_ZERO3))
+            p1 = _to_svec3(world_t(_unit_axis(node_convention.length_axis)))
+            if endpoint_override
+                p0 = current_base_pos
+                p1 = endpoint_pos
+            end
+            rot = _rotation_part(world_angles_t)
+            dir = _normalize_direction(p1 - p0, rot, node_convention.length_axis)
         end
-        rot = _rotation_part(world_angles_t)
-        dir = _normalize_direction(p1 - p0, rot, node_convention.length_axis)
 
         base_pos[node] = p0
         top_pos[node] = p1
@@ -2665,9 +2685,70 @@ function reconstruct_geometry_from_attributes!(mtg, prototypes::AbstractDict;
             dDwn=dDwn,
             warn_missing=warn_missing,
         )
+        if frame_cache !== nothing && frame_signature !== nothing
+            frame_prefix = (
+                current_base_pos=current_base_pos,
+                delegate2_current=delegate2_current,
+                endpoint_override=endpoint_override, endpoint_pos=endpoint_pos,
+                length_val=length_val, width_val=width_val,
+                thickness_val=thickness_val,
+                local_euler_rot=local_euler_rot, pre_hook_rot=pre_hook_rot,
+            )
+            frame_cache.next[frame_key] = _ReconstructionFrameEntry(
+                frame_signature, frame_prefix, postfix_signature, (p0, p1, dir, rot),
+            )
+        end
     end
 
+    frame_cache === nothing || _frame_cache_finish!(frame_cache)
     mtg
+end
+
+"""
+    reconstruct_geometry_from_attributes!(mtg, prototypes;
+        convention=default_amap_geometry_convention(),
+        conventions=Dict(),
+        offset_aliases=[:Offset, :offset],
+        border_offset_aliases=[:BorderInsertionOffset, :border_insertion_offset, :BorderOffset, :border_offset],
+        insertion_mode_aliases=[:InsertionMode, :insertion_mode],
+        phyllotaxy_aliases=[:Phyllotaxy, :phyllotaxy, :PHYLLOTAXY],
+        verticil_mode=:rotation360,
+        amap_options=default_amap_reconstruction_options(),
+        prototype_selector=nothing,
+        prototype_overrides=nothing,
+        dUp=1.0,
+        dDwn=1.0,
+        warn_missing=false,
+        root_align=true,
+    )
+
+Reconstruct node geometries from attribute conventions and MTG topology.
+
+When no explicit translation attributes are found (`XX/YY/ZZ` by default), placement follows a
+topological convention close to AMAP:
+
+- `:<`: attach to predecessor top
+- `:+`: attach to bearer at `Offset` (or bearer length if missing)
+- `:+`: default insertion mode is `BORDER`, adding a lateral offset of
+  `BorderInsertionOffset` (or bearer top width / 2)
+- `:/`: attach to parent base
+
+If endpoint attributes (`EndX`/`EndY`/`EndZ` aliases) are present, they override angle-derived
+orientation and `Length` for that node: base position comes from translation/topology, and
+orientation+length are inferred from `(base -> end)`.
+"""
+function reconstruct_geometry_from_attributes!(mtg, prototypes::AbstractDict;
+    reconstruction_cache=nothing, kwargs...)
+    reconstruction_cache === nothing || reconstruction_cache isa ReconstructionFrameCache ||
+        throw(ArgumentError("reconstruction_cache must be a ReconstructionFrameCache or nothing"))
+    try
+        return _reconstruct_geometry_from_attributes_impl!(
+            mtg, prototypes; reconstruction_cache=reconstruction_cache, kwargs...,
+        )
+    catch
+        reconstruction_cache === nothing || empty!(reconstruction_cache)
+        rethrow()
+    end
 end
 
 function set_geometry_from_attributes!(mtg::MultiScaleTreeGraph.Node, prototypes::AbstractDict;
@@ -2685,6 +2766,7 @@ function set_geometry_from_attributes!(mtg::MultiScaleTreeGraph.Node, prototypes
     dDwn=1.0,
     warn_missing=false,
     root_align=true,
+    reconstruction_cache=nothing,
 )
     reconstruct_geometry_from_attributes!(
         mtg,
@@ -2703,5 +2785,6 @@ function set_geometry_from_attributes!(mtg::MultiScaleTreeGraph.Node, prototypes
         dDwn=dDwn,
         warn_missing=warn_missing,
         root_align=root_align,
+        reconstruction_cache=reconstruction_cache,
     )
 end

@@ -42,6 +42,7 @@ include("geometry/materialize.jl")
 include("geometry/metadata.jl")
 include("reconstruction/amap_reconstruction.jl")
 include("reconstruction/prototypes.jl")
+include("reconstruction/frame_cache.jl")
 include("reconstruction/conventions.jl")
 include("growth/growth_api.jl")
 include("equality.jl")
@@ -123,6 +124,7 @@ export RefMeshPrototype, PointMapPrototype, ExtrusionPrototype, RawMeshPrototype
 export available_parameters, effective_parameters
 export transformation_from_attributes
 export geometry_from_attributes
+export ReconstructionFrameCache, reconstruction_frame_cache_stats
 export reconstruct_geometry_from_attributes!
 export set_geometry_from_attributes!
 export emit_internode!, emit_leaf!, emit_internode_leaf!, emit_phytomer!
