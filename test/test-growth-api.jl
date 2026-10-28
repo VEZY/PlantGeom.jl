@@ -1,3 +1,36 @@
+@testset "NamedTuple growth updates preserve values, aliases and invalidation" begin
+    root = Node(NodeMTG(:/, :Plant, 1, 1))
+    organ = emit_internode!(root; length=0.2, width=0.01)
+    control = deepcopy(root)
+    control_organ = only(MultiScaleTreeGraph.children(control))
+    payload = [1.0, 2.0]
+    updates = (Length=0.3f0, Width=nothing, Thickness=0.02, custom_payload=payload)
+    version = PlantGeom.scene_version(root)
+    for (key, value) in pairs(updates)
+        control_organ[key] = value
+    end
+    @test set_growth_attributes!(organ, updates; bump_scene=false) === organ
+    @test Dict(pairs(MultiScaleTreeGraph.node_attributes(organ))) ==
+          Dict(pairs(MultiScaleTreeGraph.node_attributes(control_organ)))
+    @test organ[:Length] isa Float32
+    @test haskey(organ, :Width) && organ[:Width] === nothing
+    @test organ[:custom_payload] === payload
+    @test PlantGeom.scene_version(root) == version
+    push!(payload, 3.0)
+    @test organ[:custom_payload] == [1.0, 2.0, 3.0]
+    @test set_growth_attributes!(organ, (Length=0.4, Width=0.03)) === organ
+    @test organ[:Length] === 0.4
+    @test organ[:Width] === 0.03
+    @test PlantGeom.scene_version(root) == version + 1
+    @test set_growth_attributes!(organ, NamedTuple()) === organ
+    @test PlantGeom.scene_version(root) == version + 2
+    # Keyword and dictionary calls retain the existing public semantics.
+    @test set_growth_attributes!(organ; Length=0.5, bump_scene=false) === organ
+    @test set_growth_attributes!(organ, Dict(:Width => 0.04); bump_scene=false) === organ
+    @test organ[:Length] === 0.5 && organ[:Width] === 0.04
+    @test PlantGeom.scene_version(root) == version + 2
+end
+
 @testset "Growth API (structure-only)" begin
     mtg = Node(NodeMTG(:/, :Plant, 1, 1))
     scene_ver(node) = haskey(node, :_scene_version) ? node[:_scene_version] : 0
