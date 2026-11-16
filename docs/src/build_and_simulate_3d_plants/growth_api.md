@@ -91,7 +91,7 @@ The structure only mode is ideal when you want to build plant structure in Julia
 
 ### PlantSimEngine-coupled mode
 
-The structure-function mode is ideal when you want to simulate growth modulated by function (*e.g.* stresses). This mode is intended to be called from a PlantSimEngine model. In this case, you can use the same `emit_*` and `grow_*` functions, but pass `Status` objects instead of MTG nodes. This lets you keep PlantGeom responsible for topology and geometry generation, while PlantSimEngine handles status initialization and function coupling.
+The structure-function mode is ideal when you want to simulate growth modulated by function (*e.g.* stresses). Inside a PlantSimEngine model, get the current MTG node with `source_node(context)` and pass it with the runtime context to `emit_*`. To update geometry attributes, pass the MTG node to `grow_*` or `set_growth_attributes!`. PlantGeom handles topology and geometry, while PlantSimEngine owns simulation variables and model coupling.
 
 !!! note
     This mode is a work in progress and may require some manual setup. If you want to use PlantSimEngine, we recommend starting with the structure-only mode to get familiar with the API, and then integrating PlantSimEngine once you are comfortable with the growth functions.
@@ -390,7 +390,9 @@ Recommended practice:
 
 ## Minimal PlantSimEngine Example
 
-If you use PlantSimEngine, the same API is available with `Status` objects.
+If you use PlantSimEngine, pass the runtime as the second argument to `emit_*`.
+The parent can be an MTG node or the official status returned by
+`model_status(model, node)` or an earlier `emit_*` call.
 
 This is an optional workflow that requires `PlantSimEngine` to be installed and loaded.
 
@@ -399,14 +401,27 @@ using PlantGeom
 using PlantSimEngine
 
 # inside a PlantSimEngine model:
-new_internode = emit_internode!(status.node, sim_object; length=0.03, width=0.004)
-new_leaf = emit_leaf!(new_internode, sim_object; length=0.10, width=0.03, leaf_stage=:juvenile)
+new_internode = emit_internode!(source_node(context), context; length=0.03, width=0.004)
+new_leaf = emit_leaf!(new_internode, context; length=0.10, width=0.03, leaf_stage=:juvenile)
 
-grow_length!(new_internode; delta=0.005)
-set_growth_attributes!(new_leaf; leaf_stage=:expanding, age=1)
+grow_length!(source_node(context, new_internode); delta=0.005)
+set_growth_attributes!(source_node(context, new_leaf); leaf_stage=:expanding, age=1)
 ```
 
-PlantGeom still handles topology and geometry metadata, while PlantSimEngine still owns status initialization through `add_organ!` (called inside `emit_*`).
+PlantGeom writes geometry attributes on MTG nodes. Supply simulation variables
+separately through `initial_status` in `emit_*`; a geometry keyword such as
+`length` does not initialize a simulation variable named `Length`.
+PlantSimEngine owns the official statuses through `add_organ!`, called inside
+`emit_*`. A model's local `status` argument contains its declared variables;
+use `source_node(context)` to find the current node without adding a `node`
+variable to that status.
+
+!!! note "Updating geometry from a status"
+    `grow_length!`, `grow_width!`, and `set_growth_attributes!` take an MTG node.
+    Replace `grow_length!(status; delta=0.005)` with
+    `grow_length!(source_node(model, status); delta=0.005)`.
+    These functions return the supplied MTG node; the simulation status remains
+    available through `model_status(model, node)`.
 
 For a complete runnable example with:
 

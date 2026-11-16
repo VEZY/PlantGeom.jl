@@ -66,15 +66,10 @@ function source_owner_map_source_plant(
     return plant
 end
 
-function source_owner_map_status(node)
-    return PlantSimEngine.Status(node=node)
-end
-
 function source_owner_map_runtime(root)
     model = PlantSimEngine.CompositeModel(
         root;
         id=MultiScaleTreeGraph.node_id,
-        status=source_owner_map_status,
     )
     PlantSimEngine.Advanced.refresh_bindings!(model)
     return model

@@ -30,7 +30,7 @@
         phase = isodd(length(PlantSimEngine.model_objects(runtime; scale=:Internode))) ?
                 180.0 : 0.0
         emit_internode_leaf!(
-            status,
+            PlantSimEngine.source_node(context),
             context;
             internode=(
                 length=0.16,
@@ -128,15 +128,10 @@ end
     mtg = _plantsimengine_growth_test_graph()
 
     function initial_status(node)
-        data = Dict{Symbol,Any}(:node => node)
-        for (key, value) in pairs(MultiScaleTreeGraph.node_attributes(node))
-            data[Symbol(key)] = value
-        end
         if MultiScaleTreeGraph.symbol(node) == :Internode
-            data[:TT_cu_emergence] = 0.0
-            data[:emitted] = 0
+            return PlantSimEngine.Status(TT_cu_emergence=0.0, emitted=0)
         end
-        return PlantSimEngine.Status((; data...))
+        return nothing
     end
 
     meteo = Weather(
@@ -172,17 +167,21 @@ end
         ),
     )
 
-    function assert_registered_growth_status(status)
-        @test PlantSimEngine.model_status(scene, status.node) === status
-        @test PlantSimEngine.source_node(scene, status) === status.node
+    function assert_registered_growth_object(object)
+        node = PlantSimEngine.source_node(scene, object.id)
+        @test PlantSimEngine.model_status(scene, node) === object.status
+        @test PlantSimEngine.source_node(scene, object) === node
+        if object.status !== nothing
+            @test PlantSimEngine.source_node(scene, object.status) === node
+        end
         @test !haskey(
-            MultiScaleTreeGraph.node_attributes(status.node),
+            MultiScaleTreeGraph.node_attributes(node),
             :plantsimengine_status,
         )
     end
 
     for object in PlantSimEngine.model_objects(scene)
-        assert_registered_growth_status(object.status)
+        assert_registered_growth_object(object)
     end
 
     simulation = @test_nowarn PlantSimEngine.run!(
@@ -199,7 +198,7 @@ end
     internodes = PlantSimEngine.model_objects(scene; scale=:Internode)
     leaves = PlantSimEngine.model_objects(scene; scale=:Leaf)
     for object in PlantSimEngine.model_objects(scene)
-        assert_registered_growth_status(object.status)
+        assert_registered_growth_object(object)
     end
     @test length(internodes) == 4
     @test length(leaves) == 4
@@ -209,15 +208,19 @@ end
     @test emergence_times[end] ≈ 30.0
     @test all(time >= 0.0 for time in emergence_times)
 
-    last_leaf = last(leaves).status.node
+    last_leaf = PlantSimEngine.source_node(scene, last(leaves))
     @test last_leaf[:GeometryPrototype] == :Leaf
     @test last_leaf[:GeometryPrototypeOverrides] == (bend=0.32, tip_drop=0.10)
 
     prototypes = _plantsimengine_growth_test_prototypes()
     rebuild_geometry!(mtg, prototypes; bump_scene=false)
 
-    @test all(PlantGeom.has_geometry(object.status.node) for object in internodes)
-    @test all(PlantGeom.has_geometry(object.status.node) for object in leaves)
+    @test all(
+        PlantGeom.has_geometry(PlantSimEngine.source_node(scene, object)) for object in internodes
+    )
+    @test all(
+        PlantGeom.has_geometry(PlantSimEngine.source_node(scene, object)) for object in leaves
+    )
 
     output_rows = PlantSimEngine.collect_outputs(
         simulation,
