@@ -40,6 +40,15 @@ end
     return attrs
 end
 
+function _apply_growth_attrs!(
+    node::MultiScaleTreeGraph.Node{N,MultiScaleTreeGraph.ColumnarAttrs},
+    attrs::NamedTuple,
+) where {N<:MultiScaleTreeGraph.AbstractNodeMTG}
+    # Columnar MTG can share the row lookup for this ordered group of writes.
+    append!(node, attrs)
+    return node
+end
+
 function _apply_growth_attrs!(node::MultiScaleTreeGraph.Node, attrs::NamedTuple)
     for (k, v) in pairs(attrs)
         node[_as_symbol(k)] = v
