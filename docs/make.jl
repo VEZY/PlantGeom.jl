@@ -1,5 +1,6 @@
 using CairoMakie
 using Bonito
+import Plots
 using PlantGeom
 using Statistics
 using Documenter
