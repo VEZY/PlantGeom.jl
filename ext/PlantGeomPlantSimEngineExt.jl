@@ -343,8 +343,6 @@ end
            !PlantSimEngine.Advanced.bindings_dirty(model)
 end
 
-@inline PlantGeom._node_from(x::PlantSimEngine.Status) = x.node
-
 function _emit_organ_with_scene!(
     parent::MultiScaleTreeGraph.Node,
     runtime::PlantSimEngineRuntime,
@@ -454,7 +452,9 @@ function emit_internode!(
     runtime::PlantSimEngineRuntime;
     kwargs...,
 )
-    return emit_internode!(parent_status.node, runtime; kwargs...)
+    return emit_internode!(
+        PlantSimEngine.source_node(runtime, parent_status), runtime; kwargs...,
+    )
 end
 
 function emit_leaf!(
@@ -531,7 +531,9 @@ function emit_leaf!(
     runtime::PlantSimEngineRuntime;
     kwargs...,
 )
-    return emit_leaf!(parent_status.node, runtime; kwargs...)
+    return emit_leaf!(
+        PlantSimEngine.source_node(runtime, parent_status), runtime; kwargs...,
+    )
 end
 
 function emit_internode_leaf!(
@@ -554,7 +556,8 @@ function emit_internode_leaf!(
         emit_internode!(parent, runtime; internode_kwargs...)
     end
 
-    leaf_parent = isnothing(internode_status) ? parent : internode_status.node
+    leaf_parent = isnothing(internode_status) ? parent :
+                  PlantSimEngine.source_node(runtime, internode_status)
     leaf_status = if leaf === nothing
         nothing
     else
@@ -576,7 +579,9 @@ function emit_internode_leaf!(
     runtime::PlantSimEngineRuntime;
     kwargs...,
 )
-    return emit_internode_leaf!(parent_status.node, runtime; kwargs...)
+    return emit_internode_leaf!(
+        PlantSimEngine.source_node(runtime, parent_status), runtime; kwargs...,
+    )
 end
 
 function emit_phytomer!(
@@ -608,7 +613,9 @@ function emit_phytomer!(
     kwargs...,
 )
     PlantGeom._deprecate_emit_phytomer!()
-    return emit_internode_leaf!(parent_status.node, runtime; kwargs...)
+    return emit_internode_leaf!(
+        PlantSimEngine.source_node(runtime, parent_status), runtime; kwargs...,
+    )
 end
 
 end

@@ -119,7 +119,7 @@ function PlantSimEngine.run!(
         phase = isodd(length(PlantSimEngine.model_objects(runtime; scale=:Internode))) ?
                 180.0 : 0.0
         emit_internode_leaf!(
-            status,
+            PlantSimEngine.source_node(context),
             context;
             internode=(
                 length=0.16,
@@ -191,21 +191,17 @@ mtg
 
 ## 5. Create the PlantSimEngine composite model
 
-First define how MTG attributes become the initial `Status` of each runtime object.
-The callback returns the status to PlantSimEngine, which owns it in the model
-registry. Runtime status is not an MTG attribute.
+Initialize only the simulation variables needed by the model. Here the
+internodes need the thermal time of their last emergence and an emergence flag.
+Geometry attributes such as `Length` stay on the MTG nodes and are read later
+by `rebuild_geometry!`. PlantSimEngine owns runtime status in its model registry.
 
 ```@example psegrowth
 function initial_status(node)
-    data = Dict{Symbol,Any}(:node => node)
-    for (key, value) in pairs(MultiScaleTreeGraph.node_attributes(node))
-        data[Symbol(key)] = value
-    end
     if MultiScaleTreeGraph.symbol(node) == :Internode
-        data[:TT_cu_emergence] = 0.0
-        data[:emitted] = 0
+        return PlantSimEngine.Status(TT_cu_emergence=0.0, emitted=0)
     end
-    return PlantSimEngine.Status((; data...))
+    return nothing
 end
 ```
 
@@ -213,6 +209,10 @@ Important detail:
 
 - resolve a node's runtime status with `PlantSimEngine.model_status(model, node)`
 - recover its exact MTG node with `PlantSimEngine.source_node(model, status)`
+- inside `run!`, use `PlantSimEngine.source_node(context)` for the current node;
+  the local `status` argument does not need a `node` variable
+- initialize new internodes explicitly with `initial_status`, as in the growth
+  model above; geometry keywords remain MTG attributes
 - the growth application will target `:Internode` objects, including internodes
   registered during organogenesis
 
