@@ -291,15 +291,16 @@ end
 
     refreshed_map = compile_source_owner_map(scene, runtime)
     scene_root_id = PlantSimEngine.object_id(runtime, scene.mtg)
+    # Only topology freshness changes here; this object has no model variables.
     PlantSimEngine.register_object!(
         runtime,
         PlantSimEngine.Object(
             :source_owner_dynamic_object;
             scale=:Leaf,
             parent=scene_root_id,
-            status=PlantSimEngine.Status(signal=0.0),
         ),
     )
+    @test isnothing(PlantSimEngine.model_status(runtime, :source_owner_dynamic_object))
     @test !source_owner_map_iscurrent(refreshed_map, scene, runtime)
     @test !source_owner_map_iscurrent(refreshed_map)
     @test_throws ArgumentError compile_source_owner_map(scene, runtime)
